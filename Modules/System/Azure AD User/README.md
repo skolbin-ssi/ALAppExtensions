@@ -35,6 +35,30 @@ The user's security ID.
 
 The Azure AD user.
 
+### GetGraphUser (Method) <a name="GetGraphUser"></a> 
+    
+ Gets the Azure AD user with the given security ID.
+ 
+
+#### Syntax
+```
+[Scope('OnPrem')]
+[TryFunction]
+procedure GetGraphUser(UserSecurityId: Guid; ForceFetchFromGraph: Boolean; var User: DotNet UserInfo)
+```
+#### Parameters
+*UserSecurityId ([Guid](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/guid/guid-data-type))* 
+
+The user's security ID.
+
+*ForceFetchFromGraph ([Boolean](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/boolean/boolean-data-type))* 
+
+Forces a graph call to get the latest details for the user.
+
+*User ([DotNet UserInfo](https://docs.microsoft.com/en-us/dotnet/api/microsoft.identitymodel.clients.activedirectory.userinfo?view=azure-dotnet))* 
+
+The Azure AD user.
+
 ### GetObjectId (Method) <a name="GetObjectId"></a> 
 
  Retrieves the user’s unique identifier, which is its object ID, from Azure AD.
@@ -57,6 +81,8 @@ The user's security ID.
  The object ID of the Azure AD user, or an empty string if the user cannot be found.
  
 ### GetUserAuthenticationObjectId (Method) <a name="GetUserAuthenticationObjectId"></a> 
+User with Security ID UserSecurityId does not exist.
+
     
  Gets the user's authentication object ID.
  
@@ -75,6 +101,52 @@ The user's security ID.
 *[Text](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/text/text-data-type)*
 
 The user's authentication object ID.
+### TryGetUserAuthenticationObjectId (Method) <a name="TryGetUserAuthenticationObjectId"></a> 
+    
+ Tries to get the user's authentication object ID.
+ 
+
+#### Syntax
+```
+[Scope('OnPrem')]
+procedure TryGetUserAuthenticationObjectId(UserSecurityId: Guid; var AuthenticationObjectId: Text): Boolean
+```
+#### Parameters
+*UserSecurityId ([Guid](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/guid/guid-data-type))* 
+
+The user's security ID.
+
+*AuthenticationObjectId ([Text](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/text/text-data-type))* 
+
+Var parameter that hold the user's authention object ID.
+
+#### Return Value
+*[Boolean](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/boolean/boolean-data-type)*
+
+True if the call was successful; otherwise - false.
+### GetUser (Method) <a name="GetUser"></a> 
+    
+ Gets the user from a given Authentication object ID.
+ 
+
+#### Syntax
+```
+[Scope('OnPrem')]
+procedure GetUser(AuthenticationObjectID: Text; var User: Record User): Boolean
+```
+#### Parameters
+*AuthenticationObjectID ([Text](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/text/text-data-type))* 
+
+The user's Authentication object ID.
+
+*User ([Record User]())* 
+
+The user that has provided Authentication object ID.
+
+#### Return Value
+*[Boolean](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/boolean/boolean-data-type)*
+
+True if the user was found, false otherwise.
 ### UpdateUserFromAzureGraph (Method) <a name="UpdateUserFromAzureGraph"></a> 
     
  Updates the user record with information from Azure AD.
@@ -187,7 +259,10 @@ The full name of the provided Graph user. Can be used to assign to "Full Name" f
  Gets the preferred language ID of the provided Graph user.
  
 
-Preferred language ID is derived from preferredLanguage property on the Graph user.
+
+ Preferred language ID is derived from preferredLanguage property on the Graph user. 
+ If the preferred language is not set or it is set to a language that is not supported in Business Central, the function returns 0.
+ 
 
 #### Syntax
 ```

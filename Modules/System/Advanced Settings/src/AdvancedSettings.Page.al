@@ -9,7 +9,6 @@ page 9202 "Advanced Settings"
     PageType = NavigatePage;
     ApplicationArea = All;
     UsageCategory = Administration;
-
     Caption = 'Advanced Settings';
 
     layout
@@ -80,6 +79,7 @@ page 9202 "Advanced Settings"
                 ApplicationArea = All;
                 Caption = 'Done';
                 ToolTip = 'Close the page.';
+                Image = Close;
                 InFooterBar = true;
 
                 trigger OnAction()

@@ -9,6 +9,10 @@
 codeunit 9057 "Plan Upgrade"
 {
     Subtype = Upgrade;
+    Permissions = tabledata Plan = rimd;
+
+    var
+        SubscriptionPlanMsg: Label 'Subscription Plan %1 was added', Comment = '%1 - Plan Id', Locked = true;
 
     trigger OnUpgradePerDatabase()
     begin
@@ -16,6 +20,7 @@ codeunit 9057 "Plan Upgrade"
         RenamePlansAndDeleteOldPlans();
     end;
 
+    [NonDebuggable]
     local procedure UpdateSubscriptionPlan()
     var
         Plan: Record "Plan";
@@ -38,11 +43,12 @@ codeunit 9057 "Plan Upgrade"
 
         CreatePlan(PlanId, PlanName, RoleCenterId);
 
-        SendTraceTag('00001PS', 'AL SaaS Upgrade', VERBOSITY::Normal, StrSubstNo('Subscription Plan %1 was added', PlanId));
+        Session.LogMessage('00001PS', StrSubstNo(SubscriptionPlanMsg, PlanId), Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', 'AL SaaS Upgrade');
 
         UpgradeTag.SetUpgradeTag(PlanUpgradeTag.GetAddDeviceISVEmbUpgradeTag());
     end;
 
+    [NonDebuggable]
     local procedure RenamePlansAndDeleteOldPlans()
     var
         UpgradeTag: Codeunit "Upgrade Tag";
@@ -74,11 +80,12 @@ codeunit 9057 "Plan Upgrade"
         DeletePlan('46764787-E039-4AB0-8F00-820FC2D89BF9');
         DeletePlan('312BDEEE-8FBD-496E-B529-EB985F305FCF');
 
-        SendTraceTag('0000AHN', 'AL SaaS Upgrade', VERBOSITY::Normal, 'Subscription Plans were renamed and old plans werer deleted.');
+        Session.LogMessage('0000AHN', 'Subscription Plans were renamed and old plans werer deleted.', Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', 'AL SaaS Upgrade');
 
         UpgradeTag.SetUpgradeTag(PlanUpgradeTag.GetRenamePlansUpgradeTag());
     end;
 
+    [NonDebuggable]
     local procedure DeletePlan(PlanId: guid)
     var
         Plan: Record "Plan";
@@ -87,6 +94,7 @@ codeunit 9057 "Plan Upgrade"
             Plan.Delete();
     end;
 
+    [NonDebuggable]
     local procedure RenameOrCreatePlan(PlanId: guid; NewName: Text)
     var
         Plan: Record "Plan";
@@ -98,6 +106,7 @@ codeunit 9057 "Plan Upgrade"
             CreatePlan(PlanId, CopyStr(NewName, 1, 50), 0);
     end;
 
+    [NonDebuggable]
     local procedure CreatePlan(PlanGuid: Guid; PlanName: Text[50]; RoleCenterId: Integer)
     var
         Plan: Record Plan;

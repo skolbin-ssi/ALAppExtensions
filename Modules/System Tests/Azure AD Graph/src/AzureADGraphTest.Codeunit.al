@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 codeunit 139087 "Azure AD Graph Test"
 {
     Subtype = Test;
@@ -664,7 +669,7 @@ codeunit 139087 "Azure AD Graph Test"
         MockGraphQuery.AddDirectorySubscribedSku(SubscribedSku);
     end;
 
-    [EventSubscriber(ObjectType::Codeunit, 9012, 'OnInitialize', '', false, false)]
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Azure AD Graph", 'OnInitialize', '', false, false)]
     local procedure OnInitialize(var GraphQuery: DotNet GraphQuery)
     begin
         GraphQuery := GraphQuery.GraphQuery(MockGraphQuery);

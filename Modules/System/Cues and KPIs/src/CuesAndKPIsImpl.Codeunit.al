@@ -5,7 +5,8 @@
 
 codeunit 9702 "Cues And KPIs Impl."
 {
-    Permissions = TableData "Cue Setup" = r;
+    Permissions = tabledata Field = r,
+                  tabledata "Cue Setup" = rimd;
     Access = Internal;
 
     var
@@ -131,10 +132,10 @@ codeunit 9702 "Cues And KPIs Impl."
 
         FindCueSetup(CueSetup, TableId, FieldNo);
         if CueValue < CueSetup."Threshold 1" then
-            exit(CueSetup."Low Range Style");
+            exit(CueSetup."Low Range Style".AsInteger());
         if CueValue > CueSetup."Threshold 2" then
-            exit(CueSetup."High Range Style");
-        exit(CueSetup."Middle Range Style");
+            exit(CueSetup."High Range Style".AsInteger());
+        exit(CueSetup."Middle Range Style".AsInteger());
     end;
 
     local procedure FindCueSetup(var CueSetup: Record "Cue Setup"; TableId: Integer; FieldNo: Integer)
@@ -249,12 +250,12 @@ codeunit 9702 "Cues And KPIs Impl."
         exit(CueSetup.Insert());
     end;
 
-    [EventSubscriber(ObjectType::Codeunit, 2000000004, 'GetCueStyle', '', false, false)]
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"UI Helper Triggers", 'GetCueStyle', '', false, false)]
     local procedure GetCueStyle(TableId: Integer; FieldNo: Integer; CueValue: Decimal; var StyleText: Text)
     var
         Style: Enum "Cues And KPIs Style";
     begin
-        Style := GetCustomizedCueStyleOption(TableId, FieldNo, CueValue);
+        Style := "Cues And KPIs Style".FromInteger(GetCustomizedCueStyleOption(TableId, FieldNo, CueValue));
         StyleText := ConvertStyleToStyleText(Style);
     end;
 

@@ -6,6 +6,16 @@
 codeunit 9751 "Web Service Management Impl."
 {
     Access = Internal;
+    Permissions = tabledata AllObj = r,
+                  tabledata AllObjWithCaption = r,
+                  tabledata Field = r,
+                  tabledata "Tenant Web Service" = rimd,
+                  tabledata "Web Service" = rimd,
+                  tabledata "Tenant Web Service Columns" = imd,
+                  tabledata "Tenant Web Service Filter" = imd,
+                  tabledata "Tenant Web Service OData" = imd,
+                  tabledata "Web Service Aggregate" = imd;
+
 
     var
         ODataProtocolVersion: Enum "OData Protocol Version";
@@ -16,6 +26,7 @@ codeunit 9751 "Web Service Management Impl."
         WebServiceAlreadyPublishedErr: Label 'The web service name %1 already exists.  Enter a different service name.', Comment = '%1 = Web Service name';
         WebServiceNotAllowedErr: Label 'The web service cannot be added because it conflicts with an unpublished system web service for the object.';
         WebServiceModNotAllowedErr: Label 'The web service cannot be modified because it conflicts with an unpublished system web service for the object.';
+        ODataUnboundActionHelpUrlLbl: Label 'https://go.microsoft.com/fwlink/?linkid=2138827', Locked = true;
 
     procedure CreateWebService(ObjectType: Option; ObjectId: Integer; ObjectName: Text; Published: Boolean)
     var
@@ -88,8 +99,10 @@ codeunit 9751 "Web Service Management Impl."
                     case ClientTypeParam of
                         ClientTypeParam::SOAP:
                             exit(GetUrl(CLIENTTYPE::SOAP, CompanyName(), OBJECTTYPE::Codeunit, WebServiceAggregate."Object ID", WebService));
-                        else
+                        ClientTypeParam::ODataV3:
                             exit(NotApplicableTxt);
+                        ClientTypeParam::ODataV4:
+                            exit(ODataUnboundActionHelpUrlLbl);
                     end;
             end;
         end else begin
@@ -131,8 +144,10 @@ codeunit 9751 "Web Service Management Impl."
                     case ClientTypeParam of
                         ClientTypeParam::SOAP:
                             exit(GetUrl(CLIENTTYPE::SOAP, CompanyName(), OBJECTTYPE::Codeunit, WebServiceAggregate."Object ID", TenantWebService));
-                        else
+                        ClientTypeParam::ODataV3:
                             exit(NotApplicableTxt);
+                        ClientTypeParam::ODataV4:
+                            exit(ODataUnboundActionHelpUrlLbl);
                     end;
             end;
         end;
@@ -271,7 +286,6 @@ codeunit 9751 "Web Service Management Impl."
     var
         WebService: Record "Web Service";
         TenantWebService: Record "Tenant Web Service";
-        AllObj: Record AllObj;
     begin
         Rec.Reset();
         Rec.DeleteAll();
@@ -290,18 +304,17 @@ codeunit 9751 "Web Service Management Impl."
         if TenantWebService.FindSet() then
             repeat
                 Clear(WebService);
-                if AllObj.get(TenantWebService."Object Type", TenantWebService."Object ID") then
-                    if not WebService.Get(TenantWebService."Object Type", TenantWebService."Service Name") then begin
-                        WebService.SetRange("Object Type", TenantWebService."Object Type");
-                        WebService.SetRange("Object ID", TenantWebService."Object ID");
-                        WebService.SetRange(Published, false);
+                if not WebService.Get(TenantWebService."Object Type", TenantWebService."Service Name") then begin
+                    WebService.SetRange("Object Type", TenantWebService."Object Type");
+                    WebService.SetRange("Object ID", TenantWebService."Object ID");
+                    WebService.SetRange(Published, false);
 
-                        if WebService.IsEmpty() then begin
-                            Rec.Init();
-                            Rec.TransferFields(TenantWebService);
-                            Rec.Insert();
-                        end
+                    if WebService.IsEmpty() then begin
+                        Rec.Init();
+                        Rec.TransferFields(TenantWebService);
+                        Rec.Insert();
                     end
+                end
             until TenantWebService.Next() = 0;
     end;
 
@@ -330,6 +343,8 @@ codeunit 9751 "Web Service Management Impl."
                 if WebService.Get(Rec."Object Type", Rec."Service Name") then begin
                     WebService."Object ID" := Rec."Object ID";
                     WebService.Published := Rec.Published;
+                    WebService.ExcludeFieldsOutsideRepeater := Rec.ExcludeFieldsOutsideRepeater;
+                    WebService.ExcludeNonEditableFlowFields := Rec.ExcludeNonEditableFlowFields;
                     WebService.Modify();
                 end else begin
                     Clear(WebService);
@@ -357,6 +372,8 @@ codeunit 9751 "Web Service Management Impl."
                 if TenantWebService.Get(Rec."Object Type", Rec."Service Name") then begin
                     TenantWebService."Object ID" := Rec."Object ID";
                     TenantWebService.Published := Rec.Published;
+                    TenantWebService.ExcludeFieldsOutsideRepeater := Rec.ExcludeFieldsOutsideRepeater;
+                    TenantWebService.ExcludeNonEditableFlowFields := Rec.ExcludeNonEditableFlowFields;
                     TenantWebService.Modify();
                 end else begin
                     TenantWebService.TransferFields(Rec);
@@ -377,6 +394,8 @@ codeunit 9751 "Web Service Management Impl."
 
                 if WebService.Get(Rec."Object Type", Rec."Service Name") then begin
                     WebService."Object ID" := Rec."Object ID";
+                    WebService.ExcludeFieldsOutsideRepeater := Rec.ExcludeFieldsOutsideRepeater;
+                    WebService.ExcludeNonEditableFlowFields := Rec.ExcludeNonEditableFlowFields;
                     WebService.Published := Rec.Published;
                     WebService.Modify();
                 end else begin
@@ -407,6 +426,8 @@ codeunit 9751 "Web Service Management Impl."
 
                 if TenantWebService.Get(Rec."Object Type", Rec."Service Name") then begin
                     TenantWebService."Object ID" := Rec."Object ID";
+                    TenantWebService.ExcludeFieldsOutsideRepeater := Rec.ExcludeFieldsOutsideRepeater;
+                    TenantWebService.ExcludeNonEditableFlowFields := Rec.ExcludeNonEditableFlowFields;
                     TenantWebService.Published := Rec.Published;
                     TenantWebService.Modify();
                 end else begin
@@ -501,7 +522,7 @@ codeunit 9751 "Web Service Management Impl."
         TenantWebService.Published := Published;
     end;
 
-    [EventSubscriber(ObjectType::Table, 2000000168, 'OnAfterDeleteEvent', '', false, false)]
+    [EventSubscriber(ObjectType::Table, Database::"Tenant Web Service", 'OnAfterDeleteEvent', '', false, false)]
     local procedure DeleteODataOnDeleteTenantWebService(var Rec: Record "Tenant Web Service"; RunTrigger: Boolean)
     var
         TenantWebServiceColumns: Record "Tenant Web Service Columns";
@@ -674,9 +695,11 @@ codeunit 9751 "Web Service Management Impl."
         TenantWebServiceColumns.SetRange("Data Item", DataItemNumber);
         if TenantWebServiceColumns.FindSet() then
             repeat
-                BaseFieldRef := BaseRecRef.Field(TenantWebServiceColumns."Field Number");
-                UpdatedFieldRef := UpdatedRecRef.Field(TenantWebServiceColumns."Field Number");
-                UpdatedFieldRef.SetFilter(BaseFieldRef.GetFilter());
+                if BaseRecRef.FieldExist(TenantWebServiceColumns."Field Number") then begin
+                    BaseFieldRef := BaseRecRef.Field(TenantWebServiceColumns."Field Number");
+                    UpdatedFieldRef := UpdatedRecRef.Field(TenantWebServiceColumns."Field Number");
+                    UpdatedFieldRef.SetFilter(BaseFieldRef.GetFilter());
+                end;
             until TenantWebServiceColumns.Next() = 0;
 
         exit(UpdatedRecRef.GetView());

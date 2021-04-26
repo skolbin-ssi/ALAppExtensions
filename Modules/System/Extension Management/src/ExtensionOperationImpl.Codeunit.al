@@ -7,6 +7,9 @@ codeunit 2503 "Extension Operation Impl"
 {
     Access = Internal;
     SingleInstance = false;
+    Permissions = tabledata "NAV App Setting" = rm,
+                  tabledata "NAV App Tenant Operation" = r,
+                  tabledata "Published Application" = r;
 
     var
         DotNetALNavAppOperationInvoker: DotNet ALNavAppOperationInvoker;
@@ -50,7 +53,7 @@ codeunit 2503 "Extension Operation Impl"
         DotNetALNavAppOperationInvoker.UploadPackage(PackageStream, DotNetALPackageDeploymentSchedule, Format(lcid));
     end;
 
-    procedure DeployAndUploadExtension(PackageStream: InStream; lcid: Integer; DeployTo: Option "Current version","Next minor version","Next major version")
+    procedure DeployAndUploadExtension(PackageStream: InStream; lcid: Integer; DeployTo: Enum "Extension Deploy To")
     var
         DotNetALPackageDeploymentSchedule: DotNet ALPackageDeploymentSchedule;
     begin
@@ -104,17 +107,14 @@ codeunit 2503 "Extension Operation Impl"
         DotNetNavAppALInstaller.ALUnpublishNavTenantApp(PackageID);
     end;
 
-    procedure DownloadExtensionSource(PackageId: Guid): Boolean
+    procedure GetExtensionSource(PackageId: Guid; var ExtensionSourceTempBlob: Codeunit "Temp Blob"; var CleanFileName: Text): Boolean
     var
         PublishedApplication: Record "Published Application";
-        TempBlob: Codeunit "Temp Blob";
         ExtensionInstallationImpl: Codeunit "Extension Installation Impl";
         DotNetNavDesignerALFunctions: DotNet NavDesignerALFunctions;
         NvOutStream: OutStream;
-        NvInStream: InStream;
         FileName: Text;
         VersionString: Text;
-        CleanFileName: Text;
     begin
         CheckPermissions();
 
@@ -126,18 +126,29 @@ codeunit 2503 "Extension Operation Impl"
         if not PublishedApplication.FindFirst() then
             exit(false);
 
-        TempBlob.CreateOutStream(NvOutStream);
-        VersionString :=
-          ExtensionInstallationImpl.GetVersionDisplayString(PublishedApplication);
+        ExtensionSourceTempBlob.CreateOutStream(NvOutStream);
+        VersionString := ExtensionInstallationImpl.GetVersionDisplayString(PublishedApplication);
 
         DotNetNavDesignerALFunctions.GenerateDesignerPackageZipStreamByVersion(NvOutStream, PublishedApplication.ID, VersionString);
+
         FileName := StrSubstNo(ExtensionFileNameTxt, PublishedApplication.Name, PublishedApplication.Publisher, VersionString);
         CleanFileName := DotNetNavDesignerALFunctions.SanitizeDesignerFileName(FileName, '_');
+
+        exit(true);
+    end;
+
+    procedure DownloadExtensionSource(PackageId: Guid): Boolean
+    var
+        TempBlob: Codeunit "Temp Blob";
+        NvInStream: InStream;
+        CleanFileName: Text;
+    begin
+        if not GetExtensionSource(PackageId, TempBlob, CleanFileName) then
+            exit(false);
 
         TempBlob.CreateInStream(NvInStream);
 
         exit(DownloadFromStream(NvInStream, DialogTitleTxt, '', '*.*', CleanFileName));
-
     end;
 
     procedure DownloadDeploymentStatusDetails(OperationId: Guid)
@@ -202,9 +213,23 @@ codeunit 2503 "Extension Operation Impl"
             Error(NotSufficientPermissionErr);
     end;
 
+    [Obsolete('This is the implementation of a method for which the required parameter is not accessible for Cloud development', '17.0')]
     procedure GetAllExtensionDeploymentStatusEntries(var NavAppTenantOperation: Record "NAV App Tenant Operation")
     begin
-        NavAppTenantOperation.FindSet();
+        if not NavAppTenantOperation.FindSet() then
+            exit;
+    end;
+
+    procedure GetAllExtensionDeploymentStatusEntries(var TempExtensionDeploymentStatus: Record "Extension Deployment Status" temporary)
+    var
+        NavAppTenantOperation: Record "NAV App Tenant Operation";
+    begin
+        if not NavAppTenantOperation.FindSet() then
+            exit;
+        repeat
+            TempExtensionDeploymentStatus.TransferFields(NavAppTenantOperation, true);
+            TempExtensionDeploymentStatus.Insert();
+        until NavAppTenantOperation.Next() = 0;
     end;
 
     procedure GetDeploymentDetailedStatusMessageAsStream(OperationId: Guid; OutStream: OutStream)

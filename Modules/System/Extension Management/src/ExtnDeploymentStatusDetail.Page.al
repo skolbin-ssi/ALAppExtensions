@@ -97,10 +97,12 @@ page 2509 "Extn Deployment Status Detail"
                             trigger OnDrillDown()
                             var
                                 ExtensionOperationImpl: Codeunit "Extension Operation Impl";
+                                DeployOperationJobId: Text;
                             begin
                                 DetailedMessageText := ExtensionOperationImpl.GetDeploymentDetailedStatusMessage("Operation ID");
-                                DetailedMessageText := DetailedMessageText + ' - Job Id : ' +
-                                  ExtensionOperationImpl.GetDeployOperationJobId("Operation ID");
+                                DeployOperationJobId := ExtensionOperationImpl.GetDeployOperationJobId("Operation ID");
+
+                                DetailedMessageText := DetailedMessageText + ' - Job Id : ' + DeployOperationJobId;
                                 ShowDetailedMessage := true;
                             end;
                         }
@@ -119,7 +121,6 @@ page 2509 "Extn Deployment Status Detail"
                     MultiLine = true;
                     ShowCaption = false;
                     ToolTip = 'Specifies detailed message box.';
-                    Visible = ShowDetailedMessage;
                 }
             }
         }
@@ -132,11 +133,13 @@ page 2509 "Extn Deployment Status Detail"
             action(Refresh)
             {
                 ApplicationArea = All;
+                ToolTip = 'Refresh the deployment details.';
                 Enabled = NOT IsFinalStatus;
                 Image = Refresh;
                 Promoted = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
 
                 trigger OnAction()
                 var
@@ -159,6 +162,7 @@ page 2509 "Extn Deployment Status Detail"
                 Promoted = true;
                 PromotedCategory = Process;
                 PromotedIsBig = true;
+                PromotedOnly = true;
                 ToolTip = 'Download the operation status details to a file.';
 
                 trigger OnAction()
@@ -171,7 +175,7 @@ page 2509 "Extn Deployment Status Detail"
         }
     }
 
-    trigger OnOpenPage()
+    trigger OnAfterGetCurrRecord()
     var
         ExtensionOperationImpl: Codeunit "Extension Operation Impl";
     begin
@@ -215,7 +219,9 @@ page 2509 "Extn Deployment Status Detail"
         NavAppTenantOperationTable.CalcFields(Details);
         NavAppTenantOperationTable.Details.CreateInStream(DetailsStream, TEXTENCODING::UTF8);
         DeploymentDetails.Read(DetailsStream);
-        Insert();
+
+        if not Rec.Insert() then
+            Rec.Modify()
     end;
 
     local procedure SetEnvironmentVariables()
@@ -231,4 +237,3 @@ page 2509 "Extn Deployment Status Detail"
         ShowDetails := Status <> Status::InProgress;
     end;
 }
-

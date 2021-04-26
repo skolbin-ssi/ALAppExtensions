@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 codeunit 130451 "Test Runner - Isol. Disabled"
 {
     Subtype = TestRunner;
@@ -7,9 +12,13 @@ codeunit 130451 "Test Runner - Isol. Disabled"
 
     trigger OnRun()
     begin
-        ALTestSuite.Get("Test Suite");
-        CurrentTestMethodLine.Copy(Rec);
-        TestRunnerMgt.RunTests(Rec);
+        if Rec."Skip Logging Results" then
+            TestRunnerMgt.RunTestsWithoutLoggingResults(Rec)
+        else begin
+            ALTestSuite.Get(Rec."Test Suite");
+            CurrentTestMethodLine.Copy(Rec);
+            TestRunnerMgt.RunTests(Rec);
+        end;
     end;
 
     var

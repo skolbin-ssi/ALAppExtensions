@@ -6,6 +6,10 @@
 table 4152 "Temp Media"
 {
     Access = Internal;
+#pragma warning disable AS0034
+    TableType = Temporary;
+#pragma warning restore AS0034
+
 
     fields
     {
@@ -14,6 +18,11 @@ table 4152 "Temp Media"
             DataClassification = SystemMetadata;
         }
         field(2; Media; Media)
+        {
+            DataClassification = SystemMetadata;
+        }
+
+        field(3; MediaSet; MediaSet)
         {
             DataClassification = SystemMetadata;
         }

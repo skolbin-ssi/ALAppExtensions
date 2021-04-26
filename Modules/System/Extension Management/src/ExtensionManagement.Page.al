@@ -8,6 +8,7 @@
 /// </summary>
 page 2500 "Extension Management"
 {
+    Caption = 'Extension Management';
     Extensible = false;
     AdditionalSearchTerms = 'app,add-in,customize,plug-in,appsource';
     ApplicationArea = All;
@@ -26,6 +27,7 @@ page 2500 "Extension Management"
                             "Tenant Visible" = CONST(true));
     UsageCategory = Administration;
     ContextSensitiveHelpPage = 'ui-extensions';
+    Permissions = tabledata "Published Application" = r;
 
     layout
     {
@@ -70,6 +72,12 @@ page 2500 "Extension Management"
                     ApplicationArea = All;
                     Caption = 'Version';
                     ToolTip = 'Specifies the version of the extension.';
+                }
+                field("Published as"; "Published As")
+                {
+                    ApplicationArea = All;
+                    Caption = 'Published as';
+                    ToolTip = 'Specifies whether the extension is published as a per-tenant, development, or a global extension.';
                 }
             }
         }
@@ -123,14 +131,13 @@ page 2500 "Extension Management"
                 {
                     ApplicationArea = All;
                     Caption = 'Unpublish';
-                    Enabled = ActionsEnabled;
+                    Enabled = ActionsEnabled AND IsTenantExtension AND (not IsInstalled);
                     Image = RemoveLine;
                     Promoted = true;
                     PromotedOnly = true;
                     PromotedCategory = Category5;
                     Scope = Repeater;
                     ToolTip = 'Unpublish the extension from the tenant.';
-                    Visible = IsTenantExtension;
 
                     trigger OnAction()
                     begin
@@ -217,14 +224,7 @@ page 2500 "Extension Management"
                     PromotedIsBig = true;
                     ToolTip = 'Browse the extension marketplace for new extensions to install.';
                     Visible = NOT IsOnPremDisplay;
-
-                    trigger OnAction()
-                    begin
-                        if AppSource.IsAvailable() then begin
-                            AppSource := AppSource.Create();
-                            AppSource.ShowAppSource();
-                        end;
-                    end;
+                    RunObject = page "Extension Marketplace";
                 }
                 action("Upload Extension")
                 {
@@ -307,8 +307,6 @@ page 2500 "Extension Management"
     var
         ExtensionInstallationImpl: Codeunit "Extension Installation Impl";
         ExtensionOperationImpl: Codeunit "Extension Operation Impl";
-        [RunOnClient]
-        AppSource: DotNet AppSource;
         VersionDisplay: Text;
         InstalledStatus: Text;
         ActionsEnabled: Boolean;
@@ -357,12 +355,8 @@ page 2500 "Extension Management"
     begin
         // Determining Record and Styling Configurations
         IsInstalled := ExtensionInstallationImpl.IsInstalledByPackageId("Package ID");
-        InstalledStatus := ExtensionInstallationImpl.GetExtensionInstalledDisplayString("Package ID");
-        // Currently using the "Tenant ID" field to identify development extensions
-        if "Published As" = "Published As"::Global then
-            IsTenantExtension := false
-        else
-            IsTenantExtension := true;
+        InstalledStatus := ExtensionInstallationImpl.GetExtensionInstalledDisplayString(IsInstalled);
+        IsTenantExtension := "Published As" <> "Published As"::Global;
     end;
 
     local procedure GetVersionDisplayText(): Text
