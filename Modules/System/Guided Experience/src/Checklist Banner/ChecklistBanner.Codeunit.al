@@ -92,6 +92,9 @@ codeunit 1996 "Checklist Banner"
         GetUserChecklistStatusDimensionsInDefaultLanguage(OldStatus, NewStatus, OldStatusInDefaultLanguage, NewStatusInDefaultLanguage);
         GetCustomDimensionsForUserChecklistStatusUpdate(Dimensions, OldStatusInDefaultLanguage, NewStatusInDefaultLanguage);
 
+        if UserPersonalization."Profile ID" = '' then
+            if UserPersonalization.Get(UserSecurityId()) then;
+
         GuidedExperienceImpl.AddCompanyNameDimension(Dimensions);
         GuidedExperienceImpl.AddRoleDimension(Dimensions, UserPersonalization);
 
@@ -635,8 +638,8 @@ codeunit 1996 "Checklist Banner"
 
     local procedure GetCustomDimensionsForUserChecklistStatusUpdate(var Dimensions: Dictionary of [Text, Text]; OldStatus: Text; NewStatus: Text)
     begin
-        Dimensions.Add('Old status', OldStatus);
-        Dimensions.Add('New status', NewStatus);
+        Dimensions.Add('OldStatus', OldStatus);
+        Dimensions.Add('NewStatus', NewStatus);
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"System Action Triggers", 'GetRoleCenterBannerPartID', '', true, true)]

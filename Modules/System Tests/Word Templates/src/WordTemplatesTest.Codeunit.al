@@ -11,6 +11,9 @@ codeunit 130443 "Word Templates Test"
     Subtype = Test;
     TestPermissions = NonRestrictive;
 
+    var
+        PermissionsMock: Codeunit "Permissions Mock";
+
     [Test]
     procedure TestCreateDocument()
     var
@@ -19,6 +22,7 @@ codeunit 130443 "Word Templates Test"
         InStream: InStream;
     begin
         // [SCENARIO] Creation of document template with fields provides zip with document template and data source txt file
+        PermissionsMock.Set('Word Templates Edit');
 
         // [GIVEN] Merge fields
         MergeFields.Add('CustomerName');
@@ -40,6 +44,7 @@ codeunit 130443 "Word Templates Test"
         MergeFields: List of [Text];
     begin
         // [SCENARIO] Creation of document template with fields provides zip with document template and data source txt file
+        PermissionsMock.Set('Word Templates Edit');
 
         // [GIVEN] Merge fields
         MergeFields.Add('CustomerName');
@@ -62,6 +67,7 @@ codeunit 130443 "Word Templates Test"
         MergeFields: List of [Text];
     begin
         // [SCENARIO] Creation of document template with fields provides zip with document template and data source txt file
+        PermissionsMock.Set('Word Templates Edit');
 
         // [WHEN] Run create document with merge fields and save zip to temp blob
         WordTemplatesImpl.Create(Database::"Word Template");
@@ -97,6 +103,7 @@ codeunit 130443 "Word Templates Test"
         InStream: InStream;
     begin
         // [SCENARIO] Load document and execute upon a dataset and verify that the output contains the data
+        PermissionsMock.Set('Word Templates Edit');
 
         // [GIVEN] Document from base64 and data source
         DataSource.CreateOutStream(OutStream, TextEncoding::UTF8);
@@ -146,6 +153,7 @@ codeunit 130443 "Word Templates Test"
         InStream: InStream;
     begin
         // [SCENARIO] Load document and execute upon a dataset and verify that the output contains the data
+        PermissionsMock.Set('Word Templates Edit');
 
         // [GIVEN] Document from base64 and data source
         DataSource.Add('CustomerName', 'Darrick');
@@ -174,23 +182,12 @@ codeunit 130443 "Word Templates Test"
 
     [Test]
     [TransactionModel(TransactionModel::AutoRollback)]
-    procedure TestGetTemplateName()
-    var
-        WordTemplateImpl: Codeunit "Word Template Impl.";
-    begin
-        // [SCENARIO] Check that reserved characters are removed from the template name.
-        WordTemplateImpl.Create(130443); // Caption = Word Templates Test / Table "<>:/\|?*
-        Assert.AreEqual('Word Templates Test _ Table __________Template.docx', WordTemplateImpl.GetTemplateName('docx'), 'Template name is incorrect.');
-    end;
-
-
-    [Test]
-    [TransactionModel(TransactionModel::AutoRollback)]
     procedure TestGenerateColumnName()
     var
         WordTemplateImpl: Codeunit "Word Template Impl.";
     begin
         // [SCENARIO] Check conversion of column numbers to column names for excel column
+        PermissionsMock.Set('Word Templates Edit');
 
         Assert.AreEqual('', WordTemplateImpl.ConvertColNoToColName(0), 'Column name is incorrect.');
         Assert.AreEqual('A', WordTemplateImpl.ConvertColNoToColName(1), 'Column name is incorrect.');

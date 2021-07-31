@@ -206,7 +206,7 @@ codeunit 8905 "Email Message Impl."
         TempBlob.CreateOutStream(AttachmentOutstream);
         Base64Convert.FromBase64(AttachmentBase64, AttachmentOutstream);
         TempBlob.CreateInStream(AttachmentInStream);
-        EmailAttachment.Data.ImportStream(AttachmentInStream, '', EmailAttachment."Content Type");
+        EmailAttachment.Data.ImportStream(AttachmentInStream, AttachmentName, EmailAttachment."Content Type");
         EmailAttachment.Insert();
     end;
 
@@ -246,18 +246,32 @@ codeunit 8905 "Email Message Impl."
         EmailAttachment."Content Id" := ContentId;
     end;
 
-    procedure GetRecipients(RecipientType: Enum "Email Recipient Type"; var Recipients: list of [Text])
+    procedure GetRecipients(): List of [Text]
     var
         EmailRecipients: Record "Email Recipient";
     begin
-        Clear(Recipients);
+        EmailRecipients.SetRange("Email Message Id", Message.Id);
+        exit(GetEmailAddressesOfRecipients(EmailRecipients));
+    end;
+
+    procedure GetRecipients(RecipientType: Enum "Email Recipient Type"): List of [Text]
+    var
+        EmailRecipients: Record "Email Recipient";
+    begin
         EmailRecipients.SetRange("Email Message Id", Message.Id);
         EmailRecipients.SetRange("Email Recipient Type", RecipientType);
-        if not EmailRecipients.FindSet() then
-            exit;
-        repeat
-            Recipients.Add(EmailRecipients."Email Address");
-        until EmailRecipients.Next() = 0;
+        exit(GetEmailAddressesOfRecipients(EmailRecipients));
+    end;
+
+    local procedure GetEmailAddressesOfRecipients(var EmailRecipients: Record "Email Recipient"): List of [Text]
+    var
+        Recipients: List of [Text];
+    begin
+        if EmailRecipients.FindSet() then
+            repeat
+                Recipients.Add(EmailRecipients."Email Address");
+            until EmailRecipients.Next() = 0;
+        exit(Recipients);
     end;
 
     procedure GetRecipientsAsText(RecipientType: Enum "Email Recipient Type"): Text
@@ -265,12 +279,12 @@ codeunit 8905 "Email Message Impl."
         RecipientList: List of [Text];
         Recipient, Result : Text;
     begin
-        GetRecipients(RecipientType, RecipientList);
+        RecipientList := GetRecipients(RecipientType);
 
         foreach Recipient in RecipientList do
-            Result := Result + ';' + Recipient;
+            Result += ';' + Recipient;
 
-        Result := DelChr(Result, '<>', ';'); // trim extra semicolons
+        Result := Result.TrimStart(';'); // trim extra semicolon
         exit(Result);
     end;
 
@@ -298,7 +312,7 @@ codeunit 8905 "Email Message Impl."
         foreach Recipient in Recipients do begin
             Recipient := DelChr(Recipient, '<>'); // trim the whitespaces around
             if Recipient <> '' then
-                if UniqueRecipients.Add(Recipient, Recipient) then begin
+                if UniqueRecipients.Add(Recipient.ToLower(), Recipient) then begin // Set the recipient key to lowercase to prevent duplicates
                     EmailRecipientRecord.Init();
                     EmailRecipientRecord."Email Message Id" := Message.Id;
                     EmailRecipientRecord."Email Recipient Type" := RecipientType;
@@ -377,22 +391,16 @@ codeunit 8905 "Email Message Impl."
         exit(Message.Get(MessageId));
     end;
 
-    procedure ValidateRecipients(RecipientType: Enum "Email Recipient Type")
-    var
-        Recipients: List of [Text];
-    begin
-        GetRecipients(RecipientType, Recipients);
-
-        ValidateRecipients(Recipients, RecipientType);
-    end;
-
-    procedure ValidateRecipients(Recipients: List of [Text]; RecipientType: Enum "Email Recipient Type")
+    procedure ValidateRecipients()
     var
         EmailAccount: Codeunit "Email Account";
+        Recipients: List of [Text];
         Recipient: Text;
     begin
-        if (RecipientType = RecipientType::"To") and (Recipients.Count() = 0) then
-            Error(NoToAccountErr);
+        Recipients := GetRecipients();
+
+        if Recipients.Count() = 0 then
+            Error(NoAccountErr);
 
         foreach Recipient in Recipients do
             EmailAccount.ValidateEmailAddress(Recipient, false);
@@ -407,12 +415,6 @@ codeunit 8905 "Email Message Impl."
     begin
         if Rec.IsTemporary() then
             exit;
-
-        if Rec.CurrentCompany() <> CompanyName() then begin
-            EmailOutbox.ChangeCompany(Rec.CurrentCompany());
-            EmailMessage.ChangeCompany(Rec.CurrentCompany());
-            SentEmail.ChangeCompany(Rec.CurrentCompany());
-        end;
 
         EmailOutbox.SetRange("Message Id", Rec."Message Id");
         if not EmailOutbox.IsEmpty() then
@@ -436,13 +438,6 @@ codeunit 8905 "Email Message Impl."
     begin
         if Rec.IsTemporary() then
             exit;
-
-        if Rec.CurrentCompany() <> CompanyName() then begin
-            EmailError.ChangeCompany(Rec.CurrentCompany());
-            EmailMessage.ChangeCompany(Rec.CurrentCompany());
-            SentEmail.ChangeCompany(Rec.CurrentCompany());
-            EmailOutbox.ChangeCompany(Rec.CurrentCompany());
-        end;
 
         EmailError.SetRange("Outbox Id", Rec.Id);
         EmailError.DeleteAll(true);
@@ -468,12 +463,6 @@ codeunit 8905 "Email Message Impl."
     begin
         if Rec.IsTemporary() then
             exit;
-
-        if Rec.CurrentCompany() <> CompanyName() then begin
-            EmailMessageAttachment.ChangeCompany(Rec.CurrentCompany());
-            EmailRecipient.ChangeCompany(Rec.CurrentCompany());
-            EmailRelatedRecord.ChangeCompany(Rec.CurrentCompany());
-        end;
 
         EmailMessageAttachment.SetRange("Email Message Id", Rec.Id);
         EmailMessageAttachment.DeleteAll();
@@ -513,11 +502,6 @@ codeunit 8905 "Email Message Impl."
         if Rec.IsTemporary() then
             exit;
 
-        if Rec.CurrentCompany() <> CompanyName() then begin
-            EmailOutbox.ChangeCompany(Rec.CurrentCompany());
-            SentEmail.ChangeCompany(Rec.CurrentCompany());
-        end;
-
         EmailOutbox.SetRange("Message Id", Rec."Email Message Id");
         EmailOutbox.SetFilter(Status, '%1|%2', EmailOutbox.Status::Queued, EmailOutbox.Status::Processing);
         if not EmailOutbox.IsEmpty() then
@@ -536,11 +520,6 @@ codeunit 8905 "Email Message Impl."
     begin
         if Rec.IsTemporary() then
             exit;
-
-        if Rec.CurrentCompany() <> CompanyName() then begin
-            EmailOutbox.ChangeCompany(Rec.CurrentCompany());
-            SentEmail.ChangeCompany(Rec.CurrentCompany());
-        end;
 
         EmailOutbox.SetRange("Message Id", Rec."Email Message Id");
         EmailOutbox.SetFilter(Status, '%1|%2', EmailOutbox.Status::Queued, EmailOutbox.Status::Processing);
@@ -617,7 +596,7 @@ codeunit 8905 "Email Message Impl."
         EmailMessageSentCannotDeleteRecipientErr: Label 'Cannot delete the recipient because the email has already been sent.';
         EmailMessageQueuedCannotInsertRecipientErr: Label 'Cannot add a recipient because the email is queued to be sent.';
         EmailMessageSentCannotInsertRecipientErr: Label 'Cannot add the recipient because the email has already been sent.';
-        NoToAccountErr: Label 'You must specify a valid email account to send the message to.';
+        NoAccountErr: Label 'You must specify a valid email account to send the message to.';
         RgbReplacementTok: Label 'rgb($1, $2, $3)', Locked = true;
         RbgaPatternTok: Label 'rgba\((\d+), ?(\d+), ?(\d+), ?\d+\)', Locked = true;
 }
