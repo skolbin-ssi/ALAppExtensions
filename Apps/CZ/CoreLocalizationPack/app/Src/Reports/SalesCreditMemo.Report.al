@@ -333,10 +333,10 @@ report 31190 "Sales Credit Memo CZL"
                     column(UnitofMeasure_SalesCrMemoLine; "Unit of Measure")
                     {
                     }
-                    column(UnitPrice_SalesCrMemoLineCaption; FieldCaption("Unit Price"))
+                    column(UnitPrice_SalesCrMemoLineCaption; UnitPriceExclVATLbl)
                     {
                     }
-                    column(UnitPrice_SalesCrMemoLine; "Unit Price")
+                    column(UnitPrice_SalesCrMemoLine; UnitPriceExclVAT)
                     {
                     }
                     column(LineDiscount_SalesCrMemoLineCaption; FieldCaption("Line Discount %"))
@@ -363,6 +363,13 @@ report 31190 "Sales Credit Memo CZL"
                     column(InvDiscountAmount_SalesCrMemoLine; "Inv. Discount Amount")
                     {
                     }
+
+                    trigger OnAfterGetRecord()
+                    begin
+                        UnitPriceExclVAT := "Unit Price";
+                        if "Sales Cr.Memo Header"."Prices Including VAT" then
+                            UnitPriceExclVAT := Round("Unit Price" / (1 + "VAT %" / 100), Currency."Amount Rounding Precision");
+                    end;
                 }
                 dataitem(VATCounter; "Integer")
                 {
@@ -491,6 +498,12 @@ report 31190 "Sales Credit Memo CZL"
                         end;
                 end;
 
+                if "Currency Code" = '' then
+                    Currency.InitRoundingPrecision()
+                else
+                    if not Currency.Get("Currency Code") then
+                        Currency.InitRoundingPrecision();
+
                 SalesCrMemoLine.CalcVATAmountLines("Sales Cr.Memo Header", TempVATAmountLine);
                 TempVATAmountLine.UpdateVATEntryLCYAmountsCZL("Sales Cr.Memo Header");
                 if ("Currency Factor" <> 0) and ("Currency Factor" <> 1) then begin
@@ -567,6 +580,7 @@ report 31190 "Sales Credit Memo CZL"
         PaymentMethod: Record "Payment Method";
         ShipmentMethod: Record "Shipment Method";
         ReasonCode: Record "Reason Code";
+        Currency: Record Currency;
         CurrencyExchangeRate: Record "Currency Exchange Rate";
         VATClause: Record "VAT Clause";
         Language: Codeunit Language;
@@ -583,6 +597,7 @@ report 31190 "Sales Credit Memo CZL"
         PaymentSymbolLabel: array[2] of Text;
         DocumentLbl: Text;
         CalculatedExchRate: Decimal;
+        UnitPriceExclVAT: Decimal;
         NoOfCopies: Integer;
         NoOfLoops: Integer;
         LogInteraction: Boolean;
@@ -611,6 +626,7 @@ report 31190 "Sales Credit Memo CZL"
         VATAmtLbl: Label 'VAT Amount';
         TotalLbl: Label 'total';
         VATLbl: Label 'VAT';
+        UnitPriceExclVATLbl: Label 'Unit Price Excl. VAT';
         Type3TextLbl: Label 'Correction of tax base in case of bad debt';
         [InDataSet]
         LogInteractionEnable: Boolean;

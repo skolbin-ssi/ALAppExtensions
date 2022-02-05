@@ -57,6 +57,7 @@ codeunit 11758 "Unreliable Payer Mgt. CZL"
     procedure ImportUnrPayerStatusForVendor(Vendor: Record Vendor): Boolean
     var
         CheckDisabledMsg: Label 'Check is disabled for vendor %1.', Comment = '%1 = Vendor No.';
+        ServiceNotEnabledMsg: Label 'The unreliable payer service is not enabled.';
         VatRegNoEmptyMsg: Label 'Check is not possible.\%1 must not be empty and must match %2 in %3.', Comment = '%1 = VAT Registration No. FieldCaption, %2 =  Country/Region CodeFieldCaption, %3 = CompanyInfromation TabeCaption';
     begin
         GetUnreliablePayerServiceSetup();
@@ -64,12 +65,16 @@ codeunit 11758 "Unreliable Payer Mgt. CZL"
             Message(CheckDisabledMsg, Vendor."No.");
             exit(false);
         end;
-        if not Vendor.IsUnreliablePayerCheckPossibleCZL() then begin
+        if not UnrelPayerServiceSetupCZL.Enabled then begin
+            Message(ServiceNotEnabledMsg);
+            exit(false);
+        end;
+        if not IsVATRegNoExportPossible(Vendor."VAT Registration No.", Vendor."Country/Region Code") then begin
             Message(VatRegNoEmptyMsg, Vendor.FieldCaption("VAT Registration No."), CompanyInformation.FieldCaption("Country/Region Code"), CompanyInformation.TableCaption());
             exit(false);
         end;
 
-        Clear(VATRegNoList);
+        ClearVATRegNoList();
         if AddVATRegNoToList(Vendor."VAT Registration No.") then
             exit(ImportUnrPayerStatus(true));
     end;
@@ -138,6 +143,11 @@ codeunit 11758 "Unreliable Payer Mgt. CZL"
         end;
         CompanyInformation.Get();
         UnreliablePayerServiceSetupRead := true;
+    end;
+
+    procedure ClearVATRegNoList()
+    begin
+        Clear(VATRegNoList);
     end;
 
     procedure AddVATRegNoToList(VATRegNo: Code[20]): Boolean
@@ -354,12 +364,12 @@ codeunit 11758 "Unreliable Payer Mgt. CZL"
     end;
 
     [IntegrationEvent(false, false)]
-    local procedure  OnBeforeConfirmProcess(ConfirmQuestion: Text; var IsHandled: Boolean);
+    local procedure OnBeforeConfirmProcess(ConfirmQuestion: Text; var IsHandled: Boolean);
     begin
     end;
 
     [IntegrationEvent(false, false)]
-    local procedure  OnIsConfirmDialogAllowed(var IsAllowed: Boolean)
+    local procedure OnIsConfirmDialogAllowed(var IsAllowed: Boolean)
     begin
     end;
 

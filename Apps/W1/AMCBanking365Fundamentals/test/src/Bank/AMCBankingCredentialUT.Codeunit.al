@@ -18,8 +18,8 @@ codeunit 132558 "AMC Banking Credential UT"
         LocalhostURLTxt: Label 'https://localhost:8080/', Locked = true;
         MissingCredentialsQst: Label 'The %1 is missing the user name or password. Do you want to open the %1 page?', Comment = '%1 = page name';
         MissingCredentialsErr: Label 'The user name and password must be filled in %1 page.', Comment = '%1 = page name';
-        NoConnectionErr: Label 'The expected data was not received from the web service.';
-        SamplePmtXmlFile_EncodUTF8Txt: Label '<paymentExportBank xmlns="http://nav03.soap.xml.link.amc.dk/"><amcpaymentreq xmlns=''''><banktransjournal><uniqueid>%1</uniqueid></banktransjournal></amcpaymentreq><bank>Danske DK</bank><language>ENU</language></paymentExportBank>', Locked = true;
+        NoConnectionErr: Label 'Valid versions is: NAV01 NAV02 NAV03 API02 API04 ';
+        SamplePmtXmlFile_EncodUTF8Txt: Label '<paymentExportBank xmlns="http://api04.soap.xml.link.amc.dk/"><amcpaymentreq xmlns=''''><banktransjournal><uniqueid>%1</uniqueid></banktransjournal></amcpaymentreq><bank>Danske DK</bank><language>ENU</language></paymentExportBank>', Locked = true; //V17.5
         CremulPathTxt: Label '/ns:reportExportResponse/return/cremul', Locked = true;
         EndBalanceNodePathTxt: Label '/ns:reportExportResponse/return/finsta/statement/', Locked = true;
 
@@ -43,6 +43,8 @@ codeunit 132558 "AMC Banking Credential UT"
         if (not AMCBankingSetup.Get()) then begin
             AMCBankingSetup.Init();
             AMCBankingSetup.Insert(true);
+            AMCBankingSetup."AMC Enabled" := true;
+            AMCBankingSetup.Modify();
         end;
 
         // Exercise test
@@ -81,6 +83,7 @@ codeunit 132558 "AMC Banking Credential UT"
             AMCBankingSetup.Init();
             AMCBankingSetup.Insert(true);
             AMCBankingSetup."User Name" := AMCBankingMgt.GetLicenseNumber();
+            AMCBankingSetup."AMC Enabled" := true;
             AMCBankingSetup.Modify();
         end;
 
@@ -120,6 +123,7 @@ codeunit 132558 "AMC Banking Credential UT"
             AMCBankingSetup.Insert(true);
             AMCBankingSetup."User Name" := AMCBankingMgt.GetLicenseNumber();
             AMCBankingSetup.Solution := 'Standard';
+            AMCBankingSetup."AMC Enabled" := true;
             AMCBankingSetup.Modify();
         end;
 
@@ -159,11 +163,13 @@ codeunit 132558 "AMC Banking Credential UT"
             "Support URL" := CopyStr(FieldName("Support URL"), 1, 250);
             // [WHEN] Insert the record
             Insert(true);
+            AMCBankingSetup."AMC Enabled" := true;
+            AMCBankingSetup.Modify();
 
             // [THEN] Setup is not set to default values
             Assert.AreEqual('X', "User Name", FieldCaption("User Name"));
             Assert.AreEqual('P', GetPassword(), FieldCaption("Password Key"));
-            Assert.ExpectedMessage('https://license.amcbanking.com/register', AMCBankingSetup."Sign-up URL");
+            Assert.ExpectedMessage(AMCBankingMgt.GetLicenseServerName() + AMCBankingMgt.GetLicenseRegisterTag(), AMCBankingSetup."Sign-up URL");
             Assert.ExpectedMessage('https://amcbanking.com/landing365bc/help/', AMCBankingSetup."Support URL");
             if ((Solution = AMCBankingMgt.GetDemoSolutionCode()) or
                 (Solution = '')) then
@@ -188,10 +194,10 @@ codeunit 132558 "AMC Banking Credential UT"
         // [WHEN] Open "AMC Bank Service Setup" page
         AMCBankingSetupPage.OpenEdit();
 
-        // [THEN] "User Name" is 'DemoUser', Password is 'DemoPassword'
+        // [THEN] "User Name" is 'DemoUser', Password is 'Demo Password'
         AMCBankingSetup.Get();
         Assert.AreEqual(AMCBankingSetup.GetDemoUserName(), AMCBankingSetup."User Name", AMCBankingSetup.FieldCaption("User Name"));
-        Assert.AreEqual('DemoPassword', AMCBankingSetup.GetPassword(), AMCBankingSetup.FieldCaption("Password Key"));
+        Assert.AreEqual('Demo Password', AMCBankingSetup.GetPassword(), AMCBankingSetup.FieldCaption("Password Key"));
 
     end;
 
@@ -268,7 +274,7 @@ codeunit 132558 "AMC Banking Credential UT"
         TempDataExch: Record "Data Exch." temporary;
         TempBlob: Codeunit "Temp Blob";
         ResponseBodyTempBlob: Codeunit "Temp Blob";
-        ImpBankConvExtDataHndl: Codeunit "AMC Bank Imp.STMT. Hndl";
+        AMCBankImpSTMTHndl: Codeunit "AMC Bank Imp.STMT. Hndl";
     begin
         // [SCENARIO 3] Handle missing username/password in the AMC Bank Service Setup.
         // [GIVEN] Sample data for a sample AMC bank.
@@ -285,7 +291,7 @@ codeunit 132558 "AMC Banking Credential UT"
 
         // Exercise.
         TempBlob.FromRecord(TempDataExch, TempDataExch.FieldNo("File Content"));
-        ImpBankConvExtDataHndl.ConvertBankStatementToFormat(TempBlob, TempDataExch);
+        AMCBankImpSTMTHndl.ConvertBankStatementToFormat(TempBlob, TempDataExch);
 
         // Pre-Verify
         ResponseBodyTempBlob.FromRecord(TempDataExch, TempDataExch.FieldNo("File Content"));
@@ -310,7 +316,7 @@ codeunit 132558 "AMC Banking Credential UT"
         TempAMCBankingSetup: Record "AMC Banking Setup" temporary;
         TempDataExch: Record "Data Exch." temporary;
         TempBlob: Codeunit "Temp Blob";
-        ImpBankConvExtDataHndl: Codeunit "AMC Bank Imp.STMT. Hndl";
+        AMCBankImpSTMTHndl: Codeunit "AMC Bank Imp.STMT. Hndl";
     begin
         // [SCENARIO 4] Handle missing username/password in the AMC Bank Service Setup.
         // [GIVEN] Sample data for a sample AMC bank.
@@ -328,7 +334,7 @@ codeunit 132558 "AMC Banking Credential UT"
 
         // Exercise.
         TempBlob.FromRecord(TempDataExch, TempDataExch.FieldNo("File Content"));
-        asserterror ImpBankConvExtDataHndl.ConvertBankStatementToFormat(TempBlob, TempDataExch);
+        asserterror AMCBankImpSTMTHndl.ConvertBankStatementToFormat(TempBlob, TempDataExch);
 
         // Verify.
         Assert.ExpectedError(StrSubstNo(MissingCredentialsErr, TempAMCBankingSetup.TableCaption()));
@@ -485,6 +491,8 @@ codeunit 132558 "AMC Banking Credential UT"
             WasNotPresent := true;
             AMCBankingSetup.Init();
             AMCBankingSetup.Insert(true);
+            AMCBankingSetup."AMC Enabled" := true;
+            AMCBankingSetup.Modify();
         end;
         LibraryAmcWebService.SetupAMCBankingDataExch(DataExchDef);
 
@@ -498,12 +506,12 @@ codeunit 132558 "AMC Banking Credential UT"
         BodyTempBlob: Codeunit "Temp Blob";
 
         RecordRef: RecordRef;
-        BodyOutputStream: OutStream;
+        BodyOutStream: OutStream;
     begin
-        BodyTempBlob.CreateOutStream(BodyOutputStream, TEXTENCODING::UTF8);
-        BodyOutputStream.WriteText(StrSubstNo(SamplePmtXmlFile_EncodUTF8Txt, testword));
+        BodyTempBlob.CreateOutStream(BodyOutStream, TEXTENCODING::UTF8);
+        BodyOutStream.WriteText(StrSubstNo(SamplePmtXmlFile_EncodUTF8Txt, testword));
 
-        DataExchMapping.SetRange("Pre-Mapping Codeunit", CODEUNIT::"AMC Bank Exp. CT Pre-Map");
+        DataExchMapping.SetRange("Mapping Codeunit", CODEUNIT::"AMC Bank Exp. CT Pre-Map");
         DataExchMapping.FindFirst();
 
         TempDataExch.Init();
@@ -519,11 +527,11 @@ codeunit 132558 "AMC Banking Credential UT"
         DataExchMapping: Record "Data Exch. Mapping";
         BodyTempBlob: Codeunit "Temp Blob";
         RecordRef: RecordRef;
-        BodyOutputStream: OutStream;
+        BodyOutStream: OutStream;
     begin
-        BodyTempBlob.CreateOutStream(BodyOutputStream, TEXTENCODING::Windows);
-        BodyOutputStream.WriteText(testword);
-        DataExchMapping.SetRange("Pre-Mapping Codeunit", CODEUNIT::"AMC Bank Imp.-Pre-Mapping");
+        BodyTempBlob.CreateOutStream(BodyOutStream, TEXTENCODING::Windows);
+        BodyOutStream.WriteText(testword);
+        DataExchMapping.SetRange("Pre-Mapping Codeunit", CODEUNIT::"AMC Bank Imp.-Pre-Process");
         DataExchMapping.FindFirst();
         TempDataExch.Init();
         RecordRef.GetTable(TempDataExch);
@@ -546,6 +554,7 @@ codeunit 132558 "AMC Banking Credential UT"
             IsolatedStorage.Delete(AMCBankingSetup."Password Key", DATASCOPE::Company);
         clear(AMCBankingSetup."Password Key");
         AMCBankingSetup."Service URL" := LocalhostURLTxt;
+        AMCBankingSetup."AMC Enabled" := true;
         AMCBankingSetup.Modify();
         Commit();
     end;
@@ -587,7 +596,7 @@ codeunit 132558 "AMC Banking Credential UT"
     var
     begin
         AMCBankingSetupPage."User Name".SetValue('demouser');
-        AMCBankingSetupPage.Password.SetValue('DemoPassword');
+        AMCBankingSetupPage.Password.SetValue('Demo Password');
         AMCBankingSetupPage."Service URL".SetValue(LocalhostURLTxt);
         AMCBankingSetupPage.OK().Invoke();
     end;

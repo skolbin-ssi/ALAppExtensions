@@ -71,6 +71,18 @@ pageextension 18150 "GST Sales Order Ext" extends "Sales Order"
             {
                 ApplicationArea = Basic, Suite;
                 ToolTip = 'Specifies the customer number for which merchant id has to be recorded.';
+                ObsoleteState = Pending;
+                ObsoleteReason = 'New field introduced as E-Comm. Merchant Id';
+                ObsoleteTag = '23.0';
+                trigger OnValidate()
+                begin
+                    Error(UnusedFieldLbl);
+                end;
+            }
+            field("E-Comm. Merchant Id"; Rec."E-Comm. Merchant Id")
+            {
+                ApplicationArea = Basic, Suite;
+                ToolTip = 'Specifies the customer number for which merchant id has to be recorded.';
             }
             field("Reference Invoice No."; Rec."Reference Invoice No.")
             {
@@ -198,6 +210,18 @@ pageextension 18150 "GST Sales Order Ext" extends "Sales Order"
                 ApplicationArea = Basic, Suite;
                 ToolTip = 'Specifies the transportation mode e.g. by road, by air etc.';
             }
+            field("Post GST to Customer"; Rec."Post GST to Customer")
+            {
+                ApplicationArea = Basic, Suite;
+                ToolTip = 'Specifies if the GST amount post to Customer';
+                trigger OnValidate()
+                var
+                    GSTSalesValidation: Codeunit "GST Sales Validation";
+                begin
+                    CurrPage.SaveRecord();
+                    GSTSalesValidation.CallTaxEngineOnSalesHeader(Rec);
+                end;
+            }
         }
     }
     actions
@@ -222,4 +246,6 @@ pageextension 18150 "GST Sales Order Ext" extends "Sales Order"
             }
         }
     }
+    var
+        UnusedFieldLbl: Label 'This field has been marked as obsolete and will be removed from version 23.0. Instead of this field use ‘E-Comm. Merchant Id’';
 }

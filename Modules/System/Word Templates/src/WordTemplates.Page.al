@@ -160,6 +160,7 @@ page 9989 "Word Templates"
                 var
                     WordTemplateSelectionWizard: Page "Word Template Selection Wizard";
                 begin
+                    WordTemplateSelectionWizard.SetIsUnknownSource();
                     WordTemplateSelectionWizard.SetTemplate(Rec);
                     WordTemplateSelectionWizard.Run();
                 end;
@@ -191,4 +192,11 @@ page 9989 "Word Templates"
             }
         }
     }
+
+    trigger OnOpenPage()
+    var
+        FeatureTelemetry: Codeunit "Feature Telemetry";
+    begin
+        FeatureTelemetry.LogUptake('0000FW2', 'Word templates', Enum::"Feature Uptake Status"::Discovered);
+    end;
 }

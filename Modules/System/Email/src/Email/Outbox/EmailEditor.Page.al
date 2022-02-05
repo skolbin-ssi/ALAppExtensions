@@ -27,6 +27,8 @@ page 13 "Email Editor"
         {
             group("Email Details")
             {
+                Caption = 'Email Details';
+
                 grid("Email Details Grid")
                 {
                     group("Email Inner Details")
@@ -59,11 +61,19 @@ page 13 "Email Editor"
                             ToolTip = 'Specifies the email addresses to send the email to.';
                             Editable = not EmailScheduled;
                             Importance = Promoted;
+                            Lookup = true;
 
                             trigger OnValidate()
                             begin
                                 EmailMessage.SetRecipients(Enum::"Email Recipient Type"::"To", ToRecipient);
+                                EmailEditor.VerifyRelatedRecords(Rec."Message Id");
                             end;
+
+                            trigger OnLookup(var Text: Text): Boolean
+                            begin
+                                exit(LookupRecipients(Text));
+                            end;
+
                         }
 
                         field(CcField; CcRecipient)
@@ -73,10 +83,17 @@ page 13 "Email Editor"
                             ToolTip = 'Specifies the email addresses of people who should receive a copy of the email.';
                             Editable = not EmailScheduled;
                             Importance = Additional;
+                            Lookup = true;
 
                             trigger OnValidate()
                             begin
                                 EmailMessage.SetRecipients(Enum::"Email Recipient Type"::Cc, CcRecipient);
+                                EmailEditor.VerifyRelatedRecords(Rec."Message Id");
+                            end;
+
+                            trigger OnLookup(var Text: Text): Boolean
+                            begin
+                                exit(LookupRecipients(Text));
                             end;
                         }
 
@@ -87,10 +104,17 @@ page 13 "Email Editor"
                             ToolTip = 'Specifies the email addresses of people who should receive a blind carbon copy (Bcc) of the email. These addresses are not shown to other recipients.';
                             Editable = not EmailScheduled;
                             Importance = Additional;
+                            Lookup = true;
 
                             trigger OnValidate()
                             begin
                                 EmailMessage.SetRecipients(Enum::"Email Recipient Type"::Bcc, BccRecipient);
+                                EmailEditor.VerifyRelatedRecords(Rec."Message Id");
+                            end;
+
+                            trigger OnLookup(var Text: Text): Boolean
+                            begin
+                                exit(LookupRecipients(Text));
                             end;
                         }
 
@@ -222,8 +246,12 @@ page 13 "Email Editor"
                     end;
                 end;
             }
+#if not CLEAN19
             action(Upload)
             {
+                ObsoleteState = Pending;
+                ObsoleteReason = 'Action Upload moved under attachments';
+                ObsoleteTag = '19.0';
                 ApplicationArea = All;
                 Promoted = true;
                 PromotedCategory = Process;
@@ -232,6 +260,7 @@ page 13 "Email Editor"
                 Enabled = not EmailScheduled;
                 Caption = 'Attach File';
                 ToolTip = 'Attach files, such as documents or images, to the email.';
+                Visible = false;
 
                 trigger OnAction()
                 begin
@@ -241,7 +270,24 @@ page 13 "Email Editor"
                     CurrPage.Attachments.Page.Update();
                 end;
             }
+#endif
+            action(WordTemplate)
+            {
+                ApplicationArea = All;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedOnly = true;
+                Image = Word;
+                Caption = 'Use Word Template';
+                ToolTip = 'Use a Word template with data from the entity to fill the email body.';
+                Enabled = HasSourceRecord;
 
+                trigger OnAction()
+                var
+                begin
+                    EmailEditor.LoadWordTemplate(EmailMessage, Rec."Message Id");
+                end;
+            }
             action(ShowSourceRecord)
             {
                 ApplicationArea = All;
@@ -251,17 +297,19 @@ page 13 "Email Editor"
                 Promoted = true;
                 PromotedCategory = Process;
                 PromotedOnly = true;
+                Enabled = HasSourceRecord;
 
                 trigger OnAction()
-                var
-                    EmailImpl: Codeunit "Email Impl";
                 begin
                     EmailImpl.ShowSourceRecord(Rec."Message Id");
                 end;
             }
-
+#if not CLEAN19
             action(SourceAttachments)
             {
+                ObsoleteState = Pending;
+                ObsoleteReason = 'Action SourceAttachments moved under attachments';
+                ObsoleteTag = '19.0';
                 ApplicationArea = All;
                 Promoted = true;
                 PromotedCategory = Process;
@@ -270,12 +318,14 @@ page 13 "Email Editor"
                 Caption = 'Get Source Attachments';
                 ToolTip = 'Attach a file that was originally attached to the source document.';
                 Scope = Page;
+                Visible = false;
 
                 trigger OnAction()
                 begin
                     EmailEditor.AttachFromRelatedRecords(Rec."Message Id");
                 end;
             }
+#endif
         }
     }
 
@@ -299,13 +349,18 @@ page 13 "Email Editor"
             CurrPage.Caption(PageCaptionTxt); // fallback to default caption
 
         EmailScheduled := Rec.Status in [Enum::"Email Status"::Queued, Enum::"Email Status"::Processing];
+        HasSourceRecord := EmailImpl.HasSourceRecord(Rec."Message Id");
         IsHTMLFormatted := EmailMessage.IsBodyHTMLFormatted();
         CurrPage.Attachments.Page.UpdateValues(EmailMessage.GetId());
     end;
 
     trigger OnOpenPage()
+    var
+        FeatureTelemetry: Codeunit "Feature Telemetry";
     begin
         EmailEditor.CheckPermissions(Rec);
+
+        FeatureTelemetry.LogUptake('0000CTQ', 'Emailing', Enum::"Feature Uptake Status"::Discovered);
 
         Rec.SetRange("User Security Id", UserSecurityId());
         CurrPage.SetTableView(Rec);
@@ -320,12 +375,19 @@ page 13 "Email Editor"
             Rec.SetRange(Id, Rec.Id);
             CurrPage.SetTableView(Rec);
         end;
+
+        EmailEditor.PopulateRelatedRecordCache(Rec."Message Id");
     end;
 
     trigger OnQueryClosePage(CloseAction: Action): Boolean
     begin
         if IsNewOutbox then
             exit(ShowCloseOptionsMenu());
+    end;
+
+    protected procedure GetEmailMessage() EmailMessage: Codeunit "Email Message"
+    begin
+        EmailMessage.Get(Rec."Message Id");
     end;
 
     local procedure UpdateFromField(EmailAccount: Record "Email Account" temporary)
@@ -359,6 +421,15 @@ page 13 "Email Editor"
         exit(true);
     end;
 
+    internal procedure LookupRecipients(var Text: Text): Boolean
+    var
+        IsSuccess: Boolean;
+    begin
+        IsSuccess := EmailEditor.LookupRecipients(Rec."Message Id", Text);
+        HasSourceRecord := EmailImpl.HasSourceRecord(Rec."Message Id");
+        exit(IsSuccess);
+    end;
+
     internal procedure GetAction(): Enum "Email Action"
     begin
         exit(EmailAction);
@@ -373,11 +444,13 @@ page 13 "Email Editor"
         TempEmailAccount: Record "Email Account" temporary;
         EmailMessage: Codeunit "Email Message Impl.";
         EmailEditor: Codeunit "Email Editor";
+        EmailImpl: Codeunit "Email Impl";
+
         EmailAction: Enum "Email Action";
         FromDisplayName: Text;
-        ToRecipient, CcRecipient, BccRecipient : Text;
         EmailScheduled: Boolean;
         IsNewOutbox: Boolean;
+        HasSourceRecord: Boolean;
         EmailBody, EmailSubject : Text;
         [InDataSet]
         IsHTMLFormatted: Boolean;
@@ -385,4 +458,7 @@ page 13 "Email Editor"
         CloseThePageQst: Label 'The email has not been sent.';
         OptionsOnClosePageNewEmailLbl: Label 'Keep as draft in Email Outbox,Discard email';
         PageCaptionTxt: Label 'Compose an Email';
+
+    protected var
+        ToRecipient, CcRecipient, BccRecipient : Text;
 }

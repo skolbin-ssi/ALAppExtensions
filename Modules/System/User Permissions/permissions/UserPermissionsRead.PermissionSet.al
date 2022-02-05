@@ -5,8 +5,10 @@
 
 permissionset 152 "User Permissions - Read"
 {
-    Access = Internal;
+    Access = Public;
     Assignable = false;
+
+    IncludedPermissionSets = "User Permissions - Objects";
 
     Permissions = tabledata "Access Control" = r,
                   tabledata User = r;

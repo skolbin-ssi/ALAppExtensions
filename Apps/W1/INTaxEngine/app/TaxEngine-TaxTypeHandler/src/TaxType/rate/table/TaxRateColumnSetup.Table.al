@@ -81,11 +81,28 @@ table 20252 "Tax Rate Column Setup"
         key(Sequence; Sequence) { }
         key(ColumnName; "Column Name") { }
     }
+    trigger OnInsert()
+    var
+        TaxTypeObjectHelper: Codeunit "Tax Type Object Helper";
+    begin
+        TaxTypeObjectHelper.OnBeforeValidateIfUpdateIsAllowed(Rec."Tax Type");
+    end;
+
+    trigger OnModify()
+    var
+        TaxTypeObjectHelper: Codeunit "Tax Type Object Helper";
+    begin
+        TaxTypeObjectHelper.OnBeforeValidateIfUpdateIsAllowed(Rec."Tax Type");
+    end;
+
     trigger OnDelete()
     var
         TaxRate: Record "Tax Rate";
         TaxRateValue: Record "Tax Rate Value";
+        TaxTypeObjectHelper: Codeunit "Tax Type Object Helper";
     begin
+        TaxTypeObjectHelper.OnBeforeValidateIfUpdateIsAllowed(Rec."Tax Type");
+
         TaxRateValue.SetRange("Tax Type", "Tax Type");
         TaxRateValue.SetRange("Column ID", "Column ID");
         if TaxRateValue.IsEmpty then
@@ -105,9 +122,11 @@ table 20252 "Tax Rate Column Setup"
     procedure UpdateTransactionKeys()
     var
         TaxRate: Record "Tax Rate";
+        TaxRateFilter: Record "Tax Rate Filter";
         TempTaxRate: Record "Tax Rate" temporary;
         TempTaxRateValue: Record "Tax Rate Value" temporary;
         TaxSetupMatrixMgmt: Codeunit "Tax Setup Matrix Mgmt.";
+        taxRateFilterMgmt: Codeunit "Tax Rate Filter Mgmt.";
         ConfigIDList: List of [Guid];
         ConfigID: Guid;
     begin
@@ -132,6 +151,12 @@ table 20252 "Tax Rate Column Setup"
 
             TransferToMainRecord(TempTaxRateValue, ConfigID, Rec."Tax Type");
         end;
+
+        TaxRateFilter.SetRange("Tax Type", Rec."Tax Type");
+        if not TaxRateFilter.IsEmpty() then
+            TaxRateFilter.DeleteAll();
+
+        TaxRateFilterMgmt.UpdateTaxRateFilters(Rec."Tax Type");
 
         CloseTaxRateProgressWindow();
     end;

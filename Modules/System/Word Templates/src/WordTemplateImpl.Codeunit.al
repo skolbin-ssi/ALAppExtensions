@@ -185,6 +185,11 @@ codeunit 9988 "Word Template Impl."
         Result.CreateInStream(DocumentInStream, TextEncoding::UTF8);
     end;
 
+    procedure GetDocumentSize(): Integer
+    begin
+        exit(Result.Length());
+    end;
+
     procedure Create()
     var
         TableId: Integer;
@@ -245,11 +250,21 @@ codeunit 9988 "Word Template Impl."
         TempBlob.CreateOutStream(TemplateOutStream, TextEncoding::UTF8);
         WordTemplate.Template.ExportStream(TemplateOutStream);
         TempBlob.CreateInStream(TemplateInStream, TextEncoding::UTF8);
-        Load(TemplateInStream);
+
+        LoadDocument(TemplateInStream);
+        GetMergeFieldsForRecordAndRelated(WordTemplate, MergeFields);
     end;
 
     procedure Load(TemplateInStream: InStream)
+    begin
+        LoadDocument(TemplateInStream);
+        GetMergeFieldsForDocument();
+    end;
+
+    local procedure LoadDocument(TemplateInStream: InStream)
     var
+        FeatureTelemetry: Codeunit "Feature Telemetry";
+        CustomDimensions: Dictionary of [Text, Text];
         OutStream: OutStream;
         Success: Boolean;
     begin
@@ -260,11 +275,13 @@ codeunit 9988 "Word Template Impl."
         Template.CreateInStream(TemplateInStream, TextEncoding::UTF8);
 
         Success := TryMailMergeLoadDocument(TemplateInStream);
+        CustomDimensions.Add('TemplateSystemID', WordTemplate.SystemId);
+        CustomDimensions.Add('TemplateTableID', Format(WordTemplate."Table ID"));
 
         if Success then
-            Session.LogMessage('0000ECP', StrSubstNo(LoadedTemplateTxt, WordTemplate.SystemId, WordTemplate."Table ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', WordTemplatesCategoryTxt)
+            FeatureTelemetry.LogUptake('0000ECP', 'Word templates', Enum::"Feature Uptake Status"::"Set up", false, CustomDimensions)
         else begin
-            Session.LogMessage('0000ECQ', StrSubstNo(FailedToLoadTemplateTxt, WordTemplate.SystemId, WordTemplate."Table ID", GetLastErrorText(true)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', WordTemplatesCategoryTxt);
+            FeatureTelemetry.LogError('0000ECQ', 'Word templates', 'Loading template', GetLastErrorText(true), GetLastErrorCallStack(), CustomDimensions);
             Session.LogMessage('0000ECR', StrSubstNo(FailedToLoadTemplateAllTxt, WordTemplate.SystemId, WordTemplate."Table ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::All, 'Category', WordTemplatesCategoryTxt);
             Error(FailedToLoadTemplateErr);
         end;
@@ -272,18 +289,15 @@ codeunit 9988 "Word Template Impl."
 
     [TryFunction]
     local procedure TryMailMergeLoadDocument(var TemplateInstream: InStream)
-    var
-        MailMergeField: Text;
     begin
         MailMerge := MailMerge.MailMerge();
         MailMerge.LoadDocument(TemplateInStream);
-
-        foreach MailMergeField in MailMerge.GetMergeFields() do
-            MergeFields.Add(MailMergeField);
     end;
 
     procedure Merge(Data: Dictionary of [Text, Text]; SplitDocument: Boolean; SaveFormat: Enum "Word Templates Save Format")
     var
+        FeatureTelemetry: Codeunit "Feature Telemetry";
+        CustomDimensions: Dictionary of [Text, Text];
         Output: OutStream;
         Success: Boolean;
     begin
@@ -294,10 +308,14 @@ codeunit 9988 "Word Template Impl."
 
         Success := TryMailMergeExecute(Data, SaveFormat, Output);
 
+        CustomDimensions.Add('TemplateSystemID', WordTemplate.SystemId);
+        CustomDimensions.Add('TemplateTableID', Format(WordTemplate."Table ID"));
+        FeatureTelemetry.LogUptake('0000FW3', 'Word templates', Enum::"Feature Uptake Status"::Used, false, CustomDimensions);
+
         if Success then
-            Session.LogMessage('0000ECS', StrSubstNo(AppliedTemplateTxt, WordTemplate.SystemId, WordTemplate."Table ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', WordTemplatesCategoryTxt)
+            FeatureTelemetry.LogUsage('0000ECS', 'Word templates', 'Template applied', CustomDimensions)
         else begin
-            Session.LogMessage('0000ECT', StrSubstNo(FailedToApplyTemplateTxt, WordTemplate.SystemId, WordTemplate."Table ID", GetLastErrorText(true)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', WordTemplatesCategoryTxt);
+            FeatureTelemetry.LogError('0000ECT', 'Word templates', 'Applying template', GetLastErrorText(true), GetLastErrorCallStack(), CustomDimensions);
             Session.LogMessage('0000ECU', StrSubstNo(FailedToApplyTemplateAllTxt, WordTemplate.SystemId, WordTemplate."Table ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::All, 'Category', WordTemplatesCategoryTxt);
             Error(GetLastErrorText());
         end;
@@ -318,6 +336,8 @@ codeunit 9988 "Word Template Impl."
 
     procedure Merge(Data: InStream; SplitDocument: Boolean; SaveFormat: Enum "Word Templates Save Format")
     var
+        FeatureTelemetry: Codeunit "Feature Telemetry";
+        CustomDimensions: Dictionary of [Text, Text];
         Output: OutStream;
         Success: Boolean;
     begin
@@ -328,10 +348,14 @@ codeunit 9988 "Word Template Impl."
 
         Success := TryMailMergeExecute(Data, SaveFormat, Output);
 
+        CustomDimensions.Add('TemplateSystemID', WordTemplate.SystemId);
+        CustomDimensions.Add('TemplateTableID', Format(WordTemplate."Table ID"));
+        FeatureTelemetry.LogUptake('0000FW4', 'Word templates', Enum::"Feature Uptake Status"::Used, false, CustomDimensions);
+
         if Success then
-            Session.LogMessage('0000ECV', StrSubstNo(AppliedTemplateTxt, WordTemplate.SystemId, WordTemplate."Table ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', WordTemplatesCategoryTxt)
+            FeatureTelemetry.LogUsage('0000ECV', 'Word templates', 'Template applied', CustomDimensions)
         else begin
-            Session.LogMessage('0000ECW', StrSubstNo(FailedToApplyTemplateTxt, WordTemplate.SystemId, WordTemplate."Table ID", GetLastErrorText(true)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', WordTemplatesCategoryTxt);
+            FeatureTelemetry.LogError('0000ECW', 'Word templates', 'Applying template', GetLastErrorText(true), GetLastErrorCallStack(), CustomDimensions);
             Session.LogMessage('0000ECX', StrSubstNo(FailedToApplyTemplateAllTxt, WordTemplate.SystemId, WordTemplate."Table ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::All, 'Category', WordTemplatesCategoryTxt);
             Error(GetLastErrorText());
         end;
@@ -715,6 +739,27 @@ codeunit 9988 "Word Template Impl."
         WordTemplate.Insert();
     end;
 
+    local procedure GetMergeFieldsForDocument()
+    var
+        MailMergeField: Text;
+    begin
+        foreach MailMergeField in MailMerge.GetMergeFields() do
+            MergeFields.Add(MailMergeField);
+    end;
+
+    local procedure GetMergeFieldsForRecordAndRelated(WordTemplateRec: Record "Word Template"; var MailMergeFields: List of [Text])
+    var
+        WordTemplatesRelatedTable: Record "Word Templates Related Table";
+    begin
+        GetMergeFieldsForRecord(WordTemplateRec."Table ID", MailMergeFields);
+
+        WordTemplatesRelatedTable.SetRange(Code, WordTemplateRec.Code);
+        if WordTemplatesRelatedTable.FindSet() then
+            repeat
+                GetMergeFieldsForRecord(WordTemplatesRelatedTable."Related Table ID", MailMergeFields, StrSubstNo(PrependPatternTxt, WordTemplatesRelatedTable."Related Table Code"));
+            until WordTemplatesRelatedTable.Next() = 0;
+    end;
+
     local procedure GetMergeFieldsForRecord(TableId: Integer; var MailMergeFields: List of [Text])
     begin
         GetMergeFieldsForRecord(TableId, MailMergeFields, '');
@@ -723,6 +768,9 @@ codeunit 9988 "Word Template Impl."
     local procedure GetMergeFieldsForRecord(TableId: Integer; var MailMergeFields: List of [Text]; PrependValue: Text)
     var
         FieldRec: Record Field;
+        MailMergeFieldsCount: Dictionary of [Text, Integer];
+        Counter: Integer;
+        AppendValue: Text;
     begin
         FieldRec.SetRange(TableNo, TableId);
         FieldRec.SetFilter(Class, '<>%1', FieldRec.Class::FlowFilter);
@@ -733,7 +781,8 @@ codeunit 9988 "Word Template Impl."
                                                              FieldRec.Type::TableFilter);
         if FieldRec.FindSet() then
             repeat
-                MailMergeFields.Add(PrependValue + FieldRec."Field Caption");
+                AppendValue := GetAppendValue(FieldRec."Field Caption", Counter, MailMergeFieldsCount);
+                MailMergeFields.Add(StrSubstNo(MergeFieldTok, PrependValue, FieldRec."Field Caption", AppendValue));
             until FieldRec.Next() = 0;
     end;
 
@@ -810,7 +859,10 @@ codeunit 9988 "Word Template Impl."
     local procedure WriteDataStream(RecordRef: RecordRef; OutStream: OutStream; WriteNames: Boolean; PrependValue: Text)
     var
         FieldRef: FieldRef;
+        MailMergeFieldsCount: Dictionary of [Text, Integer];
         Field: Integer;
+        Counter: Integer;
+        AppendValue: Text;
     begin
         for Field := 1 to RecordRef.FieldCount() do begin
             FieldRef := RecordRef.FieldIndex(Field);
@@ -821,9 +873,10 @@ codeunit 9988 "Word Template Impl."
                                                                                      FieldRef.Type::RecordId]) then begin
                 if FieldRef.Class = FieldClass::FlowField then
                     FieldRef.CalcField();
-                if WriteNames then
-                    OutStream.WriteText(PrependValue + FieldRef.Caption())
-                else
+                if WriteNames then begin
+                    AppendValue := GetAppendValue(FieldRef.Caption(), Counter, MailMergeFieldsCount);
+                    OutStream.WriteText(StrSubstNo(MergeFieldTok, PrependValue, FieldRef.Caption(), AppendValue));
+                end else
                     OutStream.WriteText(Format(FieldRef.Value()));
                 if Field < RecordRef.FieldCount() then
                     OutStream.WriteText('|');
@@ -844,13 +897,17 @@ codeunit 9988 "Word Template Impl."
                 RecordRefRelated.Open(RelatedTable."Related Table ID");
                 if GetRelatedRecord(RecordRefRelated, RecordRef.Field(RelatedTable."Field No.").Value()) then
                     WriteDataDict(RecordRefRelated, Data, StrSubstNo(PrependPatternTxt, RelatedTable."Related Table Code"));
+                RecordRefRelated.Close();
             until RelatedTable.Next() = 0;
     end;
 
     local procedure WriteDataDict(RecordRef: RecordRef; var Data: Dictionary of [Text, Text]; PrependValue: Text)
     var
         FieldRef: FieldRef;
+        MailMergeFieldsCount: Dictionary of [Text, Integer];
         Field: Integer;
+        Counter: Integer;
+        AppendValue: Text;
     begin
         for Field := 1 to RecordRef.FieldCount() do begin
             FieldRef := RecordRef.FieldIndex(Field);
@@ -861,7 +918,8 @@ codeunit 9988 "Word Template Impl."
                                                                                      FieldRef.Type::RecordId]) then begin
                 if FieldRef.Class = FieldClass::FlowField then
                     FieldRef.CalcField();
-                Data.Set(PrependValue + FieldRef.Caption(), Format(FieldRef.Value()));
+                AppendValue := GetAppendValue(FieldRef.Caption(), Counter, MailMergeFieldsCount);
+                Data.Set(StrSubstNo(MergeFieldTok, PrependValue, FieldRef.Caption(), AppendValue), Format(FieldRef.Value()));
             end;
         end;
     end;
@@ -954,6 +1012,18 @@ codeunit 9988 "Word Template Impl."
         until (Length > 5) or (StrLen(ObjectCaption) < Position);
     end;
 
+    local procedure GetAppendValue(Caption: Text; var Counter: Integer; var MailMergeFieldsCount: Dictionary of [Text, Integer]): Text
+    begin
+        if MailMergeFieldsCount.Get(Caption, Counter) then begin
+            Counter += 1;
+            MailMergeFieldsCount.Set(Caption, Counter);
+            exit(StrSubstNo(AppendPatternTxt, Counter));
+        end else begin
+            MailMergeFieldsCount.Set(Caption, 1);
+            exit('');
+        end;
+    end;
+
     local procedure IsAlphabetic(Character: Char): Boolean
     begin
         exit(Character in ['A' .. 'Z']);
@@ -973,6 +1043,9 @@ codeunit 9988 "Word Template Impl."
     [EventSubscriber(ObjectType::Table, Database::"Word Template", 'OnAfterInsertEvent', '', false, false)]
     local procedure OnAfterInsertWordTemplate(var Rec: Record "Word Template")
     begin
+        if Rec.IsTemporary() then
+            exit;
+
         Session.LogMessage('0000ECZ', StrSubstNo(CreatedTemplateTxt, Rec.SystemId, Rec."Table ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', WordTemplatesCategoryTxt);
     end;
 
@@ -981,6 +1054,9 @@ codeunit 9988 "Word Template Impl."
     var
         RelatedTables: Record "Word Templates Related Table";
     begin
+        if Rec.IsTemporary() then
+            exit;
+
         RelatedTables.SetRange(Code, Rec.Code);
         RelatedTables.DeleteAll();
         Session.LogMessage('0000ED0', StrSubstNo(DeletedTemplateTxt, Rec.SystemId, Rec."Table ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', WordTemplatesCategoryTxt);
@@ -1018,20 +1094,18 @@ codeunit 9988 "Word Template Impl."
         RelatedTableIdsLengthErr: Label 'The length of the related table IDs (%1), does not match the length of the related table codes (%2).', Comment = '%1 - Length of related table IDs list, %2 Length of related table codes list';
         FilenamePatternTxt: Label '%1.%2', Locked = true;
         PrependPatternTxt: Label '%1_', Locked = true;
+        AppendPatternTxt: Label '_%1', Locked = true;
         EmptyTemplateNamePatternTxt: Label '%1.%2', Locked = true;
         TemplateNamePatternTxt: Label '%1_%2.%3', Locked = true;
         ExpressionFilterTok: Label '%1|', Locked = true;
+        MergeFieldTok: Label '%1%2%3', Locked = true;
         ReservedCharsTok: Label '<|>|:|\/|\\|\||\?|\*|\"', Locked = true;
         WordTemplatesCategoryTxt: Label 'AL Word Templates', Locked = true;
         DownloadedTemplateTxt: Label 'Template downloaded: %1 (%2).', Comment = '%1 - System ID, %2 - Table ID', Locked = true;
         UploadedTemplateTxt: Label 'Template uploaded: %1 (%2).', Comment = '%1 - System ID, %2 - Table ID', Locked = true;
         CreatedTemplateTxt: Label 'Template created: %1 (%2).', Comment = '%1 - System ID, %2 - Table ID', Locked = true;
         DeletedTemplateTxt: Label 'Template deleted: %1 (%2).', Comment = '%1 - System ID, %2 - Table ID', Locked = true;
-        LoadedTemplateTxt: Label 'Template loaded: %1 (%2).', Comment = '%1 - System ID, %2 - Table ID', Locked = true;
-        AppliedTemplateTxt: Label 'Template applied: %1 (%2).', Comment = '%1 - System ID, %2 - Table ID', Locked = true;
         TableNoSetExternallyTxt: Label 'Table no. of Word Template Creation Wizard set externally: %1.', Comment = '%1 - Table ID', Locked = true;
-        FailedToApplyTemplateTxt: Label 'Failed to apply template %1 (%2) with error: %3.', Comment = '%1 - System ID, %2 - Table ID, %3 - Error', Locked = true;
         FailedToApplyTemplateAllTxt: Label 'Failed to apply template: %1 (%2).', Comment = '%1 - System ID, %2 - Table ID, %3 - Error', Locked = true;
-        FailedToLoadTemplateTxt: Label 'Failed to load template: %1 (%2) with error: %3.', Comment = '%1 - System ID, %2 - Table ID, %3 - Error', Locked = true;
         FailedToLoadTemplateAllTxt: Label 'Failed to load template: %1 (%2).', Comment = '%1 - System ID, %2 - Table ID', Locked = true;
 }

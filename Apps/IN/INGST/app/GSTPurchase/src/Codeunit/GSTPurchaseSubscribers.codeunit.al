@@ -29,6 +29,24 @@ codeunit 18080 "GST Purchase Subscribers"
         GSTAssessableErr: Label 'GST Assessable Value must have a value in Purchase Line Document Type %1 and Document No %2.', Comment = '%1 = Document Type , %2 = Document No.';
         IGSTAggTurnoverErr: Label 'Interstate transaction cannot be calculated against Unregistered Vendor whose aggregate turnover is more than 20 Lakhs.';
         POSasGSTGroupRevChargeErr: Label 'POS as Vendor State is not applicable for Reverse Charge';
+        GSTUnregisteredNotAppErr: Label 'GST is not applicable for Unregistered Vendors.';
+        SamePANErr: Label 'From position 3 to 12 in GST Registration No. should be same as it is in PAN No.';
+        GSTPANErr: Label 'Please update GST Registration No. to blank in the record %1 from Order Address.', Comment = '%1 = Order Address Code';
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnBeforePostPurchaseDoc', '', false, false)]
+    local procedure SetPaytoVendorFields(var PurchaseHeader: Record "Purchase Header")
+    var
+        PayToVendor: Record vendor;
+        GSTPostingManagement: Codeunit "GST Posting Management";
+    begin
+        if (PurchaseHeader."Pay-to Vendor No." <> '') and (PurchaseHeader."Buy-from Vendor No." <> PurchaseHeader."Pay-to Vendor No.") then
+            if PayToVendor.Get(PurchaseHeader."Pay-to Vendor No.") then begin
+                GSTPostingManagement.SetPaytoVendorNo(PurchaseHeader."Pay-to Vendor No.");
+                GSTPostingManagement.SetBuyerSellerRegNo(PayToVendor."GST Registration No.");
+                GSTPostingManagement.SetBuyerSellerStateCode(PayToVendor."State Code");
+            end;
+    end;
+
 
     [EventSubscriber(ObjectType::Table, Database::"Purchase Line", 'OnBeforeUpdateLocationCode', '', false, false)]
     local procedure HandledOnBeforeUpdateLocationCode(var PurchaseLine: Record "Purchase Line"; var IsHandled: Boolean)
@@ -41,6 +59,16 @@ codeunit 18080 "GST Purchase Subscribers"
     end;
 
     //CopyDocument 
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Copy Document Mgt.", 'OnAfterCopyPostedPurchInvoice', '', false, false)]
+    local procedure ValidatePaytoVendorFields(FromPurchInvHeader: Record "Purch. Inv. Header"; var ToPurchaseHeader: Record "Purchase Header")
+    var
+        PaytoVendor: Record "Vendor";
+    begin
+        if (FromPurchInvHeader."Buy-from Vendor No." <> FromPurchInvHeader."Pay-to Vendor No.") then
+            if PaytoVendor.Get(FromPurchInvHeader."Pay-to Vendor No.") then
+                PaytoVendorInfo(ToPurchaseHeader, PaytoVendor);
+    end;
+
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Copy Document Mgt.", 'OnAfterCopyPurchLineFromPurchLineBuffer', '', false, false)]
     local procedure CallTaxEngineOnAfterCopyPurchLineFromPurchLineBuffer(var ToPurchLine: Record "Purchase Line"; RecalculateLines: Boolean; FromPurchLineBuf: Record "Purchase Line")
     var
@@ -331,6 +359,12 @@ codeunit 18080 "GST Purchase Subscribers"
         VendStateCode(Rec);
     end;
 
+    [EventSubscriber(ObjectType::Table, Database::Vendor, 'OnAfterValidateEvent', 'P.A.N. No.', false, false)]
+    local procedure ValidateVendPANNo(var Rec: Record Vendor; var xRec: Record Vendor)
+    begin
+        ValidateVendorPANNo(Rec);
+    end;
+
     //Order Address Validation
     [EventSubscriber(ObjectType::Table, Database::"Order Address", 'OnAfterValidateEvent', 'State', false, false)]
     local procedure ValidateOrderaddressState(var Rec: Record "Order Address")
@@ -356,6 +390,22 @@ codeunit 18080 "GST Purchase Subscribers"
         GSTBaseValidation: Codeunit "GST Base Validation";
     begin
         GSTBaseValidation.CallTaxEngineOnPurchHeader(Rec);
+    end;
+
+    [EventSubscriber(ObjectType::Table, Database::"Purchase Header", 'OnAfterValidateEvent', 'Order Address Code', false, false)]
+    local procedure OnValidateOrderAddressCode(var Rec: Record "Purchase Header")
+    var
+        GSTBaseValidation: Codeunit "GST Base Validation";
+    begin
+        GSTBaseValidation.CallTaxEngineOnPurchHeader(Rec);
+    end;
+
+    //Blanket Order to Purchase Order
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Blanket Purch. Order to Order", 'OnBeforePurchOrderHeaderModify', '', false, false)]
+    local procedure OnBeforePurchOrderHeaderModify(var PurchOrderHeader: Record "Purchase Header"; BlanketOrderPurchHeader: Record "Purchase Header")
+    begin
+        PurchOrderHeader."Location GST Reg. No." := BlanketOrderPurchHeader."Location GST Reg. No.";
+        ValidateLocationGSTRegNo(PurchOrderHeader);
     end;
 
     //Order Address Validation - Definition
@@ -454,12 +504,11 @@ codeunit 18080 "GST Purchase Subscribers"
     begin
         if PurchaseHeader."Order Address Code" <> '' then begin
             OrderAddress.Get(PurchaseHeader."Buy-from Vendor No.", PurchaseHeader."Order Address Code");
-            PurchaseHeader."GST Order Address State" := OrderAddress.State;
             if PurchaseHeader."GST Vendor Type" in ["GST Vendor Type"::Registered, "GST Vendor Type"::Composite, "GST Vendor Type"::SEZ, "GST Vendor Type"::Exempted] then
                 if (OrderAddress."GST Registration No." = '') and (OrderAddress."ARN No." = '') then
                     Error(OrderAddGSTARNErr);
 
-            PurchaseHeader."Order Address GST Reg. No." := OrderAddress."GST Registration No.";
+            UpdateOrderAddressValues(PurchaseHeader, OrderAddress);
             PurchaseLine.SetRange("Document Type", PurchaseHeader."Document Type");
             PurchaseLine.SetRange("Document No.", PurchaseHeader."No.");
             if PurchaseHeader."GST Vendor Type" = "GST Vendor Type"::Unregistered then
@@ -474,9 +523,43 @@ codeunit 18080 "GST Purchase Subscribers"
                 repeat
                     PurchaseLine."Order Address Code" := PurchaseHeader."Order Address Code";
                     PurchaseLine."Buy-From GST Registration No" := PurchaseHeader."Order Address GST Reg. No.";
+                    UpdateGSTJurisdictionType(PurchaseLine);
                     PurchaseLine.Modify()
                 until PurchaseLine.Next() = 0;
-        end;
+        end else
+            UpdateBuyFromVendorState(PurchaseHeader);
+    end;
+
+    local procedure UpdateOrderAddressValues(var PurchaseHeader: Record "Purchase Header"; OrderAddress: Record "Order Address")
+    begin
+        PurchaseHeader."GST Order Address State" := OrderAddress.State;
+        PurchaseHeader.State := OrderAddress.State;
+        PurchaseHeader."Order Address GST Reg. No." := OrderAddress."GST Registration No.";
+        PurchaseHeader.Modify();
+    end;
+
+    local procedure UpdateBuyFromVendorState(var PurchaseHeader: Record "Purchase Header")
+    var
+        Vendor: Record Vendor;
+        PurchaseLine: Record "Purchase Line";
+    begin
+        if not Vendor.Get(PurchaseHeader."Buy-from Vendor No.") then
+            exit;
+
+        if PurchaseHeader.State = Vendor."State Code" then
+            exit;
+
+        PurchaseHeader.State := Vendor."State Code";
+        PurchaseHeader.Modify();
+
+        PurchaseLine.SetRange("Document Type", PurchaseHeader."Document Type");
+        PurchaseLine.SetRange("Document No.", PurchaseHeader."No.");
+        PurchaseLine.SetFilter(Type, '<>%1', PurchaseLine.Type::" ");
+        if PurchaseLine.FindSet() then
+            repeat
+                UpdateGSTJurisdictionType(PurchaseLine);
+                PurchaseLine.Modify();
+            until PurchaseLine.Next() = 0;
     end;
 
     local procedure GSTVendorType(var PurchaseHeader: Record "Purchase Header")
@@ -1099,6 +1182,27 @@ codeunit 18080 "GST Purchase Subscribers"
             Error(GSTVendTypeErr, Vendor."GST Vendor Type");
     end;
 
+    local procedure ValidateVendorPANNo(Vendor: Record Vendor)
+    begin
+        if (Vendor."GST Registration No." <> '') and (Vendor."P.A.N. No." <> CopyStr(Vendor."GST Registration No.", 3, 10)) then
+            Error(SamePANErr);
+
+        CheckGSTRegBlankInRef(Vendor);
+    end;
+
+    local procedure CheckGSTRegBlankInRef(Vendor: Record Vendor)
+    var
+        OrderAddress: Record "Order Address";
+    begin
+        OrderAddress.SetRange("Vendor No.", Vendor."No.");
+        OrderAddress.SetFilter("GST Registration No.", '<>%1', '');
+        if OrderAddress.FindSet() then
+            repeat
+                if Vendor."P.A.N. No." <> COPYSTR(OrderAddress."GST Registration No.", 3, 10) then
+                    Error(GSTPANErr, OrderAddress.Code);
+            until OrderAddress.Next() = 0;
+    end;
+
     local procedure CheckBillOfEntry(var PurchaseHeader: Record "Purchase Header")
     var
         PurchaseLine: Record "Purchase Line";
@@ -1167,6 +1271,7 @@ codeunit 18080 "GST Purchase Subscribers"
     begin
         if PurchaseHeader."GST Vendor Type" <> PurchaseHeader."GST Vendor Type"::Unregistered then
             exit;
+        CheckUnregisteredReverseCharge(PurchaseHeader);
 
         Vendor.Get(PurchaseHeader."Buy-from Vendor No.");
         if (Vendor."Aggregate Turnover" <> Vendor."Aggregate Turnover"::"More than 20 lakh") then
@@ -1231,5 +1336,57 @@ codeunit 18080 "GST Purchase Subscribers"
             else
                 Error(ConversionErr, PurchaseDocumentType);
         end;
+    end;
+
+    procedure SetHSNSACEditable(PurchaseLine: Record "Purchase Line"; var IsEditable: Boolean)
+    var
+        Item: Record Item;
+        IsHandled: Boolean;
+    begin
+        IsEditable := false;
+        OnBeforePurchaseLineHSNSACEditable(PurchaseLine, IsEditable, IsHandled);
+        if IsHandled then
+            exit;
+
+        case
+            PurchaseLine.Type of
+            PurchaseLine.Type::Item:
+                if Item.Get(PurchaseLine."No.") then
+                    if Item.Type in [Item.Type::Inventory, Item.Type::"Non-Inventory"] then
+                        IsEditable := false
+                    else
+                        IsEditable := true;
+            PurchaseLine.Type::"Fixed Asset":
+                IsEditable := false;
+            else
+                IsEditable := true;
+        end;
+    end;
+
+    local procedure CheckUnregisteredReverseCharge(PurchHeader: Record "Purchase Header")
+    var
+        PurchseLine: Record "Purchase Line";
+    begin
+        PurchseLine.Reset();
+        PurchseLine.SetRange("Document Type", PurchHeader."Document Type");
+        PurchseLine.SetRange("Document No.", PurchHeader."No.");
+        if PurchseLine.FindSet() then
+            repeat
+                if (PurchseLine."GST Group Code" <> '') and (not PurchseLine."GST Reverse Charge") then
+                    Error(GSTUnregisteredNotAppErr);
+            until PurchseLine.Next() = 0;
+    end;
+
+    
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"GST Purchase Subscribers", 'OnBeforePurchaseLineHSNSACEditable', '', false, false)]
+    local procedure SetGstHsnEditableforAllType(var IsEditable: Boolean; var IsHandled: Boolean)
+    begin
+        IsEditable := true;
+        IsHandled := true;
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforePurchaseLineHSNSACEditable(PurchaseLine: Record "Purchase Line"; var IsEditable: Boolean; var IsHandled: Boolean)
+    begin
     end;
 }

@@ -36,7 +36,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
         DetailsOKTxt: Label '/detailsOK';
         DetailsDuplicateAccountIdTxt: Label '/detailsDuplicateAccountId';
         DetailsMFATxt: Label '/detailsMFA';
-        TestGetTransactionsTxt: Label '/TestGetTransactions';
+        TestGetTransactionsTxt: Label '/TestGetTrans';
         LinkingRemovedMsg: Label '1 bank accounts have been unlinked.';
         LinkingInsertedMsg: Label 'has been linked.';
         CurrencyErr: Label 'The bank feed that you are importing contains transactions in currencies other than';
@@ -68,6 +68,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
         ForceStatus500Txt: Label '/status500';
         ForceStatus404Txt: Label '/status404', Locked = true;
         ForceStatus403Txt: Label '/status403', Locked = true;
+        TransactionNotLoggedTxt: Label 'Expected transaction not logged. Detailed Info: %1 Activity Message: %2', Locked = true;
 
     local procedure Initialize();
     var
@@ -200,7 +201,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceHandles500();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -215,7 +216,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceHandles404();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -230,7 +231,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceHandles403();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -245,7 +246,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceInvalidCobrandResponse();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -260,7 +261,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestServiceHandles200();
     var
         BankStatementServiceSetupPage: TestPage "MS - Yodlee Bank Service Setup";
@@ -280,7 +281,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceDisabledFromWarning();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -305,7 +306,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceEnableWithEmptyBankStmtImportFormat();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -324,7 +325,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceEnableWithEmptyBankAccLinkingURL();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -343,7 +344,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceChangingPassword();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -383,7 +384,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceSetsServiceURLs();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -408,7 +409,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceDisallowsInsecureURLs();
     var
         BankStatementServiceSetupPage: TestPage "MS - Yodlee Bank Service Setup";
@@ -436,7 +437,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestLogErrorOnConnectionFailure();
     var
         ActivityLog: Record "Activity Log";
@@ -459,7 +460,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestSetupDoesNotPromptToOpenSetupPageWithMissingCredentials();
     var
         MSYodleeBankServiceSetup: TestPage "MS - Yodlee Bank Service Setup";
@@ -480,7 +481,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestBankLinkingActionNotVisibleWithMissingCredentials();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -501,7 +502,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestSessionTokens();
     var
         MSYodleeBankSession: Record "MS - Yodlee Bank Session";
@@ -544,7 +545,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestResetSessionTokens();
     var
         BankAccount: Record "Bank Account";
@@ -568,7 +569,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestBankLinkingServiceData();
     var
         BankAccount: Record "Bank Account";
@@ -606,7 +607,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestBankLinkingServiceRefreshData();
     var
         BankAccount: Record "Bank Account";
@@ -642,7 +643,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestBankLinkingServiceRefreshAutomatic();
     var
         BankAccount: Record "Bank Account";
@@ -661,7 +662,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler,BankAccountRefreshMFAHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,BankAccountRefreshMFAHandler,ConsentConfirmYes')]
     procedure TestBankLinkingServiceRefreshMFA();
     var
         BankAccount: Record "Bank Account";
@@ -686,7 +687,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateGetLinkedAccountsFail();
     var
         BankAccount: Record "Bank Account";
@@ -708,7 +709,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateGetDetailedLinkedAccountsFail();
     var
         BankAccount: Record "Bank Account";
@@ -730,7 +731,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateFindsExistingAccounts();
     var
         BankAccount: Record "Bank Account";
@@ -756,7 +757,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,CloseBankLinkingHandler')]
+    [HandlerFunctions('ConfirmHandler,CloseBankLinkingHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateFindsExistingDuplicateAccount();
     var
         BankAccountList: TestPage "Bank Account List";
@@ -771,7 +772,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler,FastlinkHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,FastlinkHandler,ConsentConfirmYes')]
     procedure TestBankLinkingCreateWithNoNewAccounts();
     var
         BankAccount: Record "Bank Account";
@@ -796,7 +797,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateLaunchFromNonLinkedBankAccount();
     var
         BankAccount: Record "Bank Account";
@@ -826,7 +827,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateRemovesUnlinkedAccounts();
     var
         BankAccount: Record "Bank Account";
@@ -861,7 +862,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingHandler')]
+    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdatePromptsMissingLinkings();
     var
         BankAccount: Record "Bank Account";
@@ -879,7 +880,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingActionHandler,BankLinkingActionHandlerStepTwo')]
+    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingActionHandler,BankLinkingActionHandlerStepTwo,ConsentConfirmYes')]
     procedure TestBankLinkingUpdatePromptsMissingLinkingsWithAction();
     var
         BankAccount: Record "Bank Account";
@@ -897,7 +898,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingCreateNewHandler,BankAccountCardHandler')]
+    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingCreateNewHandler,BankAccountCardHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateMissLinksCreateNew();
     var
         BankAccount: Record "Bank Account";
@@ -922,7 +923,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingCreateNewHandler,BankAccountCardHandler')]
+    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingCreateNewHandler,BankAccountCardHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateMissLinksReselect();
     var
         BankAccount: Record "Bank Account";
@@ -948,7 +949,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,ConfirmHandler,FastlinkHandler')]
+    [HandlerFunctions('MessageHandler,ConfirmHandler,FastlinkHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateAutoLink();
     var
         BankAccount: Record "Bank Account";
@@ -976,7 +977,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,ConfirmHandler,FastlinkHandler,BankAccountCardHandler')]
+    [HandlerFunctions('MessageHandler,ConfirmHandler,FastlinkHandler,BankAccountCardHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateCreateNewAndAutoLink();
     var
         BankAccount: Record "Bank Account";
@@ -1006,7 +1007,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateUnLink();
     var
         BankAccount: Record "Bank Account";
@@ -1032,7 +1033,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingUnlinkHandler')]
+    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingUnlinkHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateUnLinkAction();
     var
         BankAccountList: TestPage "Bank Account List";
@@ -1053,7 +1054,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingUnlinkHandler,BankLinkingActionHandlerStepTwo')]
+    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingUnlinkHandler,BankLinkingActionHandlerStepTwo,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateUnLinkActionFromLinkedAccount();
     var
         BankAccount: Record "Bank Account";
@@ -1087,7 +1088,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingUnlinkHandler,BankAccountCardHandler')]
+    [HandlerFunctions('MessageHandler,ConfirmHandler,BankLinkingUnlinkHandler,BankAccountCardHandler,ConsentConfirmYes')]
     procedure TestBankLinkingUpdateUnLinkActionFromNewLinkedAccount();
     var
         BankAccountList: TestPage "Bank Account List";
@@ -1107,7 +1108,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler')]
+    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,ConsentConfirmYes')]
     procedure TestGetTransactions();
     var
         BankAccount: Record "Bank Account";
@@ -1125,10 +1126,43 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
         PmtReconJnl.ImportBankTransactions.INVOKE();
 
         VerifyPmtReconJnlWithOnlineTransactions(PmtReconJnl);
+        BankAccRecon.Delete(true);
     end;
 
     [Test]
-    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,PaymentBankAccountListHandler,MessageHandler')]
+    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,ConsentConfirmYes')]
+    procedure TestGetTransactionsWithActivityLogging();
+    var
+        BankAccount: Record "Bank Account";
+        MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
+        BankAccReconciliation: Record "Bank Acc. Reconciliation";
+        ActivityLog: Record "Activity Log";
+        PaymentReconciliationJournal: TestPage "Payment Reconciliation Journal";
+    begin
+        // Setup
+        Initialize();
+        ActivityLog.DeleteAll();
+        SetupForOnlineImportingOfTransactions(MSYodleeBankServiceSetup, BankAccount);
+
+        // turn logging on
+        MSYodleeBankServiceSetup.Get();
+        MSYodleeBankServiceSetup."Log Web Requests" := true;
+        MSYodleeBankServiceSetup.Modify();
+
+        // Import bank transactions
+        LibraryERM.CreateBankAccReconciliation(BankAccReconciliation, BankAccount."No.", BankAccReconciliation."Statement Type"::"Payment Application");
+        OpenPmtReconJnl(BankAccReconciliation, PaymentReconciliationJournal);
+        PaymentReconciliationJournal.ImportBankTransactions.Invoke();
+
+        // turn logging off
+        MSYodleeBankServiceSetup."Log Web Requests" := false;
+        MSYodleeBankServiceSetup.Modify();
+
+        VerifyActivityLogWithOnlineTransactions(ActivityLog);
+    end;
+
+    [Test]
+    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,PaymentBankAccountListHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestGetTransactionsIntoNewPmtReconJnl();
     var
         BankAccount: Record "Bank Account";
@@ -1153,7 +1187,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestSetUpJobQueueToGetTransactions();
     var
         BankAccount: Record "Bank Account";
@@ -1180,7 +1214,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestJobQueueRemovedOnAccountDeletion();
     var
         BankAccount: Record "Bank Account";
@@ -1210,7 +1244,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestUnlinkingRemovesJobQueue();
     var
         BankAccount: Record "Bank Account";
@@ -1239,7 +1273,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestDisablingYodleeRemovesJobQueue();
     var
         BankAccount: Record "Bank Account";
@@ -1269,7 +1303,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestSetUpJobQueueInvalidNumberOfDaysIncluded();
     var
         BankAccount: Record "Bank Account";
@@ -1294,7 +1328,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestGetTransactionsViaJobQueue();
     var
         BankAccount: Record "Bank Account";
@@ -1322,7 +1356,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestGetTransactionsViaJobQueueTwice();
     var
         BankAccount: Record "Bank Account";
@@ -1355,7 +1389,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler')]
+    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,ConsentConfirmYes')]
     procedure TestGetTransactionsCurrencyMissmatch();
     var
         BankAccount: Record "Bank Account";
@@ -1379,7 +1413,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler')]
+    [HandlerFunctions('BankStatementFilterHandler,ConfirmHandler,ConsentConfirmYes')]
     procedure TestGetTransactionsWrongBankAccountID();
     var
         BankAccount: Record "Bank Account";
@@ -1405,7 +1439,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestDefaultTransactionImportTimespan();
     var
         BankAccount: Record "Bank Account";
@@ -1424,7 +1458,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestServiceSetupFromIsolatedStorage();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -1458,7 +1492,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceSetupFromIsolatedStorageFailsNoEncryption();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -1492,7 +1526,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestServiceSetupFromIsolatedStorageCustomSetupURL();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -1533,7 +1567,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestBankAccountLinkingActionsVisible();
     var
         BankAccount: Record "Bank Account";
@@ -1557,7 +1591,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,StrMenuHandler')]
+    [HandlerFunctions('ConfirmHandler,StrMenuHandler,ConsentConfirmYes')]
     procedure TestBankAccountLinkingActionsMultipleProviders();
     var
         BankAccount: Record "Bank Account";
@@ -1583,7 +1617,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestCreateConsumerOnAuthenticate();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -1616,7 +1650,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestCreateConsumerSuccessWithNoTenantId();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -1650,7 +1684,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestRemoveConsumerOnDisable();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -1679,7 +1713,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestPreserveValidConsumerOnDisableWithError();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -1711,7 +1745,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestRemoveConsumerOnNoLinkedBankAccounts();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -1755,7 +1789,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('AcceptTermsOfUseHandler,ConfirmHandler')]
+    [HandlerFunctions('AcceptTermsOfUseHandler,ConfirmHandler,ConsentConfirmYes')]
     procedure TestTermsOfUseAccepted();
     var
         MSYodleeBankServiceSetupPage: TestPage "MS - Yodlee Bank Service Setup";
@@ -1777,7 +1811,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('AcceptTermsOfUseHandler,ConfirmHandler')]
+    [HandlerFunctions('AcceptTermsOfUseHandler,ConfirmHandler,ConsentConfirmYes')]
     procedure TestTermsOfUseRejected();
     var
         MSYodleeBankServiceSetupPage: TestPage "MS - Yodlee Bank Service Setup";
@@ -1800,7 +1834,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('AcceptTermsOfUseHandler,ConfirmHandler')]
+    [HandlerFunctions('AcceptTermsOfUseHandler,ConfirmHandler,ConsentConfirmYes')]
     procedure TestSetupFailsWithRejectedTermsOfUse();
     var
         MSYodleeBankServiceSetupPage: TestPage "MS - Yodlee Bank Service Setup";
@@ -1824,7 +1858,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestRegisterConsumerShouldGenerateUserNameIfNotExist();
     var
         MSYodleeBankServiceSetupRec: Record "MS - Yodlee Bank Service Setup";
@@ -1865,7 +1899,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,ActivityLogHandler')]
+    [HandlerFunctions('ConfirmHandler,ActivityLogHandler,ConsentConfirmYes')]
     procedure TestActivityLogShouldShowRecordsInBasicApplicationArea();
     var
         ApplicationAreaSetupRecord: Record "Application Area Setup";
@@ -1886,7 +1920,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler,MessageHandler')]
+    [HandlerFunctions('ConfirmHandler,MessageHandler,ConsentConfirmYes')]
     procedure TestDemoCompanyWarnsUserOnAction();
     var
         BankAccountList: TestPage "Bank Account List";
@@ -1913,7 +1947,7 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
     end;
 
     [Test]
-    [HandlerFunctions('ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,ConsentConfirmYes')]
     procedure TestOffThePageSetup();
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -1998,6 +2032,36 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
 
         // verify feed ending balance from the mock file was imported
         Assert.AreEqual(9044.78, PmtReconJnl.StatementEndingBalance.ASDECIMAL(), '');
+    end;
+
+    local procedure VerifyActivityLogWithOnlineTransactions(var ActivityLog: Record "Activity Log");
+    var
+        BankFeedInstream: InStream;
+        BankFeedDetailedInfo: Text;
+        BankFeedTxt: Text;
+        BankFeedLine: Text;
+    begin
+        ActivityLog.SetRange(Description, 'gettransactions');
+        ActivityLog.FindFirst();
+
+        ActivityLog.CalcFields("Detailed Info");
+        ActivityLog."Detailed Info".CreateInStream(BankFeedInstream);
+        BankFeedInstream.ReadText(BankFeedDetailedInfo);
+        while not BankFeedInStream.EOS() do begin
+            Clear(BankFeedLine);
+            BankFeedInstream.ReadText(BankFeedLine);
+            BankFeedDetailedInfo += BankFeedLine;
+        end;
+        BankFeedTxt := ActivityLog."Activity Message";
+        ActivityLog.DeleteAll();
+
+        // verify that the transaction lines from the mock file are logged      
+        Assert.IsTrue((StrPos(BankFeedDetailedInfo, '3465') > 0) or (StrPos(BankFeedTxt, '3465') > 0), StrSubstNo(TransactionNotLoggedTxt, BankFeedDetailedInfo, BankFeedTxt));
+        Assert.IsTrue((StrPos(BankFeedDetailedInfo, 'DESC1') > 0) or (StrPos(BankFeedTxt, 'DESC1') > 0), StrSubstNo(TransactionNotLoggedTxt, BankFeedDetailedInfo, BankFeedTxt));
+        Assert.IsTrue((StrPos(BankFeedDetailedInfo, '3103') > 0) or (StrPos(BankFeedTxt, '3103') > 0), StrSubstNo(TransactionNotLoggedTxt, BankFeedDetailedInfo, BankFeedTxt));
+        Assert.IsTrue((StrPos(BankFeedDetailedInfo, 'DESC2') > 0) or (StrPos(BankFeedTxt, 'DESC2') > 0), StrSubstNo(TransactionNotLoggedTxt, BankFeedDetailedInfo, BankFeedTxt));
+        Assert.IsTrue((StrPos(BankFeedDetailedInfo, '5646') > 0) or (StrPos(BankFeedTxt, '5646') > 0), StrSubstNo(TransactionNotLoggedTxt, BankFeedDetailedInfo, BankFeedTxt));
+        Assert.IsTrue((StrPos(BankFeedDetailedInfo, 'DESC3') > 0) or (StrPos(BankFeedTxt, 'DESC3') > 0), StrSubstNo(TransactionNotLoggedTxt, BankFeedDetailedInfo, BankFeedTxt));
     end;
 
     local procedure CreateLinkedBankAccount(var BankAccount: Record "Bank Account");
@@ -2325,6 +2389,13 @@ codeunit 139501 "MS - Yodlee Bank Service Tests"
         Assert.IsTrue(ActivityLog."User ID".VISIBLE(), 'Expected that User ID is visible');
         Assert.IsTrue(ActivityLog.Context.VISIBLE(), 'Expected that Context is visible');
         Assert.IsTrue(ActivityLog.Status.VISIBLE(), 'Expected that Status is visible');
+    end;
+
+    [ModalPageHandler]
+    [Scope('OnPrem')]
+    procedure ConsentConfirmYes(var CustConsentConfirmation: TestPage "Cust. Consent Confirmation")
+    begin
+        CustConsentConfirmation.Accept.Invoke();
     end;
 
     local procedure DoNotEnableJobQueue();

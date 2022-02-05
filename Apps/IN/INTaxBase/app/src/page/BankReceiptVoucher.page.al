@@ -628,7 +628,7 @@ page 18553 "Bank Receipt Voucher"
 
                     trigger OnValidate()
                     begin
-                        VoucherFunctions.SplitNarration(NarrationText, false, Rec);
+                        Error('Voucher Narration should be entered from Process - >Voucher Narration tab.');
                     end;
                 }
             }
@@ -1053,6 +1053,7 @@ page 18553 "Bank Receipt Voucher"
                     Image = ViewPostedOrder;
                     Promoted = true;
                     PromotedCategory = Category9;
+                    ShortCutKey = 'Ctrl+Alt+F9';
                     ToolTip = 'Review the different types of entries that will be created when you post the document or journal.';
 
                     trigger OnAction()
@@ -1705,8 +1706,8 @@ page 18553 "Bank Receipt Voucher"
         HasIncomingDocument := "Incoming Document Entry No." <> 0;
         CurrPage.IncomingDocAttachFactBox.Page.SetCurrentRecordID(RecordId());
         SetUserInteractions();
-        VoucherFunctions.ShowOldNarration(Rec);
         //  ShowOldNarration();
+        NarrationText := VoucherFunctions.ShowOldNarration(Rec);
     end;
 
     trigger OnInit()

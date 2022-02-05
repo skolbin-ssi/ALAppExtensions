@@ -52,6 +52,9 @@ tableextension 18144 "GST Sales Cr.Memo Header Ext" extends "Sales Cr.Memo Heade
                     "Merchant Id" = field("e-Commerce Merchant Id"),
                     "Customer No." = field("e-Commerce Customer"));
             DataClassification = CustomerContent;
+            ObsoleteState = Pending;
+            ObsoleteReason = 'New field introduced as E-Comm. Merchant Id';
+            ObsoleteTag = '23.0';
         }
         field(18150; "GST Bill-to State Code"; Code[10])
         {
@@ -205,6 +208,19 @@ tableextension 18144 "GST Sales Cr.Memo Header Ext" extends "Sales Cr.Memo Heade
         field(18177; "Cancel Reason"; Enum "e-Invoice Cancel Reason")
         {
             Caption = 'Cancel Reason';
+            DataClassification = CustomerContent;
+        }
+        field(18180; "Post GST to Customer"; Boolean)
+        {
+            Caption = 'Post GST to Customer';
+            DataClassification = CustomerContent;
+        }
+        field(18181; "E-Comm. Merchant Id"; code[30])
+        {
+            Caption = 'E-Comm. Merchant Id';
+            TableRelation = "e-Comm. Merchant"."Merchant Id" where(
+                    "Merchant Id" = field("e-Comm. Merchant Id"),
+                    "Customer No." = field("e-Commerce Customer"));
             DataClassification = CustomerContent;
         }
     }

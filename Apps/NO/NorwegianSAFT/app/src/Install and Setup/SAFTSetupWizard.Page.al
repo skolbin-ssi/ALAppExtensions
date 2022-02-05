@@ -4,6 +4,8 @@ page 10674 "SAF-T Setup Wizard"
     PageType = NavigatePage;
     SourceTable = "SAF-T Mapping Range";
     RefreshOnActivate = true;
+    ApplicationArea = Basic, Suite;
+    UsageCategory = Administration;
 
     layout
     {
@@ -106,19 +108,16 @@ page 10674 "SAF-T Setup Wizard"
                     field(AccountingPeriod; "Accounting Period")
                     {
                         ApplicationArea = Basic, Suite;
-                        Visible = AccountingPeriodVisible;
                         Caption = 'Accounting Period';
                     }
                     field(StartingDate; "Starting Date")
                     {
                         ApplicationArea = Basic, Suite;
-                        Visible = DateRangeVisible;
                         Caption = 'Starting Date';
                     }
                     field(EndingDate; "Ending Date")
                     {
                         ApplicationArea = Basic, Suite;
-                        Visible = DateRangeVisible;
                         Caption = 'Ending Date';
                     }
                 }
@@ -428,8 +427,6 @@ page 10674 "SAF-T Setup Wizard"
         SourceCodeMappingVisible: Boolean;
         TopBannerVisible: Boolean;
         SAFTStandardAccMappingSelected: Boolean;
-        AccountingPeriodVisible: Boolean;
-        DateRangeVisible: Boolean;
         MappingSourceImported: Boolean;
         MappingTypeSpecified: Boolean;
         GLAccountsMapped: Text[20];
@@ -441,7 +438,7 @@ page 10674 "SAF-T Setup Wizard"
         OpenMappingSetupLbl: Label 'Open the setup page to define G/L account mappings.';
         OpenVATMappingSetupLbl: Label 'Open the setup page to define a VAT Posting Setup mapping.';
         OpenDimensionExportSetupLbl: Label 'Open the setup page to define which dimensions to export to SAF-T.';
-        GLAccountMappingRemainderTxt: Label 'Mapping is not mandatory if no G/L entries are posted in the reported period.';
+        GLAccountMappingRemainderTxt: Label 'You must provide mapping for all G/L accounts in the company.';
         GLAccountMappingRemainder2Txt: Label 'For G/L account with no mapping code, enter NA.';
         VATMappingRemainderTxt: Label 'VAT posting setups without a mapping will be exported with the NA value to the XML file.';
 

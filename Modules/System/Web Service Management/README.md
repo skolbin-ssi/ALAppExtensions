@@ -44,7 +44,7 @@ Use this module to do the following:
 
 #### Syntax
 ```
-[Obsolete('Method scope will be moved down to On-Prem. This function does not work in SaaS.', '16.0')]
+[Scope('OnPrem')]
 procedure CreateWebService(ObjectType: Option; ObjectId: Integer; ObjectName: Text; Published: Boolean)
 ```
 #### Parameters
@@ -423,7 +423,7 @@ Tenant web service columns table record that selected columns are inserted to.
 The data item of the tenant web service column.
 
 ### RemoveUnselectedColumnsFromFilter (Method) <a name="RemoveUnselectedColumnsFromFilter"></a> 
- 
+
  Removes filters that are not in the selected columns for the given service.
  
 
@@ -449,7 +449,7 @@ The field name of the data item.
 
 Filter text for unselected columns.
 ### IsServiceNameValid (Method) <a name="IsServiceNameValid"></a> 
- 
+
  Checks if given service name is valid.
  
 

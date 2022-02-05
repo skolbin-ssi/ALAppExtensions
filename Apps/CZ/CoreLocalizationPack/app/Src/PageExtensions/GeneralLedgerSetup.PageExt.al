@@ -48,8 +48,19 @@ pageextension 11717 "General Ledger Setup CZL" extends "General Ledger Setup"
                 }
             }
         }
-        addlast(Other)
+#if CLEAN19
+        addlast(content)
         {
+            group("Other CZL")
+            {
+                Caption = 'Other';
+
+#else
+#pragma warning disable AL0432
+        addlast(Other)
+#pragma warning restore AL0432
+        {
+#endif
             field("User Checks Allowed CZL"; Rec."User Checks Allowed CZL")
             {
                 ApplicationArea = Basic, Suite;
@@ -66,6 +77,9 @@ pageextension 11717 "General Ledger Setup CZL" extends "General Ledger Setup"
                 ToolTip = 'Specifies the date for the inventory rounding adjustment by inventory adjustement';
             }
         }
+#if CLEAN19
+        }
+#endif
         addlast(Reporting)
         {
             field("Shared Account Schedule CZL"; Rec."Shared Account Schedule CZL")
@@ -74,5 +88,11 @@ pageextension 11717 "General Ledger Setup CZL" extends "General Ledger Setup"
                 ToolTip = 'Specifies to share the account schedule in general ledger setup.';
             }
         }
+#if not CLEAN19
+        modify(Other)
+        {
+            Visible = true;
+        }
+#endif
     }
 }

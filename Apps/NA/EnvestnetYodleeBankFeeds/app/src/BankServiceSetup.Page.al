@@ -8,7 +8,7 @@ page 1450 "MS - Yodlee Bank Service Setup"
     PromotedActionCategories = 'New,Process,Report,Page,Encryption,Bank';
     ShowFilter = false;
     SourceTable = "MS - Yodlee Bank Service Setup";
-    UsageCategory = Tasks;
+    UsageCategory = Administration;
     ApplicationArea = Basic, Suite;
 
     layout
@@ -119,7 +119,7 @@ page 1450 "MS - Yodlee Bank Service Setup"
                     {
                         ApplicationArea = Basic, Suite;
                         Importance = Additional;
-                        ToolTip = 'Specifies if web requests should be logged. This is normally only required for troubleshooting.';
+                        ToolTip = 'Specifies if web request responses should be logged to the Activity Log table. This is normally only required for troubleshooting.';
                     }
                     field("Accept Terms of Use"; "Accept Terms of Use")
                     {

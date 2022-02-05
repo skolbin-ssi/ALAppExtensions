@@ -20,6 +20,10 @@ page 18493 "Subcontracting Order Subform"
                 {
                     ApplicationArea = Basic, Suite;
                     ToolTip = 'Specifies the document type of this document.';
+                    trigger OnValidate()
+                    begin
+                        FormatLine();
+                    end;
                 }
                 field("No."; Rec."No.")
                 {
@@ -30,6 +34,7 @@ page 18493 "Subcontracting Order Subform"
                     begin
                         Rec.ShowShortcutDimCode(ShortcutDimCode);
                         NoOnAfterValidate();
+                        FormatLine();
                     end;
                 }
                 field("Cross-Reference No."; Rec."Cross-Reference No.")
@@ -518,7 +523,26 @@ page 18493 "Subcontracting Order Subform"
                 field("GST Group Code"; Rec."GST Group Code")
                 {
                     ApplicationArea = Basic, Suite;
-                    ToolTip = 'Specifies GST group code.';
+                    Editable = IsHSNSACEditable;
+                    ToolTip = 'Specifies the GST Group code for the calculation of GST on Transaction line.';
+                    trigger OnValidate()
+                    var
+                        CalculateTax: Codeunit "Calculate Tax";
+                    begin
+                        CalculateTax.CallTaxEngineOnPurchaseLine(Rec, xRec);
+                    end;
+                }
+                field("HSN/SAC Code"; Rec."HSN/SAC Code")
+                {
+                    ApplicationArea = Basic, Suite;
+                    Editable = IsHSNSACEditable;
+                    ToolTip = 'Specifies the HSN/SAC code for the calculation of GST on Transaction line.';
+                    trigger OnValidate()
+                    var
+                        CalculateTax: Codeunit "Calculate Tax";
+                    begin
+                        CalculateTax.CallTaxEngineOnPurchaseLine(Rec, xRec);
+                    end;
                 }
                 field("GST Group Type"; Rec."GST Group Type")
                 {
@@ -817,8 +841,10 @@ page 18493 "Subcontracting Order Subform"
     end;
 
     var
+#if not CLEAN19
         PurchHeader: Record "Purchase Header";
         PurchPriceCalcMgt: Codeunit "Purch. Price Calc. Mgt.";
+#endif
         TransferExtendedText: Codeunit "Transfer Extended Text";
         ShortcutDimCode: array[8] of Code[20];
         UpdateAllowedVar: Boolean;
@@ -928,6 +954,10 @@ page 18493 "Subcontracting Order Subform"
         exit(true);
     end;
 
+#if not CLEAN19
+#pragma warning disable AS0072
+    [Obsolete('Replaced by the new implementation (V16) of price calculation.', '19.0')]
+#pragma warning restore AS0072
     procedure ShowPrices()
     begin
         PurchHeader.Get(Rec."Document Type", Rec."Document No.");
@@ -935,12 +965,16 @@ page 18493 "Subcontracting Order Subform"
         PurchPriceCalcMgt.GetPurchLinePrice(PurchHeader, Rec);
     end;
 
+#pragma warning disable AS0072
+    [Obsolete('Replaced by the new implementation (V16) of price calculation.', '19.0')]
+#pragma warning restore AS0072
     procedure ShowLineDisc()
     begin
         PurchHeader.Get(Rec."Document Type", Rec."Document No.");
         Clear(PurchPriceCalcMgt);
         PurchPriceCalcMgt.GetPurchLineLineDisc(PurchHeader, Rec);
     end;
+#endif
 
     procedure ShowLineComment()
     begin
@@ -992,4 +1026,19 @@ page 18493 "Subcontracting Order Subform"
         SubOrderDetailsReceiptList.SetTableView(PurchaseLine);
         SubOrderDetailsReceiptList.RunModal();
     end;
+
+    trigger OnAfterGetCurrRecord()
+    begin
+        FormatLine();
+    end;
+
+    local procedure FormatLine()
+    var
+        GSTPurchaseSubscribers: Codeunit "GST Purchase Subscribers";
+    begin
+        GSTPurchaseSubscribers.SetHSNSACEditable(Rec, IsHSNSACEditable);
+    end;
+
+    var
+        IsHSNSACEditable: Boolean;
 }

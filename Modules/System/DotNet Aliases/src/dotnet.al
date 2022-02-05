@@ -504,6 +504,12 @@ dotnet
         type("Microsoft.Dynamics.Nav.DocumentService.Types.IDocumentService"; "IDocumentService")
         {
         }
+        type("Microsoft.Dynamics.Nav.DocumentService.Types.ConflictBehavior"; "ConflictBehavior")
+        {
+        }
+        type("Microsoft.Dynamics.Nav.DocumentService.Types.UploadedDocument"; "UploadedDocument")
+        {
+        }
     }
 
     assembly("Microsoft.Dynamics.Nav.EtwListener")
@@ -768,16 +774,6 @@ dotnet
         }
 
         type("Microsoft.Dynamics.Nav.Runtime.Designer.NavDesignerALCopyResponse"; "NavDesignerALCopyResponse")
-        {
-        }
-    }
-
-    assembly("Microsoft.Dynamics.Nav.O365ActionableMessageWrapper")
-    {
-        Culture = 'neutral';
-        PublicKeyToken = '31bf3856ad364e35';
-
-        type("Microsoft.Dynamics.Nav.O365ActionableMessageWrapper.ActionableMessage"; "ActionableMessage")
         {
         }
     }
@@ -1392,6 +1388,10 @@ dotnet
         {
         }
 
+        type(System.Security.Cryptography.SymmetricAlgorithm; "SymmetricAlgorithm")
+        {
+        }
+
         type(System.Security.Cryptography.AsymmetricAlgorithm; "AsymmetricAlgorithm")
         {
         }
@@ -1558,6 +1558,10 @@ dotnet
         }
 
         type("System.Collections.Specialized.StringCollection"; "StringCollection")
+        {
+        }
+
+        type("System.Collections.Generic.SortedDictionary`2"; "GenericSortedDictionary2")
         {
         }
 
@@ -1797,6 +1801,30 @@ dotnet
         {
         }
 
+        type("System.Drawing.GraphicsUnit"; "GraphicsUnit")
+        {
+        }
+
+        type("System.Drawing.Imaging.EncoderParameters"; "EncoderParameters")
+        {
+        }
+
+        type("System.Drawing.Imaging.EncoderParameter"; "EncoderParameter")
+        {
+        }
+
+        type("System.Drawing.Imaging.EncoderParameter[]"; "EncoderParameterList")
+        {
+        }
+
+        type("System.Drawing.Imaging.ImageCodecInfo"; "ImageCodecInfo")
+        {
+        }
+
+        type("System.Drawing.Imaging.Encoder"; "Encoder")
+        {
+        }
+
         type("System.Drawing.Image"; "Image")
         {
         }
@@ -1931,6 +1959,10 @@ dotnet
         Version = '4.0.0.0';
         Culture = 'neutral';
         PublicKeyToken = 'b03f5f7f11d50a3a';
+
+        type("System.Security.Cryptography.Xml.DataObject"; DataObject)
+        {
+        }
 
         type("System.Security.Cryptography.Xml.KeyInfo"; "KeyInfo")
         {
@@ -2201,7 +2233,7 @@ dotnet
 
     assembly("MailKit")
     {
-        Version = '2.2.0.0';
+        Version = '2.15.0.0';
         Culture = 'neutral';
         PublicKeyToken = '4e064fe7c44a8f1b';
 
@@ -2236,7 +2268,7 @@ dotnet
 
     assembly("MimeKit")
     {
-        Version = '2.2.0.0';
+        Version = '2.15.0.0';
         Culture = 'neutral';
         PublicKeyToken = 'bede1c8a46c66814';
 
@@ -2284,6 +2316,88 @@ dotnet
     assembly("IDAutomation.LinearFontEncoder")
     {
         type("IDAutomation.Linear.FontEncoder"; "FontEncoder")
+        {
+        }
+    }
+
+    assembly("IDAutomation.NetStandard.Aztec.FontEncoder")
+    {
+        type("IDAutomation.NetStandard.Aztec.FontEncoder.Aztec"; "AztecFontEncoder")
+        {
+        }
+        type("EncodingModes"; "EncodingModesAztec")
+        {
+        }
+        type("OutputTypes"; "OutputTypesAztec")
+        {
+        }
+    }
+
+
+    assembly("IDAutomation.NetStandard.DataMatrix.FontEncoder")
+    {
+        type("IDAutomation.NetStandard.DataMatrix.FontEncoder.DataMatrix"; "DataMatrixFontEncoder")
+        {
+        }
+        type("EncodingModes"; "EncodingModesDM")
+        {
+        }
+        type("OutputTypes"; "OutputTypesDM")
+        {
+        }
+    }
+
+    assembly("IDAutomation.NetStandard.MaxiCode.FontEncoder")
+    {
+        type("IDAutomation.NetStandard.MaxiCode.FontEncoder.MaxiCode"; "MaxiCodeFontEncoder")
+        {
+        }
+        type("EncodingModes"; "EncodingModesMaxiCode")
+        {
+        }
+    }
+
+    assembly("IDAutomation.NetStandard.PDF417.FontEncoder")
+    {
+        type("IDAutomation.NetStandard.PDF417.FontEncoder.PDF417"; "PDF417FontEncoder")
+        {
+        }
+        type("IDAutomation.NetStandard.PDF417.FontEncoder.EncodingModes"; "EncodingModesPDF417")
+        {
+        }
+        type("IDAutomation.NetStandard.PDF417.FontEncoder.OutputTypes"; "OutputTypesPDF417")
+        {
+        }
+    }
+
+    assembly("IDAutomation.NetStandard.QRCode.FontEncoder")
+    {
+        type("IDAutomation.NetStandard.QRCode.FontEncoder.QRCode"; "QRCodeFontEncoder")
+        {
+        }
+        type("EncodingModes"; "EncodingModesQR")
+        {
+        }
+        type("Versions"; "VersionsQR")
+        {
+        }
+        type("ErrorCorrectionLevels"; "ErrorCorrectionLevelsQR")
+        {
+        }
+        type("OutputTypes"; "OutputTypesQR")
+        {
+        }
+    }
+
+    assembly(Microsoft.Dynamics.Nav.MX)
+    {
+        type(Microsoft.Dynamics.QRCode.ErrorCorrectionLevel; "QRCodeErrorCorrectionLevel")
+        {
+        }
+        type(Microsoft.Dynamics.Nav.MX.BarcodeProviders.IBarcodeProvider; "IBarcodeProvider")
+        {
+        }
+        type(Microsoft.Dynamics.Nav.MX.BarcodeProviders.QRCodeProvider; "QRCodeProvider")
         {
         }
     }

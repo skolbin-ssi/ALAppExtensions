@@ -12,24 +12,26 @@ Use this module to do the following:
  
 
 ### CreateNewUsersFromAzureAD (Method) <a name="CreateNewUsersFromAzureAD"></a> 
-    
- Retrieves all the users from Azure AD. If the users already exist in the database, 
+
+ Retrieves all the users from Azure AD. If the users already exist in the database,
  they are updated to match the ones from Azure AD; otherwise new users are inserted in the database.
  
 
 #### Syntax
 ```
 [Scope('OnPrem')]
+[NonDebuggable]
 procedure CreateNewUsersFromAzureAD()
 ```
 ### CreateNewUserFromGraphUser (Method) <a name="CreateNewUserFromGraphUser"></a> 
-    
+
  Creates a new user from an Azure AD user.
  
 
 #### Syntax
 ```
 [Scope('OnPrem')]
+[NonDebuggable]
 procedure CreateNewUserFromGraphUser(GraphUser: DotNet UserInfo)
 ```
 #### Parameters
@@ -37,29 +39,15 @@ procedure CreateNewUserFromGraphUser(GraphUser: DotNet UserInfo)
 
 The Azure AD user.
 
-### UpdateUserFromGraph (Method) <a name="UpdateUserFromGraph"></a> 
-
- Updates details about the user with information from Office 365.
- 
-
-#### Syntax
-```
-[Scope('OnPrem')]
-procedure UpdateUserFromGraph(var User: Record User)
-```
-#### Parameters
-*User ([Record User]())* 
-
-The user whose information will be updated.
-
 ### SynchronizeLicensedUserFromDirectory (Method) <a name="SynchronizeLicensedUserFromDirectory"></a> 
-    
- Synchronizes a user with the Azure AD user corresponding to the authentication 
+
+ Synchronizes a user with the Azure AD user corresponding to the authentication
  email that is passed as a parameter. If the user record does not exist, it gets created.
  
 
 #### Syntax
 ```
+[NonDebuggable]
 procedure SynchronizeLicensedUserFromDirectory(AuthenticationEmail: Text): Boolean
 ```
 #### Parameters
@@ -72,28 +60,49 @@ The user's authentication email.
 
 True if there is a user in Azure AD corresponding to the authentication email; otherwise false.
 ### SynchronizeAllLicensedUsersFromDirectory (Method) <a name="SynchronizeAllLicensedUsersFromDirectory"></a> 
-    
+
  Synchronizes all the users from the database with the ones from Azure AD.
  Azure AD users that do not exist in the database are created.
  
 
 #### Syntax
 ```
+[NonDebuggable]
 procedure SynchronizeAllLicensedUsersFromDirectory()
 ```
 ### IsUserTenantAdmin (Method) <a name="IsUserTenantAdmin"></a> 
-    
+
  Checks if the user is a tenant admin.
  
 
 #### Syntax
 ```
+[NonDebuggable]
 procedure IsUserTenantAdmin(): Boolean
 ```
 #### Return Value
 *[Boolean](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/boolean/boolean-data-type)*
 
 True if the user is a tenant admin; otherwise false.
+### IsUserDelegated (Method) <a name="IsUserDelegated"></a> 
+
+ Checks if the user is a delegated user.
+ 
+
+#### Syntax
+```
+[NonDebuggable]
+procedure IsUserDelegated(UserSecID: Guid): Boolean
+```
+#### Parameters
+*UserSecID ([Guid](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/guid/guid-data-type))* 
+
+
+
+#### Return Value
+*[Boolean](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/boolean/boolean-data-type)*
+
+True if the user is a delegated user; otherwise false.
 ### SetTestInProgress (Method) <a name="SetTestInProgress"></a> 
 
  Sets a flag that is used to determine whether a test is in progress.
@@ -102,6 +111,7 @@ True if the user is a tenant admin; otherwise false.
 #### Syntax
 ```
 [Scope('OnPrem')]
+[NonDebuggable]
 procedure SetTestInProgress(TestInProgress: Boolean)
 ```
 #### Parameters
@@ -117,6 +127,7 @@ The value to be set to the flag.
 #### Syntax
 ```
 [IntegrationEvent(false, false)]
+[NonDebuggable]
 internal procedure OnRestoreDefaultPermissions(UserSecurityID: Guid)
 ```
 #### Parameters
@@ -127,7 +138,7 @@ The ID of the user whos permission sets will be restored.
 
 ## Azure AD User Update Wizard (Page 9515)
 
- Administrators can use this page to synchronize information about users from Office 365 to Business Central.
+ Administrators can use this page to synchronize information about users from Microsoft 365 to Business Central.
  
 
 

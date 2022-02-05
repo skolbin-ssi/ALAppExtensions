@@ -41,6 +41,7 @@ page 8889 "Email Attachments"
     {
         area(Processing)
         {
+
             action(Upload)
             {
                 ApplicationArea = All;
@@ -48,7 +49,7 @@ page 8889 "Email Attachments"
                 PromotedCategory = Process;
                 PromotedOnly = true;
                 Image = Attach;
-                Caption = 'Attach File';
+                Caption = 'Add File';
                 ToolTip = 'Attach files, such as documents or images, to the email.';
                 Scope = Page;
                 Visible = not IsMessageRead;
@@ -58,8 +59,7 @@ page 8889 "Email Attachments"
                     EmailEditor: Codeunit "Email Editor";
                 begin
                     EmailEditor.UploadAttachment(EmailMessage);
-                    UpdateDeleteEnablement();
-                    CurrPage.Update();
+                    UpdateDeleteActionEnablement();
                 end;
             }
 
@@ -70,8 +70,8 @@ page 8889 "Email Attachments"
                 PromotedCategory = Process;
                 PromotedOnly = true;
                 Image = Attach;
-                Caption = 'Get Source Attachments';
-                ToolTip = 'Attach a file that was originally attached to the source document.';
+                Caption = 'Add File from Source';
+                ToolTip = 'Attach a file that was originally attached to the source document, such as a Customer Record, Sales Invoice, etc.';
                 Scope = Page;
                 Visible = not IsMessageRead;
 
@@ -80,6 +80,28 @@ page 8889 "Email Attachments"
                     EmailEditor: Codeunit "Email Editor";
                 begin
                     EmailEditor.AttachFromRelatedRecords(EmailMessageId);
+                    UpdateDeleteActionEnablement();
+                end;
+            }
+
+            action(WordTemplate)
+            {
+                ApplicationArea = All;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedOnly = true;
+                Image = Word;
+                Caption = 'Add File from Word Template';
+                ToolTip = 'Create and Attach a document using a Word Template.';
+                Scope = Page;
+                Visible = not IsMessageRead;
+
+                trigger OnAction()
+                var
+                    EmailEditor: Codeunit "Email Editor";
+                begin
+                    EmailEditor.AttachFromWordTemplate(EmailMessage, EmailMessageId);
+                    UpdateDeleteActionEnablement();
                 end;
             }
 
@@ -103,29 +125,41 @@ page 8889 "Email Attachments"
                     if Confirm(DeleteQst) then begin
                         CurrPage.SetSelectionFilter(EmailMessageAttachment);
                         EmailMessageAttachment.DeleteAll();
-                        UpdateDeleteEnablement();
-                        CurrPage.Update();
+                        UpdateDeleteActionEnablement();
                     end;
                 end;
             }
         }
     }
 
-    internal procedure UpdateValues(MessageId: Guid)
+    protected procedure GetEmailMessage() EmailMessage: Codeunit "Email Message"
     begin
-        EmailMessageId := MessageId;
-
         EmailMessage.Get(EmailMessageId);
-        UpdateDeleteEnablement();
-        IsMessageRead := EmailMessage.IsRead();
     end;
 
-    internal procedure UpdateDeleteEnablement()
+    protected procedure UpdateDeleteActionEnablement()
     var
         EmailMessageAttachment: Record "Email Message Attachment";
     begin
         EmailMessageAttachment.SetFilter("Email Message Id", EmailMessageId);
         DeleteActionEnabled := not EmailMessageAttachment.IsEmpty();
+        CurrPage.Update();
+    end;
+
+#if not CLEAN20
+    internal procedure UpdateDeleteEnablement()
+    begin
+        UpdateDeleteActionEnablement();
+    end;
+#endif
+
+    internal procedure UpdateValues(MessageId: Guid)
+    begin
+        EmailMessageId := MessageId;
+
+        EmailMessage.Get(EmailMessageId);
+        UpdateDeleteActionEnablement();
+        IsMessageRead := EmailMessage.IsRead();
     end;
 
     var

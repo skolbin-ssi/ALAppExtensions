@@ -6,25 +6,6 @@ Changes the language for Windows and applications, and converts language codes t
  Table that contains the available application languages.
  
 
-### GetLanguageId (Method) <a name="GetLanguageId"></a> 
-
- [OBSOLETE] Gets the language ID based on its code.
- 
-
-#### Syntax
-```
-[Obsolete('Please use function with the same name from this modules facade codeunit 43 - "Language".', '16.0')]
-procedure GetLanguageId(LanguageCode: Code[10]): Integer
-```
-#### Parameters
-*LanguageCode ([Code[10]](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/code/code-data-type))* 
-
-The code of the language
-
-#### Return Value
-*[Integer](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/integer/integer-data-type)*
-
-The ID for the language code that was provided for this function. If no ID is found for the language code, then it returns 0.
 
 ## Language (Codeunit 43)
 
@@ -219,6 +200,20 @@ procedure LookupWindowsLanguageId(var LanguageId: Integer)
 *LanguageId ([Integer](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/integer/integer-data-type))* 
 
 Exit parameter that holds the chosen language ID.
+
+### LookupLanguageCode (Method) <a name="LookupLanguageCode"></a> 
+
+ Opens a list of the languages that are available for the application so that the user can choose a language.
+ 
+
+#### Syntax
+```
+procedure LookupLanguageCode(var LanguageCode: Code[10])
+```
+#### Parameters
+*LanguageCode ([Code[10]](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/code/code-data-type))* 
+
+Exit parameter that holds the chosen language code.
 
 ### GetParentLanguageId (Method) <a name="GetParentLanguageId"></a> 
 

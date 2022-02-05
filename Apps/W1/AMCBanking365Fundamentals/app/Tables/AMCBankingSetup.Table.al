@@ -57,6 +57,18 @@ table 20101 "AMC Banking Setup"
             Caption = 'Solution';
             DataClassification = CustomerContent;
         }
+        field(20108; "AMC Enabled"; Boolean)
+        {
+            Caption = 'Enabled';
+            DataClassification = SystemMetadata;
+            trigger OnValidate()
+            var
+                CustomerConsentMgt: Codeunit "Customer Consent Mgt.";
+            begin
+                if not xRec."AMC Enabled" and Rec."AMC Enabled" then
+                    Rec."AMC Enabled" := CustomerConsentMgt.ConfirmUserConsent();
+            end;
+        }
     }
 
     keys
@@ -78,21 +90,21 @@ table 20101 "AMC Banking Setup"
 
     trigger OnInsert()
     var
-        AMCBankServMgt: Codeunit "AMC Banking Mgt.";
+        AMCBankingMgt: Codeunit "AMC Banking Mgt.";
     begin
         if "User Name" = '' then begin
             "User Name" := GetUserName(); // Set username to demo user, if new record for user to try the funtionality
             if "User Name" <> '' then
                 SavePassword(GetPassword()); // Set Password to demo password, if new record for user to try the funtionality
             if "User Name" = GetDemoUserName() then
-                Solution := AMCBankServMgt.GetDemoSolutionCode();
+                Solution := AMCBankingMgt.GetDemoSolutionCode();
         end;
-        AMCBankServMgt.InitDefaultURLs(Rec);
+        AMCBankingMgt.InitDefaultURLs(Rec);
     end;
 
     var
         DemoUserNameTxt: Label 'demouser', Locked = true;
-        DemoPasswordTxt: Label 'DemoPassword', Locked = true;
+        DemoPasswordTxt: Label 'Demo Password', Locked = true;
 
     internal procedure SavePassword(PasswordText: Text)
     begin
@@ -123,6 +135,7 @@ table 20101 "AMC Banking Setup"
         exit(ServiceUserName);
     end;
 
+    [NonDebuggable]
     internal procedure GetPassword(): Text
     var
         Value: Text;
@@ -155,9 +168,9 @@ table 20101 "AMC Banking Setup"
 
     procedure SetURLsToDefault()
     var
-        AMCBankServMgt: Codeunit "AMC Banking Mgt.";
+        AMCBankingMgt: Codeunit "AMC Banking Mgt.";
     begin
-        AMCBankServMgt.SetURLsToDefault(Rec);
+        AMCBankingMgt.SetURLsToDefault(Rec);
     end;
 
     procedure GetDemoUserName(): Text[50]

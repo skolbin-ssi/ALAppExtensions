@@ -3,7 +3,7 @@ Provides a page where you look up and select one or more registered users. For e
 # Public Objects
 ## User Selection (Codeunit 9843)
 
- Provides basic functionality to open a search page and validate user information. 
+ Provides basic functionality to open a search page and validate user information.
  
 
 ### Open (Method) <a name="Open"></a> 
@@ -37,6 +37,20 @@ procedure ValidateUserName(UserName: Code[50])
 *UserName ([Code[50]](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/code/code-data-type))* 
 
 The username to validate.
+
+### HideExternalUsers (Method) <a name="HideExternalUsers"></a> 
+
+ Sets Filter on the given User Record to exclude external users.
+ 
+
+#### Syntax
+```
+procedure HideExternalUsers(var User: Record User)
+```
+#### Parameters
+*User ([Record User]())* 
+
+The User Record to return.
 
 
 ## User Lookup (Page 9843)

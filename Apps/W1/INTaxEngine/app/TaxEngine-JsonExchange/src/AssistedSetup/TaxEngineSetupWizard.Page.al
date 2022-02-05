@@ -4,7 +4,8 @@ page 20364 "Tax Engine Setup Wizard"
     PageType = NavigatePage;
     Permissions = TableData "Tax Type" = rimd,
                   TableData "Tax Attribute" = rimd,
-                  TableData "Tax Component" = rimd;
+                  TableData "Tax Component" = rimd,
+                  Tabledata "Tax Engine Notification" = rd;
 
     layout
     {
@@ -161,7 +162,6 @@ page 20364 "Tax Engine Setup Wizard"
                 var
                     TaxJsonSingleInstance: Codeunit "Tax Json Single Instance";
                 begin
-                    TaxJsonSingleInstance.ClearValues();
                     FinishAction();
                     TaxJsonSingleInstance.OpenReplcedTaxUseCases();
                 end;
@@ -222,14 +222,15 @@ page 20364 "Tax Engine Setup Wizard"
 
     local procedure FinishAction()
     var
-        AssistedSetup: Codeunit "Assisted Setup";
         TaxEngineAssistedSetup: Codeunit "Tax Engine Assisted Setup";
+        GuidedExperience: Codeunit "Guided Experience";
     begin
         if AppendOrReplace = AppendOrReplace::Replace then
             ClearTaxEngineSetup();
 
-        TaxEngineAssistedSetup.SetupTaxEngine();
-        AssistedSetup.Complete(Page::"Tax Engine Setup Wizard");
+        TaxEngineAssistedSetup.SetupTaxEngineWithUseCases();
+        GuidedExperience.CompleteAssistedSetup(ObjectType::Page, Page::"Tax Engine Setup Wizard");
+        OnAfterFinishTaxEngineAssistedSetup();
         CurrPage.Close();
     end;
 
@@ -310,8 +311,12 @@ page 20364 "Tax Engine Setup Wizard"
     local procedure ClearTaxEngineSetup()
     var
         TaxType: Record "Tax Type";
+        TaxTypeObjectHelper: Codeunit "Tax Type Object Helper";
     begin
-        TaxType.DeleteAll(true);
+        if not TaxType.IsEmpty() then begin
+            TaxTypeObjectHelper.DisableSelectedTaxTypes(TaxType);
+            TaxType.DeleteAll(true);
+        end;
     end;
 
     local procedure StepValidation(): Boolean
@@ -339,5 +344,10 @@ page 20364 "Tax Engine Setup Wizard"
     begin
         WizardNotification.Message := '';
         WizardNotification.Recall();
+    end;
+
+    [IntegrationEvent(true, false)]
+    local procedure OnAfterFinishTaxEngineAssistedSetup()
+    begin
     end;
 }

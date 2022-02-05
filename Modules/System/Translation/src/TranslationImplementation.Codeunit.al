@@ -88,6 +88,14 @@ codeunit 3712 "Translation Implementation"
         DeleteTranslations(RecVariant, Translation);
     end;
 
+    procedure Delete(TableID: Integer)
+    var
+        Translation: Record Translation;
+    begin
+        Translation.SetRange("Table ID", TableID);
+        Translation.DeleteAll(true);
+    end;
+
     procedure Copy(FromRecVariant: Variant; ToRecVariant: Variant; FieldId: Integer)
     var
         Translation: Record Translation;
@@ -114,10 +122,8 @@ codeunit 3712 "Translation Implementation"
         FromRecordRef: RecordRef;
     begin
         GetRecordRefFromVariant(FromRecVariant, FromRecordRef);
-
         Translation.SetRange("System Id", GetSystemIdFromRecordRef(FromRecordRef));
         Translation.SetRange("Field ID", FromFieldId);
-
         if Translation.FindSet() then
             repeat
                 Set(ToRecVariant, ToFieldId, Translation."Language ID", Translation.Value);
@@ -130,6 +136,7 @@ codeunit 3712 "Translation Implementation"
     begin
         GetRecordRefFromVariant(RecVariant, RecordRef);
 
+        TranslationWithFilters.SetRange("Table ID", RecordRef.Number());
         TranslationWithFilters.SetRange("System ID", GetSystemIdFromRecordRef(RecordRef));
         TranslationWithFilters.DeleteAll(true);
     end;

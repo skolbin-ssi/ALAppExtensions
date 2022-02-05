@@ -284,6 +284,7 @@ report 18932 "Ledger"
                         GLEntry2.SetCurrentKey(GLEntry2."Posting Date", GLEntry2."Source Code", GLEntry2."Transaction No.");
                         GLEntry2.SetRange(GLEntry2."Posting Date", "G/L Entry"."Posting Date");
                         GLEntry2.SetRange(GLEntry2."Transaction No.", "G/L Entry"."Transaction No.");
+                        GLEntry2.SetRange(GLEntry2."G/L Account No.", "G/L Entry"."G/L Account No.");
                         GLEntry2.FindLast();
                         if not (GLEntry2."Entry No." = "G/L Entry"."Entry No.") then
                             CurrReport.Break();
@@ -291,8 +292,9 @@ report 18932 "Ledger"
                 }
                 trigger OnAfterGetRecord()
                 begin
+                    GLEntry.SetRange("G/L Account No.", "G/L Account"."No.");
                     GLEntry.SetRange("Transaction No.", "Transaction No.");
-                    GLEntry.SetFilter("Entry No.", '<>%1', "Entry No.");
+                    GLEntry.SetRange("Entry No.", "Entry No.");
                     if GLEntry.FindFirst() then;
 
                     DrCrText := '';
@@ -301,10 +303,10 @@ report 18932 "Ledger"
                     if GLEntry.Count > 1 then
                         OneEntryRecord := false;
 
-                    GLAccount.Get("G/L Account No.");
-                    ControlAccount := FindControlAccount("Source Type", "Entry No.", "Source No.", "G/L Account No.");
+                    GLAccount.Get("G/L Entry"."G/L Account No.");
+                    ControlAccount := FindControlAccount("Source Type", "G/L Entry"."Entry No.", "Source No.", "G/L Entry"."G/L Account No.");
                     if ControlAccount then
-                        ControlAccountName := Daybook.FindGLAccName("Source Type", "Entry No.", "Source No.", "G/L Account No.");
+                        ControlAccountName := Daybook.FindGLAccName("Source Type", "G/L Entry"."Entry No.", "Source No.", "G/L Entry"."G/L Account No.");
 
                     if Amount > 0 then
                         TransDebits := TransDebits + Amount
@@ -356,6 +358,8 @@ report 18932 "Ledger"
                     GLEntry.SetCurrentKey("Transaction No.");
                     TotalDebitAmount := 0;
                     TotalCreditAmount := 0;
+                    TransDebits := 0;
+                    TransCredits := 0;
                 end;
             }
             trigger OnAfterGetRecord()

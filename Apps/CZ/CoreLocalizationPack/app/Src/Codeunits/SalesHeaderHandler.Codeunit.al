@@ -1,4 +1,3 @@
-#pragma warning disable AL0432
 codeunit 11743 "Sales Header Handler CZL"
 {
     var
@@ -77,6 +76,12 @@ codeunit 11743 "Sales Header Handler CZL"
             SalesHeader.Validate("Shipment Method Code", SellToCustomer."Shipment Method Code");
     end;
 
+    [EventSubscriber(ObjectType::Table, Database::"Sales Header", 'OnAfterCopyShipToCustomerAddressFieldsFromCustomer', '', false, false)]
+    local procedure UpdateOnAfterCopyShipToCustomerAddressFieldsFromCustomer(var SalesHeader: Record "Sales Header"; SellToCustomer: Record Customer)
+    begin
+        SalesHeader."VAT Country/Region Code" := SellToCustomer."Country/Region Code";
+    end;
+
     [EventSubscriber(ObjectType::Table, Database::"Sales Header", 'OnAfterSetFieldsBilltoCustomer', '', false, false)]
     local procedure UpdateRegNoOnAfterSetFieldsBilltoCustomer(var SalesHeader: Record "Sales Header"; Customer: Record Customer)
     begin
@@ -97,6 +102,7 @@ codeunit 11743 "Sales Header Handler CZL"
         Rec.Validate("VAT Currency Code CZL", Rec."Currency Code");
     end;
 
+#pragma warning disable AL0432
     [EventSubscriber(ObjectType::Table, Database::"Sales Header", 'OnBeforeValidateEvent', 'Currency Factor', false, false)]
     local procedure UpdateVATCurrencyfactorCZLOnBeforeCurrencyFactorValidate(var Rec: Record "Sales Header"; var xRec: Record "Sales Header"; CurrFieldNo: Integer)
     begin
@@ -106,6 +112,7 @@ codeunit 11743 "Sales Header Handler CZL"
             Rec.CopyRecCurrencyFactortoxRecCurrencyFactor(Rec, xRec); // Elimination of double run function (synchro)
         end;
     end;
+#pragma warning restore AL0432
 
     [EventSubscriber(ObjectType::Table, Database::"Sales Header", 'OnAfterUpdateCurrencyFactor', '', false, false)]
     local procedure OnAfterUpdateCurrencyFactor(var SalesHeader: Record "Sales Header")
@@ -130,7 +137,7 @@ codeunit 11743 "Sales Header Handler CZL"
         SalesHeader."Bank Account No. CZL" := SourceSalesHeader."Bank Account No. CZL";
         SalesHeader."Bank Branch No. CZL" := SourceSalesHeader."Bank Branch No. CZL";
         SalesHeader."IBAN CZL" := SourceSalesHeader."IBAN CZL";
-        SalesHeader."SWIFT Code CZL" := SourceSalesHeader."SWIFT Code";
+        SalesHeader."SWIFT Code CZL" := SourceSalesHeader."SWIFT Code CZL";
         SalesHeader."Transit No. CZL" := SourceSalesHeader."Transit No. CZL";
     end;
 

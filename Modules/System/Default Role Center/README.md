@@ -4,7 +4,7 @@ Example
 
 ```
 [EventSubscriber(ObjectType::Codeunit, Codeunit::"Default Role Center", 'OnBeforeGetDefaultRoleCenter', '', false, false)]
-local procedure SetRoleCenter(RoleCenterId: Integer; var Handled: Boolean)
+local procedure SetRoleCenter(var RoleCenterId: Integer; var Handled: Boolean)
 begin
     // Do not overwrite already defined default role center
     if Handled then
@@ -50,7 +50,7 @@ Handled pattern
  
 
 
-## BLANK (Profile )
+## BLANK (Profile)
 
  Empty profile to use in case no other profile is present when system is initializing.
  

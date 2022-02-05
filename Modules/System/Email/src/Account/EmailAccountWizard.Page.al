@@ -139,7 +139,7 @@ page 8886 "Email Account Wizard"
                     {
                         ApplicationArea = All;
                         Caption = 'Account Type';
-                        ToolTip = 'Spectifies the type of the account you want to create.';
+                        ToolTip = 'Specifies the type of the account you want to create.';
                         Editable = false;
                     }
 
@@ -430,12 +430,14 @@ page 8886 "Email Account Wizard"
 
     local procedure ShowRegisterAccountStep()
     var
+        FeatureTelemetry: Codeunit "Feature Telemetry";
         AccountWasRegistered: Boolean;
         ConnectorSucceeded: Boolean;
     begin
         ConnectorSucceeded := TryRegisterAccount(AccountWasRegistered);
 
         if AccountWasRegistered then begin
+            FeatureTelemetry.LogUptake('0000CTF', 'Emailing', Enum::"Feature Uptake Status"::"Set up");
             Session.LogMessage('0000CTH', Format(Rec.Connector) + ' account has been setup.', Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', EmailCategoryLbl);
             NextStep(false);
         end else begin

@@ -61,6 +61,13 @@ table 1950 "LP Machine Learning Setup"
         field(8; "Use My Model Credentials"; Boolean)
         {
             Caption = 'Use My Azure Subscription';
+            trigger OnValidate()
+            var
+                CustomerConsentMgt: Codeunit "Customer Consent Mgt.";
+            begin
+                if not xRec."Use My Model Credentials" and Rec."Use My Model Credentials" then
+                    Rec."Use My Model Credentials" := CustomerConsentMgt.ConfirmUserConsentToMicrosoftService();
+            end;
         }
 
         field(9; "Custom API Uri"; Text[250])
@@ -234,6 +241,7 @@ table 1950 "LP Machine Learning Setup"
         exit(CurrentDateTime() - "Last Background Analysis" < 7 * 24 * 60 * 60 * 1000);
     end;
 
+    [NonDebuggable]
     [Scope('OnPrem')]
     procedure SaveApiUri(ApiUriText: Text[250])
     var
@@ -254,6 +262,7 @@ table 1950 "LP Machine Learning Setup"
             IsolatedStorage.SetEncrypted(ApiUriKeyGUID, ApiUriText, DataScope::Company);
     end;
 
+    [NonDebuggable]
     [Scope('OnPrem')]
     procedure GetApiUri(): Text[250]
     VAR
@@ -267,6 +276,7 @@ table 1950 "LP Machine Learning Setup"
                 exit(CopyStr(ApiUriValue, 1, 250));
     end;
 
+    [NonDebuggable]
     [Scope('OnPrem')]
     procedure SaveApiKey(ApiKeyText: Text[200])
     VAR
@@ -286,6 +296,7 @@ table 1950 "LP Machine Learning Setup"
             IsolatedStorage.SetEncrypted(ApiKeyKeyGUID, ApiKeyText, DataScope::Company);
     end;
 
+    [NonDebuggable]
     [Scope('OnPrem')]
     procedure GetApiKey(): Text[200]
     VAR

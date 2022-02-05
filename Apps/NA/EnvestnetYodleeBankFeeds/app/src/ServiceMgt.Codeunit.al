@@ -1,9 +1,7 @@
-codeunit 1450 "MS - Yodlee Service Mgt."
+﻿codeunit 1450 "MS - Yodlee Service Mgt."
 {
     var
         ResponseTempBlob: Codeunit "Temp Blob";
-        TempTraceTempBlob: Codeunit "Temp Blob";
-        Trace: Codeunit "Trace";
         YodleeAPIStrings: Codeunit "Yodlee API Strings";
         SetupSuccessMsg: Label 'The setup test was successful. The settings are valid.';
         NotEnabledErr: Label 'The bank feed service is not enabled.\\In the Envestnet Yodlee Bank Feeds Service Setup window, select the Enabled check box.';
@@ -24,6 +22,7 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         BankRefreshTxt: Label 'Get Latest Bank Feed.';
         AuthenticationTokenTxt: Label 'Get the authentication tokens.';
         LoggingConstTxt: Label 'Bank Feed Service';
+        YodleeResponseTxt: Label 'Yodlee Response';
         GLBTraceLogEnabled: Boolean;
         InvalidResponseErr: Label 'The response was not valid.';
         UnknownErr: Label 'An unknown error has occurred.';
@@ -97,8 +96,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         ProcessingWindowMsg: Label 'Please wait while the server is processing your request.\This may take several minutes.';
         RemoteServerErr: Label 'The remote server returned an error: (%1) %2.', Locked = true;
         LCYCurrencyCodeMostBeInISOFormatErr: Label 'The Currency code must be in ISO 4217 format eq use USD instead of US';
-        CurrencyMismatchOnOnlineBankAccountErr: Label 'The online bank account %1 has two mismatching currency codes: %2 and %3.', Comment = '%1 - bank account name, %2 - currency code, %3 - currency code';
-        CurrencyMismatchOnOnlineBankAccountTelemetryErr: Label 'The online bank account has two mismatching currency codes: %1 and %2.', Locked = true;
         LinkingToAccountWithEmptyCurrencyQst: Label 'The online bank account %1 has no currency code.\Do you want to link it to your bank account?', Comment = '%1 - bank account name';
         EmptyCurrencyOnOnlineAccountMsg: Label 'The online bank account has no currency code.', Locked = true;
         TransactionsDownloadedTelemetryTxt: Label 'Transactions downloaded for 1 of %1 linked bank account(s).', Locked = true;
@@ -193,6 +190,7 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         MESSAGE(SetupSuccessMsg);
     end;
 
+    [NonDebuggable]
     local procedure TryAuthenticate(var CobrandToken: Text; var ConsumerToken: Text; var ErrorText: Text): Boolean;
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
@@ -286,9 +284,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
     begin
         ExecuteWebServiceRequest(YodleeAPIStrings.GetCobrandTokenURL(), 'POST', YodleeAPIStrings.GetCobrandTokenBody(Username, Password), '', ErrorText);
 
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'getcobrandtoken', TempTraceTempBlob);
-
         IF ErrorText <> '' THEN
             EXIT(FALSE);
 
@@ -301,9 +296,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
     begin
         AuthorizationHeaderValue := YodleeAPIStrings.GetAuthorizationHeaderValue(CobrandToken, '');
         ExecuteWebServiceRequest(YodleeAPIStrings.GetConsumerTokenURL(), 'POST', YodleeAPIStrings.GetConsumerTokenBody(Username, Password, CobrandToken), AuthorizationHeaderValue, ErrorText);
-
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'getconsumertoken', TempTraceTempBlob);
 
         IF ErrorText <> '' THEN
             EXIT(FALSE);
@@ -318,9 +310,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         AuthorizationHeaderValue := YodleeAPIStrings.GetAuthorizationHeaderValue(CobrandToken, ConsumerToken);
         ExecuteWebServiceRequest(YodleeAPIStrings.GetFastLinkTokenURL(), YodleeAPIStrings.GetFastLinkTokenRequestMethod(),
           YodleeAPIStrings.GetFastLinkTokenBody(CobrandToken, ConsumerToken), AuthorizationHeaderValue, ErrorText);
-
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'getfastlinktoken', TempTraceTempBlob);
 
         IF ErrorText <> '' THEN
             EXIT(FALSE);
@@ -467,9 +456,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         ExecuteWebServiceRequest(YodleeAPIStrings.GetUnlinkBankAccountURL(AccountID), YodleeAPIStrings.GetUnlinkBankAccountRequestMethod(),
           YodleeAPIStrings.GetUnlinkBankAccountBody(CobrandToken, ConsumerToken, AccountID), AuthorizationHeaderValue, ErrorText);
 
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'unlinkbankaccount', TempTraceTempBlob);
-
         if not GLBResponseInStream.EOS() then
             if not GetResponseValue('/', Response, ErrorText) then begin
                 ErrorText := GetAdjustedErrorText(ErrorText, STRSUBSTNO(FailedAccountUnlinkTxt, MSYodleeBankAccLink."No."));
@@ -509,9 +495,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         AuthorizationHeaderValue := YodleeAPIStrings.GetAuthorizationHeaderValue(CobrandToken, ConsumerToken);
         ExecuteWebServiceRequest(YodleeAPIStrings.GetRemoveConsumerURL(), YodleeAPIStrings.GetRemoveConsumerRequestMethod(),
           YodleeAPIStrings.GetRemoveConsumerRequestBody(CobrandToken, ConsumerToken), AuthorizationHeaderValue, ErrorText);
-
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'removeconsumeraccount', TempTraceTempBlob);
 
         IF NOT GetResponseValue('/', Response, ErrorText) THEN BEGIN
             LogActivityFailed(RemoveConsumerTxt, ErrorText, FailureAction::IgnoreError, '', StrSubstNo(TelemetryActivityFailureTxt, RemoveConsumerTxt, ErrorText), Verbosity::Error);
@@ -569,9 +552,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
             YodleeAPIStrings.GetRegisterConsumerBody(CobrandToken, UserName, Password, Email, LcyCode), AuthorizationHeaderValue,
             ErrorText);
 
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'registerconsumeraccount', TempTraceTempBlob);
-
         IF NOT GetResponseValue('/', Response, ErrorText) THEN BEGIN
             ErrorText := GetAdjustedErrorText(ErrorText, FailedRegisterConsumerTxt);
             IF IsStaleCredentialsErr(ErrorText) THEN BEGIN
@@ -605,9 +585,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         AuthorizationHeaderValue := YodleeAPIStrings.GetAuthorizationHeaderValue(CobrandToken, ConsumerToken);
         ExecuteWebServiceRequest(YodleeAPIStrings.GetLinkedSiteListURL(), YodleeAPIStrings.GetLinkedSiteListRequestMethod(),
           YodleeAPIStrings.GetLinkedSiteListBody(CobrandToken, ConsumerToken), AuthorizationHeaderValue, ErrorText);
-
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'getsitelist', TempTraceTempBlob);
 
         EXIT(GetResponseValue(YodleeAPIStrings.GetRootXPath(), SiteListXML, ErrorText));
     end;
@@ -660,9 +637,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         ExecuteWebServiceRequest(YodleeAPIStrings.GetLinkedBankAccountsURL(ProviderAccountId), YodleeAPIStrings.GetLinkedBankAccountsRequestMethod(),
           YodleeAPIStrings.GetLinkedBankAccountsBody(CobrandToken, ConsumerToken, ProviderAccountId), AuthorizationHeaderValue, ErrorText);
 
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'getbankaccounts', TempTraceTempBlob);
-
         IF ErrorText <> '' THEN BEGIN
             LogActivityFailed(
               GetBankAccListTxt, ErrorText, FailureAction::RethrowError, '', StrSubstNo(TelemetryActivityFailureTxt, GetBankAccListTxt, ErrorText), Verbosity::Error);
@@ -694,9 +668,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         AuthorizationHeaderValue := YodleeAPIStrings.GetAuthorizationHeaderValue(CobrandToken, ConsumerToken);
         ExecuteWebServiceRequest(YodleeAPIStrings.GetLinkedBankAccountURL(AccountId), 'GET',
           '', AuthorizationHeaderValue, ErrorText);
-
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'getbankaccount', TempTraceTempBlob);
 
         IF ErrorText <> '' THEN BEGIN
             LogActivityFailed(
@@ -1000,9 +971,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
             YodleeAPIStrings.GetTransactionSearchBody(CobrandToken, ConsumerToken, OnlineBankAccountId, FromDate, ToDate),
             AuthorizationHeaderValue,
             ErrorText);
-
-        IF GLBTraceLogEnabled THEN
-            Trace.LogStreamToTempFile(GLBResponseInStream, 'transactionsearch', TempTraceTempBlob);
 
         Session.LogMessage('00001SX', STRSUBSTNO(TransactionsDownloadedTelemetryTxt, NumberOfLinkedBankAccounts()), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
     end;
@@ -1310,19 +1278,13 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         AvlblBalCurrencyCode := FindNodeText(BankAccountNode, YodleeAPIStrings.GetBankAccountAvailableBalanceXPath());
         RunningBalanceCurrencyCode := FindNodeText(BankAccountNode, YodleeAPIStrings.GetBankAccountRunningBalanceXPath());
 
-        IF (CurrBalCurrencyCode <> '') AND (AvlblBalCurrencyCode <> '') AND (CurrBalCurrencyCode <> AvlblBalCurrencyCode) THEN BEGIN
-            OnOnlineBankAccountCurrencyMismatchSendTelemetry(
-              STRSUBSTNO(CurrencyMismatchOnOnlineBankAccountTelemetryErr, AvlblBalCurrencyCode, CurrBalCurrencyCode));
-            ERROR(CurrencyMismatchOnOnlineBankAccountErr, BankAccountName, AvlblBalCurrencyCode, CurrBalCurrencyCode);
-        END;
-
         IF RunningBalanceCurrencyCode <> '' THEN
             CurrencyCode := RunningBalanceCurrencyCode;
 
-        IF CurrBalCurrencyCode <> '' THEN
+        IF (CurrencyCode = '') AND (CurrBalCurrencyCode <> '') THEN
             CurrencyCode := CurrBalCurrencyCode;
 
-        IF AvlblBalCurrencyCode <> '' THEN
+        IF (CurrencyCode = '') AND (AvlblBalCurrencyCode <> '') THEN
             CurrencyCode := AvlblBalCurrencyCode;
 
         IF CurrencyCode = '' THEN
@@ -1440,12 +1402,30 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         EXIT(TRUE);
     end;
 
-    local procedure RemoveInvalidXMLCharacters(var InputText: Text)
+    [TryFunction]
+    local procedure TryVerifyXMLChars(InputText: Text)
+    var
+        XmlConvert: DotNet XmlConvert;
     begin
+        XmlConvert.VerifyXmlChars(InputText);
+    end;
+
+    local procedure RemoveInvalidXMLCharacters(var InputText: Text)
+    var
+        XmlConvert: DotNet XmlConvert;
+        InputTextStr: DotNet String;
+        Character: Char;
+    begin
+        if not TryVerifyXMLChars(InputText) then begin
+            InputTextStr := InputText;
+            InputText := '';
+            foreach Character in InputTextStr do
+                if XmlConvert.IsXmlChar(Character) then
+                    InputText += Character;
+        end;
         // so far, in icms we have only seen Char x014 coming from Yodlee
         // therefore remove this one first and continue only if there are more
         InputText := InputText.Replace('&#x14', '');
-        InputText := InputText.Replace('ËÇ£“ËÇÖ“í', '');
         if StrPos(InputText, '&#x') = 0 then
             exit;
 
@@ -1522,6 +1502,7 @@ codeunit 1450 "MS - Yodlee Service Mgt."
     local procedure ExecuteWebServiceRequest(URL: Text; Method: Text[6]; BodyText: Text; AuthorizationHeaderValue: Text; var ErrorText: Text) PaginationLink: Text
     var
         MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
+        ActivityLog: Record "Activity Log";
         DotNetExceptionHandler: Codeunit "DotNet Exception Handler";
         IsSuccessful: Boolean;
         Client: HttpClient;
@@ -1532,8 +1513,7 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         RequestHeaders: HttpHeaders;
         ContentHeaders: HttpHeaders;
         BankFeedText: Text;
-        LinkedBankAccountsText: Text;
-        LinkedBankAccountText: Text;
+        ResponseTxt: Text;
         ApiVersion: Text;
         CobrandEnvironmentName: Text;
         UnsuccessfulRequestTelemetryTxt: Text;
@@ -1612,22 +1592,36 @@ codeunit 1450 "MS - Yodlee Service Mgt."
             // after GetTransactions request, we processes them from BankFeedTextList, because it can come in multiple responses
             BankFeedTextList.Add(BankFeedText);
             Session.LogMessage('000083Y', BankFeedText, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+            if GLBTraceLogEnabled then
+                ActivityLog.LogActivity(MSYodleeBankServiceSetup.RecordId(), ActivityLog.Status::Success, YodleeResponseTxt, 'gettransactions', BankFeedText);
         END;
 
+        ResponseMessage.Content().ReadAs(ResponseTxt);
         IF URL.ToLower().Contains('accounts?status=active') THEN BEGIN
-            ResponseMessage.Content().ReadAs(LinkedBankAccountsText);
-            Session.LogMessage('0000BI7', LinkedBankAccountsText, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+            Session.LogMessage('0000BI7', ResponseTxt, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+            if GLBTraceLogEnabled then
+                ActivityLog.LogActivity(MSYodleeBankServiceSetup.RecordId(), ActivityLog.Status::Success, YodleeResponseTxt, 'getlinkedbankaccounts', ResponseTxt);
         END;
 
         IF URL.ToLower().Contains('accounts?accountid') THEN BEGIN
-            ResponseMessage.Content().ReadAs(LinkedBankAccountText);
-            Session.LogMessage('0000BLP', LinkedBankAccountText, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+            Session.LogMessage('0000BLP', ResponseTxt, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+            if GLBTraceLogEnabled then
+                ActivityLog.LogActivity(MSYodleeBankServiceSetup.RecordId(), ActivityLog.Status::Success, YodleeResponseTxt, 'getlinkedbankaccount', ResponseTxt);
         END;
 
-        IF URL.ToLower().Contains('user/register') THEN BEGIN
-            ResponseMessage.Content().ReadAs(LinkedBankAccountText);
-            Session.LogMessage('0000DLA', LinkedBankAccountText, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+        IF URL.ToLower().Contains(YodleeAPIStrings.GetRegisterConsumerURL()) THEN BEGIN
+            Session.LogMessage('0000DLA', ResponseTxt, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+            if GLBTraceLogEnabled then
+                ActivityLog.LogActivity(MSYodleeBankServiceSetup.RecordId(), ActivityLog.Status::Success, YodleeResponseTxt, YodleeAPIStrings.GetRegisterConsumerURL(), ResponseTxt);
         END;
+
+        IF URL.ToLower().Contains(YodleeAPIStrings.GetLinkedSiteListURL()) THEN BEGIN
+            Session.LogMessage('0000G9J', ResponseTxt, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+            if GLBTraceLogEnabled then
+                ActivityLog.LogActivity(MSYodleeBankServiceSetup.RecordId(), ActivityLog.Status::Success, YodleeResponseTxt, YodleeAPIStrings.GetLinkedSiteListURL(), ResponseTxt);
+        END;
+
+        Commit();
     end;
 
     procedure CheckServiceEnabled();
@@ -1751,6 +1745,7 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         EXIT(MSYodleeBankServiceSetup.GetCobrandName(MSYodleeBankServiceSetup."Cobrand Name"));
     end;
 
+    [NonDebuggable]
     [Scope('OnPrem')]
     procedure GetCobrandPassword(): Text;
     var
@@ -1764,6 +1759,7 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         EXIT(MSYodleeBankServiceSetup.GetCobrandPassword(MSYodleeBankServiceSetup."Cobrand Password"));
     end;
 
+    [NonDebuggable]
     [Scope('OnPrem')]
     procedure GetConsumerPassword(): Text;
     var
@@ -1885,8 +1881,8 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         OnAfterSuccessfulActivitySendTelemetry(TelemetryMsg);
 
         MSYodleeBankServiceSetup.Get();
-        ActivityLog.LogActivity(
-          MSYodleeBankServiceSetup.RECORDID(), ActivityLog.Status::Success, LoggingConstTxt, ActivityDescription, ActivityMessage);
+        if GLBTraceLogEnabled then
+            ActivityLog.LogActivity(MSYodleeBankServiceSetup.RecordId(), ActivityLog.Status::Success, LoggingConstTxt, ActivityDescription, ActivityMessage);
     end;
 
     local procedure LogActivityFailed(ActivityDescription: Text; ActivityMessage: Text; "Action": Option IgnoreError,RethrowError,RethrowErrorWithConfirm; ConfirmMessage: Text; TelemetryMsg: Text; VerbosityLevel: Verbosity);
@@ -1911,10 +1907,10 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         SendTelemetryAfterFailedActivity(VerbosityLevel, TelemetryMsg);
 
         MSYodleeBankServiceSetup.Get();
-        ActivityLog.LogActivity(
-          MSYodleeBankServiceSetup.RECORDID(), ActivityLog.Status::Failed, LoggingConstTxt, ActivityDescription, ActivityMessage);
+        if GLBTraceLogEnabled then
+            ActivityLog.LogActivity(MSYodleeBankServiceSetup.RecordId(), ActivityLog.Status::Failed, LoggingConstTxt, ActivityDescription, ActivityMessage);
 
-        IF IsEmptyMessage THEN
+        IF IsEmptyMessage and GLBTraceLogEnabled THEN
             ActivityLog.SetDetailedInfoFromStream(GLBResponseInStream);
 
         IF GLBDisableRethrowException THEN
@@ -2114,7 +2110,7 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         PostedTransactionsTxt += ('</root>' + Format(cr));
         PostedTransactionsTxt += ('</root>' + Format(cr));
 
-        TempBlobResponse.CreateOutStream(OutStreamWithPostedTransactions);
+        TempBlobResponse.CreateOutStream(OutStreamWithPostedTransactions, TextEncoding::UTF8);
         OutStreamWithPostedTransactions.WriteText(PostedTransactionsTxt);
         BankFeedTextList.RemoveRange(1, BankFeedTextList.Count());
     end;
@@ -2821,12 +2817,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
     begin
         Session.LogMessage('00001FV', ConsumerUnitializedTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
     end;
-
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"MS - Yodlee Service Mgt.", 'OnOnlineBankAccountCurrencyMismatchSendTelemetry', '', false, false)]
-    LOCAL PROCEDURE SendTelemetryOnOnlineBankAccountCurrencyMismatch(Message: Text);
-    BEGIN
-        Session.LogMessage('00001QF', Message, Verbosity::Error, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
-    END;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"MS - Yodlee Service Mgt.", 'OnOnlineAccountEmptyCurrencySendTelemetry', '', false, false)]
     LOCAL PROCEDURE SendTelemetryOnOnlineAccountEmptyCurrency(Message: Text);

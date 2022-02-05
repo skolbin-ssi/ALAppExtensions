@@ -1,8 +1,8 @@
 #pragma warning disable AL0432
 codeunit 11729 "Cash Document-Post CZP"
 {
-    Permissions = TableData "Posted Cash Document Hdr. CZP" = i,
-                  TableData "Posted Cash Document Line CZP" = im;
+    Permissions = tabledata "Posted Cash Document Hdr. CZP" = i,
+                  tabledata "Posted Cash Document Line CZP" = im;
     TableNo = "Cash Document Header CZP";
 
     trigger OnRun()
@@ -13,7 +13,7 @@ codeunit 11729 "Cash Document-Post CZP"
     begin
         OnBeforePostCashDoc(Rec);
         if not PreviewMode then
-            Rec.OnCheckCashDocPostRestrictions();
+            Rec.CheckCashDocPostRestrictions();
 
         CashDocumentHeaderCZP := Rec;
         CashDocumentHeaderCZP.TestField(CashDocumentHeaderCZP."Cash Desk No.");
@@ -23,10 +23,12 @@ codeunit 11729 "Cash Document-Post CZP"
         if GenJnlCheckLine.DateNotAllowed(CashDocumentHeaderCZP."Posting Date") then
             CashDocumentHeaderCZP.FieldError(CashDocumentHeaderCZP."Posting Date", PostingDateOutRangeErr);
 
+        OnRunOnBeforeDocumentRelease(CashDocumentHeaderCZP);
         if CashDocumentHeaderCZP.Status <> CashDocumentHeaderCZP.Status::Released then begin
             Codeunit.Run(Codeunit::"Cash Document-Release CZP", CashDocumentHeaderCZP);
             NoCheckCashDocument := true;
         end;
+        OnRunOnAfterDocumentRelease(CashDocumentHeaderCZP);
         // test cash desk
         CashDeskCZP.Get(CashDocumentHeaderCZP."Cash Desk No.");
         CashDeskCZP.TestField(Blocked, false);
@@ -36,8 +38,10 @@ codeunit 11729 "Cash Document-Post CZP"
 
         SourceCodeSetup.Get();
         SourceCodeSetup.TestField("Cash Desk CZP");
+        OnRunOnBeforeCheckCashDocument(CashDocumentHeaderCZP, NoCheckCashDocument);
         if not NoCheckCashDocument then
             CashDocumentReleaseCZP.CheckCashDocument(Rec);
+        OnRunOnAfterCheckCashDocument(CashDocumentHeaderCZP, NoCheckCashDocument);
 
         if CashDocumentHeaderCZP.RecordLevelLocking then begin
             CashDocumentLineCZP.LockTable();
@@ -57,7 +61,9 @@ codeunit 11729 "Cash Document-Post CZP"
         PostedCashDocumentHdrCZP.Insert();
         OnAfterPostedCashDocHeaderInsert(PostedCashDocumentHdrCZP, CashDocumentHeaderCZP);
 
+#if not CLEAN17
         GenJnlPostLine.SetPostFromCashReq(true);
+#endif
         PostHeader();
         PostLines();
 #if not CLEAN18
@@ -189,6 +195,8 @@ codeunit 11729 "Cash Document-Post CZP"
                     GenJnlPostLine.RunWithCheck(TempGenJournalLine);
                 end;
             until CashDocumentLineCZP.Next() = 0;
+
+        OnAfterPostLines(CashDocumentHeaderCZP, PostedCashDocumentHdrCZP, GenJnlPostLine);
     end;
 
     procedure InitGenJnlLine(InitCashDocumentHeaderCZP: Record "Cash Document Header CZP"; InitCashDocumentLineCZP: Record "Cash Document Line CZP")
@@ -449,4 +457,30 @@ codeunit 11729 "Cash Document-Post CZP"
     local procedure OnBeforePostedCashDocLineInsert(var PostedCashDocumentLineCZP: Record "Posted Cash Document Line CZP"; var PostedCashDocumentHdrCZP: Record "Posted Cash Document Hdr. CZP"; var CashDocumentLineCZP: Record "Cash Document Line CZP")
     begin
     end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnRunOnBeforeDocumentRelease(CashDocumentHeaderCZP: Record "Cash Document Header CZP")
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnRunOnAfterDocumentRelease(CashDocumentHeaderCZP: Record "Cash Document Header CZP")
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnRunOnBeforeCheckCashDocument(CashDocumentHeaderCZP: Record "Cash Document Header CZP"; var NoCheckCashDocument: Boolean)
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnRunOnAfterCheckCashDocument(CashDocumentHeaderCZP: Record "Cash Document Header CZP"; NoCheckCashDocument: Boolean)
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnAfterPostLines(CashDocumentHeaderCZP: Record "Cash Document Header CZP"; PostedCashDocumentHdrCZP: Record "Posted Cash Document Hdr. CZP"; var GenJnlPostLine: Codeunit "Gen. Jnl.-Post Line")
+    begin
+    end;
+
 }

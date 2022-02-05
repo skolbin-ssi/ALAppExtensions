@@ -48,9 +48,9 @@ page 18141 "E-Commerce Merchant Id"
 
                 trigger OnAction()
                 var
-                    ODataUtility: Codeunit ODataUtility;
+                    EditinExcel: Codeunit "Edit in Excel";
                 begin
-                    ODataUtility.EditWorksheetInExcel(
+                    EditinExcel.EditPageInExcel(
                         'e-Commerce Merchant Id',
                         CurrPage.ObjectId(false),
                         StrSubstNo(CustomerNumLbl, Rec."Customer No."));
@@ -58,6 +58,12 @@ page 18141 "E-Commerce Merchant Id"
             }
         }
     }
+    trigger OnOpenPage()
+    begin
+        Error(UnusedFieldLbl);
+    end;
+
     var
         CustomerNumLbl: Label 'Code %1', Comment = '%1 = Customer No.';
+        UnusedFieldLbl: Label 'This Page has been marked as obsolete and will be removed from version 23.0. Instead of this Page use ‘E-Comm. Merchant Id';
 }

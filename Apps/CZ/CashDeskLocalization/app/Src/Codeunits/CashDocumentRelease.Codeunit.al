@@ -10,7 +10,7 @@ codeunit 11725 "Cash Document-Release CZP"
         if Rec.Status = Rec.Status::Released then
             exit;
         OnBeforeReleaseCashDocument(Rec);
-        Rec.OnCheckCashDocReleaseRestrictions();
+        Rec.CheckCashDocReleaseRestrictions();
 
         CheckCashDocument(Rec);
 
@@ -84,7 +84,9 @@ codeunit 11725 "Cash Document-Release CZP"
         if CashDocumentHeaderCZP.Status = CashDocumentHeaderCZP.Status::"Pending Approval" then
             Error(ApprovalProcessReopenErr);
 
-        CashDocumentHeaderCZP.TestField(Status, CashDocumentHeaderCZP.Status::Approved);
+        if not (CashDocumentHeaderCZP.Status in [CashDocumentHeaderCZP.Status::Approved, CashDocumentHeaderCZP.Status::Released]) then
+            CashDocumentHeaderCZP.FieldError(Status);
+
         Reopen(CashDocumentHeaderCZP);
     end;
 

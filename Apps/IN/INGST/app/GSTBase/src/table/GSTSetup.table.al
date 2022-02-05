@@ -22,6 +22,11 @@ table 18013 "GST Setup"
             DataClassification = CustomerContent;
             TableRelation = "Tax Type";
         }
+        field(4; "Generate E-Inv. on Ser. Post"; Boolean)
+        {
+            Caption = 'Generate E-Inv. on Ser. Post';
+            DataClassification = CustomerContent;
+        }
     }
 
     keys
@@ -31,4 +36,5 @@ table 18013 "GST Setup"
             Clustered = true;
         }
     }
+
 }

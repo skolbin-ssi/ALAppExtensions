@@ -201,6 +201,7 @@ codeunit 18247 "Validate Bank Charges Amount"
         Location: Record Location;
         BankAccount: Record "Bank Account";
         GSTBaseValidation: Codeunit "GST Base Validation";
+        GSTPurchaseNonAvailment: Codeunit "GST Purchase Non Availment";
         TaxRecordID: RecordID;
         GSTComponentCode: Text[30];
         LineNo: Integer;
@@ -257,7 +258,7 @@ codeunit 18247 "Validate Bank Charges Amount"
                         DetailedGSTEntryBuffer."GST %" := TaxTransValue.Percent;
                         DetailedGSTEntryBuffer.Quantity := 1;
                         if not JnlBankCharges.Exempted then
-                            DetailedGSTEntryBuffer."GST Amount" := TaxTransValue.Amount
+                            DetailedGSTEntryBuffer."GST Amount" := GSTPurchaseNonAvailment.RoundTaxAmount(GSTSetup."GST Tax Type", TaxComponent.ID, TaxTransValue.Amount)
                         else
                             DetailedGSTEntryBuffer.Exempted := true;
 
@@ -267,7 +268,7 @@ codeunit 18247 "Validate Bank Charges Amount"
                         else
                             DetailedGSTEntryBuffer."Currency Factor" := 1;
 
-                        DetailedGSTEntryBuffer."GST Amount" := TaxTransValue.Amount;
+                        DetailedGSTEntryBuffer."GST Amount" := GSTPurchaseNonAvailment.RoundTaxAmount(GSTSetup."GST Tax Type", TaxComponent.ID, TaxTransValue.Amount);
                         DetailedGSTEntryBuffer."GST Rounding Precision" := GLSetup."Inv. Rounding Precision (LCY)";
                         DetailedGSTEntryBuffer."GST Rounding Type" := GSTBaseValidation.GenLedInvRoundingType2GSTInvRoundingTypeEnum(GLSetup."Inv. Rounding Type (LCY)");
                         DetailedGSTEntryBuffer."GST Inv. Rounding Precision" := JnlBankCharges."GST Inv. Rounding Precision";
@@ -294,10 +295,10 @@ codeunit 18247 "Validate Bank Charges Amount"
 
                         if DetailedGSTEntryBuffer."Non-Availment" then begin
                             DetailedGSTEntryBuffer."GST Input/Output Credit Amount" := 0;
-                            DetailedGSTEntryBuffer."Amount Loaded on Item" := TaxTransValue.Amount
+                            DetailedGSTEntryBuffer."Amount Loaded on Item" := GSTPurchaseNonAvailment.RoundTaxAmount(GSTSetup."GST Tax Type", TaxComponent.ID, TaxTransValue.Amount);
                         end else begin
                             DetailedGSTEntryBuffer."Amount Loaded on Item" := 0;
-                            DetailedGSTEntryBuffer."GST Input/Output Credit Amount" := TaxTransValue.Amount;
+                            DetailedGSTEntryBuffer."GST Input/Output Credit Amount" := GSTPurchaseNonAvailment.RoundTaxAmount(GSTSetup."GST Tax Type", TaxComponent.ID, TaxTransValue.Amount);
                         end;
 
                         if (DetailedGSTEntryBuffer."GST Amount" <> 0) then
@@ -323,6 +324,7 @@ codeunit 18247 "Validate Bank Charges Amount"
         AmountLCY: Decimal;
         SignOfBankAccLedgAmount: Integer)
     var
+        JnlBankChargesSessionMgt: Codeunit "GST Bank Charge Session Mgt.";
         DocType: Enum "BankCharges DocumentType";
     begin
         DocType := GetBankChargeDocType(GenJournalLine);
@@ -340,10 +342,24 @@ codeunit 18247 "Validate Bank Charges Amount"
             end else
                 SignOfBankAccLedgAmount := Abs(BankAccountLedgerEntry.Amount) / BankAccountLedgerEntry.Amount;
 
-        BankAccountLedgerEntry.Amount += (SignOfBankAccLedgAmount * BankChargeAmount) + BankChargeAmount;
-        BankAccountLedgerEntry."Amount (LCY)" += (SignOfBankAccLedgAmount * BankChargeAmount) + BankChargeAmount;
+        JnlBankChargesSessionMgt.SetBankChargeSign(SignOfBankAccLedgAmount);
+        BankAccountLedgerEntry.Amount += (SignOfBankAccLedgAmount * BankChargeAmount);
+        BankAccountLedgerEntry."Amount (LCY)" += (SignOfBankAccLedgAmount * BankChargeAmount);
+        BankAccountLedgerEntry."Remaining Amount" := BankAccountLedgerEntry.Amount;
+        BankAccountLedgerEntry.UpdateDebitCredit(GenJournalLine.Correction);
         BankChargeAmount := (SignOfBankAccLedgAmount * BankChargeAmount);
         GenJournalLine."Amount (LCY)" += BankChargeAmount;
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Gen. Jnl.-Post Line", 'OnAfterPostBankAcc', '', false, false)]
+    local procedure ReverseGenJnlLineAmount(var GenJnlLine: Record "Gen. Journal Line")
+    var
+        JnlBankChargesSessionMgt: Codeunit "GST Bank Charge Session Mgt.";
+        BankChargeSign: Integer;
+    begin
+        BankChargeAmount := JnlBankChargesSessionMgt.GetBankChargeAmount();
+        BankChargeSign := JnlBankChargesSessionMgt.GetBankChargeSign() * -1;
+        GenJnlLine."Amount (LCY)" += (BankChargeAmount * BankChargeSign);
     end;
 
     local procedure GetBankChargeDocType(GenJournalLine: Record "Gen. Journal Line"): Enum "BankCharges DocumentType"
@@ -513,8 +529,8 @@ codeunit 18247 "Validate Bank Charges Amount"
                 if (GSTPostingBuffer[1]."Account No." <> '') and (GSTPostingBuffer[1]."GST Amount" <> 0) then
                     JnlBankChargesSessionMgt.CreateGSTBankChargesGenJournallLine(
                         GenJnlLine, GSTPostingBuffer[1]."Account No.",
-                        GSTPostingBuffer[1]."GST Amount",
-                        GSTPostingBuffer[1]."GST Amount");
+                        (GSTPostingBuffer[1]."GST Amount"),
+                        (GSTPostingBuffer[1]."GST Amount"));
 
                 PostedDocNo := GenJnlLine."Document No.";
                 InsertGSTLedgerEntryBankCharges(GSTPostingBuffer[1], GenJnlLine);

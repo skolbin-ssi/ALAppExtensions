@@ -209,6 +209,9 @@ codeunit 4509 "Email - Outlook API Helper"
     [EventSubscriber(ObjectType::Table, Database::"Email - Outlook API Setup", 'OnBeforeDeleteEvent', '', false, false)]
     local procedure OnDeleteOutlookAPIAccount(var Rec: Record "Email - Outlook API Setup")
     begin
+        if Rec.IsTemporary() then
+            exit;
+
         if IsolatedStorage.Contains(Rec.ClientId, DataScope::Module) then
             IsolatedStorage.Delete(Rec.ClientId, DataScope::Module);
 
@@ -262,8 +265,8 @@ codeunit 4509 "Email - Outlook API Helper"
     begin
     end;
 
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sandbox Cleanup", 'OnClearCompanyConfiguration', '', false, false)]
-    local procedure DeleteEmailAccountsForSandbox(CompanyName: Text)
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Environment Cleanup", 'OnClearCompanyConfig', '', false, false)]
+    local procedure ClearCompanyConfigGeneral(CompanyName: Text; SourceEnv: Enum "Environment Type"; DestinationEnv: Enum "Environment Type")
     var
         OutlookAccounts: Record "Email - Outlook Account";
     begin

@@ -67,9 +67,9 @@ codeunit 31038 "Sales Posting Handler CZL"
         GenJournalLine."Source Currency Code" := SalesHeader."Currency Code";
         GetCurrency(SalesHeader."Currency Code");
         if IsCorrection then
-            GenJournalLine.Correction := not InvoicePostBuffer.Correction
+            GenJournalLine.Correction := not InvoicePostBuffer."Correction CZL"
         else
-            GenJournalLine.Correction := InvoicePostBuffer.Correction;
+            GenJournalLine.Correction := InvoicePostBuffer."Correction CZL";
         GenJournalLine."Gen. Posting Type" := GenJournalLine."Gen. Posting Type"::Sale;
         GenJournalLine."VAT Bus. Posting Group" := InvoicePostBuffer."VAT Bus. Posting Group";
         GenJournalLine."VAT Prod. Posting Group" := InvoicePostBuffer."VAT Prod. Posting Group";
@@ -150,11 +150,16 @@ codeunit 31038 "Sales Posting Handler CZL"
         LineAmount: Decimal;
         QtyToInvoice: Decimal;
         ItemNoText: Text;
+        IsHandled: Boolean;
         ItemUnitOfMeasureForVATNotExistErr: Label 'Unit of Measure %1 not exist for Item No. %2.', Comment = '%1 = Unit of Measure Code, %2 = Item No.';
         CommoditySetupForVATNotExistErr: Label 'Commodity Setup %1 for date %2 not exist.', Comment = '%1 = Commodity Code, %2 = Date';
         VATPostingSetupPostMismashErr: Label 'For commodity %1 and limit %2 not allowed VAT type %3 posting.\\Item List:\%4.', Comment = '%1 = Commodity Code, %2 = Commodity Limit Amount LCY, %3 = VAT Calculation Type, %4 = Item No.';
         VATPostingSetupPostMismashQst: Label 'The amount of the invoice is below the limit for Reverse VAT (%5).\\Item List:\%4\\Really post VAT type %3 for Deliverable Code %1 and limit %2?', Comment = '%1 = Commodity Code, %2 = Commodity Limit Amount LCY, %3 = VAT Calculation Type, %4 = List of Item No., %5 = AmountToCheckLimit';
     begin
+        OnBeforeCheckTariffNo(SalesHeader, IsHandled);
+        if IsHandled then
+            exit;
+
         CommoditySetupCZL.SetFilter("Valid From", '..%1', SalesHeader."VAT Date CZL");
         CommoditySetupCZL.SetFilter("Valid To", '%1|%2..', 0D, SalesHeader."VAT Date CZL");
 
@@ -252,13 +257,15 @@ codeunit 31038 "Sales Posting Handler CZL"
 
                 if AmountToCheckLimit < CommoditySetupCZL."Commodity Limit Amount LCY" then begin
                     // Normal
+#if not CLEAN17
                     if not CheckTariffNoByBaseApp(CommoditySetupCZL) then // check done by Base Application
-                        if Temp1InventoryBuffer.Get(TempInventoryBuffer."Item No.", Format(SalesLine."VAT Calculation Type"::"Reverse Charge VAT", 0, '<Number>')) then
-                            if not ConfirmManagement.GetResponseOrDefault(StrSubStno(VATPostingSetupPostMismashQst,
-                                 CommoditySetupCZL."Commodity Code", CommoditySetupCZL."Commodity Limit Amount LCY",
-                                 SalesLine."VAT Calculation Type"::"Reverse Charge VAT", ItemNoText, AmountToCheckLimit), false)
-                            then
-                                Error('');
+#endif
+                    if Temp1InventoryBuffer.Get(TempInventoryBuffer."Item No.", Format(SalesLine."VAT Calculation Type"::"Reverse Charge VAT", 0, '<Number>')) then
+                        if not ConfirmManagement.GetResponseOrDefault(StrSubStno(VATPostingSetupPostMismashQst,
+                            CommoditySetupCZL."Commodity Code", CommoditySetupCZL."Commodity Limit Amount LCY",
+                            SalesLine."VAT Calculation Type"::"Reverse Charge VAT", ItemNoText, AmountToCheckLimit), false)
+                        then
+                            Error('');
                 end else
                     // Reverse
                     if Temp1InventoryBuffer.Get(TempInventoryBuffer."Item No.", Format(SalesLine."VAT Calculation Type"::"Normal VAT", 0, '<Number>')) then
@@ -268,7 +275,8 @@ codeunit 31038 "Sales Posting Handler CZL"
             until TempInventoryBuffer.Next() = 0;
     end;
 
-    [Obsolete('Will be removed together with Commodity Setup remove from Base App.', '18.0')]
+#if not CLEAN17
+    [Obsolete('Will be removed together with Commodity Setup remove from Base App.', '17.5')]
     local procedure CheckTariffNoByBaseApp(var CommoditySetupCZL: Record "Commodity Setup CZL"): Boolean
     var
         CommoditySetup: Record "Commodity Setup";
@@ -276,9 +284,10 @@ codeunit 31038 "Sales Posting Handler CZL"
         CommoditySetupCZL.CopyFilter("Commodity Code", CommoditySetup."Commodity Code");
         CommoditySetupCZL.CopyFilter("Valid From", CommoditySetup."Valid From");
         CommoditySetupCZL.CopyFilter("Valid To", CommoditySetup."Valid To");
-        exit(not CommoditySetupCZL.IsEmpty());
+        exit(not CommoditySetup.IsEmpty());
     end;
 
+#endif
     local procedure GetQtyToInvoice(SalesLine: Record "Sales Line"; Ship: Boolean): Decimal
     var
         AllowedQtyToInvoice: Decimal;
@@ -394,5 +403,10 @@ codeunit 31038 "Sales Posting Handler CZL"
                 SalesHeader.Validate("VAT Date CZL", PostingDate);
                 SalesHeader.Modify();
             end;
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeCheckTariffNo(SalesHeader: Record "Sales Header"; var IsHandled: Boolean);
+    begin
     end;
 }

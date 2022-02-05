@@ -2,152 +2,242 @@
 codeunit 31017 "Upgrade Application CZL"
 {
     Subtype = Upgrade;
+    Permissions = tabledata Permission = i,
+                  tabledata "Subst. Cust. Posting Group CZL" = i,
+                  tabledata "Subst. Vend. Posting Group CZL" = i,
+                  tabledata "Certificate Code CZL" = im,
+                  tabledata "EET Service Setup CZL" = im,
+                  tabledata "EET Business Premises CZL" = im,
+                  tabledata "EET Cash Register CZL" = im,
+                  tabledata "EET Entry CZL" = im,
+                  tabledata "EET Entry Status Log CZL" = im,
+                  tabledata "Constant Symbol CZL" = i,
+                  tabledata "Specific Movement CZL" = im,
+                  tabledata "Intrastat Delivery Group CZL" = im,
+                  tabledata "User Setup Line CZL" = im,
+                  tabledata "Acc. Schedule Extension CZL" = im,
+                  tabledata "Acc. Schedule Result Line CZL" = im,
+                  tabledata "Acc. Schedule Result Col. CZL" = im,
+                  tabledata "Acc. Schedule Result Value CZL" = im,
+                  tabledata "Acc. Schedule Result Hdr. CZL" = im,
+                  tabledata "Acc. Schedule Result Hist. CZL" = im,
+                  tabledata "General Ledger Setup" = m,
+                  tabledata "Sales & Receivables Setup" = m,
+                  tabledata "Purchases & Payables Setup" = m,
+                  tabledata "Service Mgt. Setup" = m,
+                  tabledata "Inventory Setup" = m,
+                  tabledata "Depreciation Book" = m,
+                  tabledata "Item Journal Line" = m,
+                  tabledata "Job Journal Line" = m,
+                  tabledata "Sales Line" = m,
+                  tabledata "Purchase Line" = m,
+                  tabledata "Service Line" = m,
+                  tabledata "Value Entry" = m,
+                  tabledata "Detailed Cust. Ledg. Entry" = m,
+                  tabledata "Detailed Vendor Ledg. Entry" = m,
+                  tabledata "Isolated Certificate" = m,
+                  tabledata "EET Service Setup" = m,
+                  tabledata "Shipment Method" = m,
+                  tabledata "Tariff Number" = m,
+                  tabledata "Statistic Indication CZL" = m,
+                  tabledata "Statutory Reporting Setup CZL" = m,
+                  tabledata Customer = m,
+                  tabledata Vendor = m,
+                  tabledata Item = m,
+                  tabledata "Unit of Measure" = m,
+                  tabledata "VAT Posting Setup" = m,
+                  tabledata "Sales Header" = m,
+                  tabledata "Sales Shipment Header" = m,
+                  tabledata "Sales Invoice Header" = m,
+                  tabledata "Sales Invoice Line" = m,
+                  tabledata "Sales Cr.Memo Header" = m,
+                  tabledata "Sales Cr.Memo Line" = m,
+                  tabledata "Sales Header Archive" = m,
+                  tabledata "Sales Line Archive" = m,
+                  tabledata "Purchase Header" = m,
+                  tabledata "Purch. Rcpt. Header" = m,
+                  tabledata "Purch. Rcpt. Line" = m,
+                  tabledata "Purch. Inv. Header" = m,
+                  tabledata "Purch. Inv. Line" = m,
+                  tabledata "Purch. Cr. Memo Hdr." = m,
+                  tabledata "Purch. Cr. Memo Line" = m,
+                  tabledata "Purchase Header Archive" = m,
+                  tabledata "Purchase Line Archive" = m,
+                  tabledata "Service Header" = m,
+                  tabledata "Service Shipment Header" = m,
+                  tabledata "Service Invoice Header" = m,
+                  tabledata "Service Invoice Line" = m,
+                  tabledata "Service Cr.Memo Header" = m,
+                  tabledata "Service Cr.Memo Line" = m,
+                  tabledata "Return Shipment Header" = m,
+                  tabledata "Return Receipt Header" = m,
+                  tabledata "Transfer Header" = m,
+                  tabledata "Transfer Line" = m,
+                  tabledata "Transfer Receipt Header" = m,
+                  tabledata "Transfer Shipment Header" = m,
+                  tabledata "Item Ledger Entry" = m,
+                  tabledata "Job Ledger Entry" = m,
+                  tabledata "Item Charge" = m,
+                  tabledata "Item Charge Assignment (Purch)" = m,
+                  tabledata "Item Charge Assignment (Sales)" = m,
+                  tabledata "Posted Gen. Journal Line" = m,
+                  tabledata "Intrastat Jnl. Batch" = m,
+                  tabledata "Intrastat Jnl. Line" = m,
+                  tabledata "Inventory Posting Setup" = m,
+                  tabledata "General Posting Setup" = m,
+                  tabledata "User Setup" = m,
+                  tabledata "Gen. Journal Template" = m,
+                  tabledata "VAT Entry" = m;
 
     var
         DataUpgradeMgt: Codeunit "Data Upgrade Mgt.";
         UpgradeTag: Codeunit "Upgrade Tag";
         UpgradeTagDefinitionsCZL: Codeunit "Upgrade Tag Definitions CZL";
+        InstallApplicationsMgtCZL: Codeunit "Install Applications Mgt. CZL";
+#if CLEAN18
+        InstallApplicationCZL: Codeunit "Install Application CZL";
+#endif
+        AppInfo: ModuleInfo;
 
     trigger OnUpgradePerDatabase()
     begin
         DataUpgradeMgt.SetUpgradeInProgress();
-
-        UpdatePermission();
-
-        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerDatabaseUpgradeTag()) then
-            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerDatabaseUpgradeTag());
-        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerDatabaseUpgradeTag()) then
-            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerDatabaseUpgradeTag());
-        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerDatabaseUpgradeTag()) then
-            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerDatabaseUpgradeTag());
+        UpgradePermission();
+        SetDatabaseUpgradeTags();
     end;
 
     trigger OnUpgradePerCompany()
     begin
         DataUpgradeMgt.SetUpgradeInProgress();
-
-        UpdateGeneralLedgerSetup();
-        UpdateSalesSetup();
-        UpdatePurchaseSetup();
-        UpdateServiceSetup();
-        UpdateInventorySetup();
-        UpdateDepreciationBook();
-        UpdateItemJournalLine();
-        UpdateJobJournalLine();
-        UpdateSalesLine();
-        UpdatePurchaseLine();
-        UpdateServiceLine();
-        UpdateValueEntry();
-        UpdateDetailedCustLedgEntry();
-        UpdateDetailedVendorLedgEntry();
-        UpdateSubstCustomerPostingGroup();
-        UpdateSubstVendorPostingGroup();
-        UpdateCertificateCZCode();
-        UpdateIsolatedCertificate();
-        UpdateEETServiceSetup();
-        UpdateEETBusinessPremises();
-        UpdateEETCashRegister();
-        UpdateEETEntry();
-        UpdateEETEntryStatus();
-        UpdateConstantSymbol();
-        UpdateShipmentMethod();
-        UpdateTariffNumber();
-        UpdateStatisticIndication();
-        UpdateSpecificMovement();
-        UpdateIntrastatDeliveryGroup();
-        UpdateStatutoryReportingSetup();
-        UpdateCustomer();
-        UpdateVendor();
-        UpdateItem();
-        UpdateUnitofMeasure();
-        UpdateVATPostingSetup();
-        UpdateSalesHeader();
-        UpdateSalesShipmentHeader();
-        UpdateSalesInvoiceHeader();
-        UpdateSalesInvoiceLine();
-        UpdateSalesCrMemoLine();
-        UpdateSalesCrMemoLine();
-        UpdateSalesCrMemoHeader();
-        UpdateSalesHeaderArchive();
-        UpdateSalesLineArchive();
-        UpdatePurchaseHeader();
-        UpdatePurchRcptHeader();
-        UpdatePurchRcptLine();
-        UpdatePurchInvHeader();
-        UpdatePurchInvLine();
-        UpdatePurchCrMemoHdr();
-        UpdatePurchCrMemoLine();
-        UpdatePurchaseHeaderArchive();
-        UpdatePurchaseLineArchive();
-        UpdateServiceHeader();
-        UpdateServiceShipmentHeader();
-        UpdateServiceInvoiceHeader();
-        UpdateServiceInvoiceLine();
-        UpdateServiceCrMemoHeader();
-        UpdateServiceCrMemoLine();
-        UpdateReturnShipmentHeader();
-        UpdateReturnReceiptHeader();
-        UpdateTransferHeader();
-        UpdateTransferLine();
-        UpdateTransferReceiptHeader();
-        UpdateTransferShipmentHeader();
-        UpdateItemLedgerEntry();
-        UpdateJobLedgerEntry();
-        UpdateItemCharge();
-        UpdateItemChargeAssignmentPurch();
-        UpdateItemChargeAssignmentSales();
-        UpdatePostedGenJournalLine();
-        UpdateIntrastatJournalBatch();
-        UpdateIntrastatJournalLine();
-        UpdateGeneralPostingSetup();
-        UpdateInventoryPostingSetup();
-        UpdateUserSetup();
-        UpdateUserSetupLine();
-        UpdateAccScheduleLine();
-        UpdateAccScheduleExtension();
-        UpdateAccScheduleResultLine();
-        UpdateAccScheduleResultColumn();
-        UpdateAccScheduleResultValue();
-        UpdateAccScheduleResultHeader();
-        UpdateAccScheduleResultHistory();
-        UpdateGenJournalTemplate();
-        UpdateVATEntry();
-
-        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerCompanyUpgradeTag()) then
-            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerCompanyUpgradeTag());
-        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
-            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag());
-        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerCompanyUpgradeTag()) then
-            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerCompanyUpgradeTag());
+        BindSubscription(InstallApplicationsMgtCZL);
+        UpgradeData();
+        UnbindSubscription(InstallApplicationsMgtCZL);
+        SetCompanyUpgradeTags();
     end;
 
-    local procedure UpdateGeneralLedgerSetup();
+    local procedure UpgradeData()
+    begin
+        UpgradeGeneralLedgerSetup();
+        UpgradeSalesSetup();
+        UpgradePurchaseSetup();
+        UpgradeServiceSetup();
+        UpgradeInventorySetup();
+        UpgradeDepreciationBook();
+        UpgradeItemJournalLine();
+        UpgradeJobJournalLine();
+        UpgradeSalesLine();
+        UpgradePurchaseLine();
+        UpgradeServiceLine();
+        UpgradeValueEntry();
+        UpgradeDetailedCustLedgEntry();
+        UpgradeDetailedVendorLedgEntry();
+        UpgradeSubstCustomerPostingGroup();
+        UpgradeSubstVendorPostingGroup();
+        UpgradeCertificateCZCode();
+        UpgradeIsolatedCertificate();
+        UpgradeEETServiceSetup();
+        UpgradeEETBusinessPremises();
+        UpgradeEETCashRegister();
+        UpgradeEETEntry();
+        UpgradeEETEntryStatus();
+        UpgradeConstantSymbol();
+        UpgradeShipmentMethod();
+        UpgradeTariffNumber();
+        UpgradeStatisticIndication();
+        UpgradeSpecificMovement();
+        UpgradeIntrastatDeliveryGroup();
+        UpgradeStatutoryReportingSetup();
+        UpgradeCustomer();
+        UpgradeVendor();
+        UpgradeItem();
+        UpgradeUnitofMeasure();
+        UpgradeVATPostingSetup();
+        UpgradeSalesHeader();
+        UpgradeSalesShipmentHeader();
+        UpgradeSalesInvoiceHeader();
+        UpgradeSalesInvoiceLine();
+        UpgradeSalesCrMemoLine();
+        UpgradeSalesCrMemoLine();
+        UpgradeSalesCrMemoHeader();
+        UpgradeSalesHeaderArchive();
+        UpgradeSalesLineArchive();
+        UpgradePurchaseHeader();
+        UpgradePurchRcptHeader();
+        UpgradePurchRcptLine();
+        UpgradePurchInvHeader();
+        UpgradePurchInvLine();
+        UpgradePurchCrMemoHdr();
+        UpgradePurchCrMemoLine();
+        UpgradePurchaseHeaderArchive();
+        UpgradePurchaseLineArchive();
+        UpgradeServiceHeader();
+        UpgradeServiceShipmentHeader();
+        UpgradeServiceInvoiceHeader();
+        UpgradeServiceInvoiceLine();
+        UpgradeServiceCrMemoHeader();
+        UpgradeServiceCrMemoLine();
+        UpgradeReturnShipmentHeader();
+        UpgradeReturnReceiptHeader();
+        UpgradeTransferHeader();
+        UpgradeTransferLine();
+        UpgradeTransferReceiptHeader();
+        UpgradeTransferShipmentHeader();
+        UpgradeItemLedgerEntry();
+        UpgradeJobLedgerEntry();
+        UpgradeItemCharge();
+        UpgradeItemChargeAssignmentPurch();
+        UpgradeItemChargeAssignmentSales();
+        UpgradePostedGenJournalLine();
+        UpgradeIntrastatJournalBatch();
+        UpgradeIntrastatJournalLine();
+        UpgradeGeneralPostingSetup();
+        UpgradeInventoryPostingSetup();
+        UpgradeUserSetup();
+        UpgradeUserSetupLine();
+        UpgradeAccScheduleLine();
+        UpgradeAccScheduleExtension();
+        UpgradeAccScheduleResultLine();
+        UpgradeAccScheduleResultColumn();
+        UpgradeAccScheduleResultValue();
+        UpgradeAccScheduleResultHeader();
+        UpgradeAccScheduleResultHistory();
+        UpgradeGenJournalTemplate();
+        UpgradeVATEntry();
+        UpgradeCustLedgerEntry();
+        UpgradeVendLedgerEntry();
+        UpgradeGenJournalLine();
+        UpgradeReminderHeader();
+        UpgradeIssuedReminderHeader();
+        UpgradeFinanceChargeMemoHeader();
+        UpgradeIssuedFinanceChargeMemoHeader();
+    end;
+
+    local procedure UpgradeGeneralLedgerSetup();
     var
         GeneralLedgerSetup: Record "General Ledger Setup";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag())
+        then
             exit;
 
         if GeneralLedgerSetup.Get() then begin
-            GeneralLedgerSetup."Shared Account Schedule CZL" := GeneralLedgerSetup."Shared Account Schedule";
-            GeneralLedgerSetup."Acc. Schedule Results Nos. CZL" := GeneralLedgerSetup."Acc. Schedule Results Nos.";
-            GeneralLedgerSetup.Modify(false);
-        end;
-
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
-            exit;
-
-        if GeneralLedgerSetup.Get() then begin
-            GeneralLedgerSetup."Check Posting Debit/Credit CZL" := GeneralLedgerSetup."Check Posting Debit/Credit";
-            GeneralLedgerSetup."Mark Neg. Qty as Correct. CZL" := GeneralLedgerSetup."Mark Neg. Qty as Correction";
-            GeneralLedgerSetup."Rounding Date CZL" := GeneralLedgerSetup."Rounding Date";
-            GeneralLedgerSetup."Closed Per. Entry Pos.Date CZL" := GeneralLedgerSetup."Closed Period Entry Pos.Date";
-            GeneralLedgerSetup."User Checks Allowed CZL" := GeneralLedgerSetup."User Checks Allowed";
+            if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerCompanyUpgradeTag()) then begin
+                GeneralLedgerSetup."Shared Account Schedule CZL" := GeneralLedgerSetup."Shared Account Schedule";
+                GeneralLedgerSetup."Acc. Schedule Results Nos. CZL" := GeneralLedgerSetup."Acc. Schedule Results Nos.";
+            end;
+            if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                GeneralLedgerSetup."Check Posting Debit/Credit CZL" := GeneralLedgerSetup."Check Posting Debit/Credit";
+                GeneralLedgerSetup."Mark Neg. Qty as Correct. CZL" := GeneralLedgerSetup."Mark Neg. Qty as Correction";
+                GeneralLedgerSetup."Rounding Date CZL" := GeneralLedgerSetup."Rounding Date";
+                GeneralLedgerSetup."Closed Per. Entry Pos.Date CZL" := GeneralLedgerSetup."Closed Period Entry Pos.Date";
+                GeneralLedgerSetup."User Checks Allowed CZL" := GeneralLedgerSetup."User Checks Allowed";
+            end;
             GeneralLedgerSetup.Modify(false);
         end;
     end;
 
-    local procedure UpdateSalesSetup();
+    local procedure UpgradeSalesSetup();
     var
         SalesReceivablesSetup: Record "Sales & Receivables Setup";
     begin
@@ -160,7 +250,7 @@ codeunit 31017 "Upgrade Application CZL"
         end;
     end;
 
-    local procedure UpdatePurchaseSetup();
+    local procedure UpgradePurchaseSetup();
     var
         PurchasesPayablesSetup: Record "Purchases & Payables Setup";
     begin
@@ -173,7 +263,7 @@ codeunit 31017 "Upgrade Application CZL"
         end;
     end;
 
-    local procedure UpdateServiceSetup();
+    local procedure UpgradeServiceSetup();
     var
         ServiceMgtSetup: Record "Service Mgt. Setup";
     begin
@@ -186,7 +276,7 @@ codeunit 31017 "Upgrade Application CZL"
         end;
     end;
 
-    local procedure UpdateInventorySetup();
+    local procedure UpgradeInventorySetup();
     var
         InventorySetup: Record "Inventory Setup";
     begin
@@ -201,7 +291,7 @@ codeunit 31017 "Upgrade Application CZL"
         end;
     end;
 
-    local procedure UpdateDepreciationBook();
+    local procedure UpgradeDepreciationBook();
     var
         DepreciationBook: Record "Depreciation Book";
     begin
@@ -215,7 +305,7 @@ codeunit 31017 "Upgrade Application CZL"
             until DepreciationBook.Next() = 0;
     end;
 
-    local procedure UpdateItemJournalLine();
+    local procedure UpgradeItemJournalLine();
     var
         ItemJournalLine: Record "Item Journal Line";
     begin
@@ -237,7 +327,7 @@ codeunit 31017 "Upgrade Application CZL"
             until ItemJournalLine.Next() = 0;
     end;
 
-    local procedure UpdateJobJournalLine();
+    local procedure UpgradeJobJournalLine();
     var
         JobJournalLine: Record "Job Journal Line";
     begin
@@ -256,7 +346,7 @@ codeunit 31017 "Upgrade Application CZL"
             until JobJournalLine.Next() = 0;
     end;
 
-    local procedure UpdateSalesLine();
+    local procedure UpgradeSalesLine();
     var
         SalesLine: Record "Sales Line";
     begin
@@ -272,7 +362,7 @@ codeunit 31017 "Upgrade Application CZL"
             until SalesLine.Next() = 0;
     end;
 
-    local procedure UpdatePurchaseLine();
+    local procedure UpgradePurchaseLine();
     var
         PurchaseLine: Record "Purchase Line";
     begin
@@ -288,7 +378,7 @@ codeunit 31017 "Upgrade Application CZL"
             until PurchaseLine.Next() = 0;
     end;
 
-    local procedure UpdateServiceLine();
+    local procedure UpgradeServiceLine();
     var
         ServiceLine: Record "Service Line";
     begin
@@ -304,7 +394,7 @@ codeunit 31017 "Upgrade Application CZL"
             until ServiceLine.Next() = 0;
     end;
 
-    local procedure UpdateValueEntry();
+    local procedure UpgradeValueEntry();
     var
         ValueEntry: Record "Value Entry";
     begin
@@ -320,51 +410,75 @@ codeunit 31017 "Upgrade Application CZL"
             until ValueEntry.Next() = 0;
     end;
 
-    local procedure UpdateDetailedCustLedgEntry()
+    local procedure UpgradeDetailedCustLedgEntry()
     var
         DetailedCustLedgEntry: Record "Detailed Cust. Ledg. Entry";
+#if CLEAN18
+        ApplTransactionDictionary: Dictionary of [Integer, Boolean];
+#else
         ApplAcrCustPostGroupsCZL: Query "Appl.Acr. Cust.Post.Groups CZL";
         ApplAcrossPostGrpEntryNo: List of [Integer];
+#endif
     begin
         if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
             exit;
 
+#if not CLEAN18
         if ApplAcrCustPostGroupsCZL.Open() then
             while ApplAcrCustPostGroupsCZL.Read() do
                 ApplAcrossPostGrpEntryNo.Add(ApplAcrCustPostGroupsCZL.Entry_No_);
 
+#endif
         if DetailedCustLedgEntry.FindSet(true) then
             repeat
                 DetailedCustLedgEntry."Customer Posting Group CZL" := DetailedCustLedgEntry."Customer Posting Group";
+#if CLEAN18
+                if DetailedCustLedgEntry."Entry Type" = DetailedCustLedgEntry."Entry Type"::Application then
+                    DetailedCustLedgEntry."Appl. Across Post. Groups CZL" :=
+                        InstallApplicationCZL.IsCustomerApplAcrossPostGrpTransaction(DetailedCustLedgEntry."Transaction No.", ApplTransactionDictionary);
+#else
                 if ApplAcrossPostGrpEntryNo.Contains(DetailedCustLedgEntry."Entry No.") then
                     DetailedCustLedgEntry."Appl. Across Post. Groups CZL" := true;
+#endif
                 DetailedCustLedgEntry.Modify(false);
             until DetailedCustLedgEntry.Next() = 0;
     end;
 
-    local procedure UpdateDetailedVendorLedgEntry()
+    local procedure UpgradeDetailedVendorLedgEntry()
     var
         DetailedVendorLedgEntry: Record "Detailed Vendor Ledg. Entry";
+#if CLEAN18
+        ApplTransactionDictionary: Dictionary of [Integer, Boolean];
+#else
         ApplAcrVendPostGroupsCZL: Query "Appl.Acr. Vend.Post.Groups CZL";
         ApplAcrossPostGrpEntryNo: List of [Integer];
+#endif
     begin
         if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
             exit;
 
+#if not CLEAN18
         if ApplAcrVendPostGroupsCZL.Open() then
             while ApplAcrVendPostGroupsCZL.Read() do
                 ApplAcrossPostGrpEntryNo.Add(ApplAcrVendPostGroupsCZL.Entry_No_);
 
+#endif
         if DetailedVendorLedgEntry.FindSet(true) then
             repeat
                 DetailedVendorLedgEntry."Vendor Posting Group CZL" := DetailedVendorLedgEntry."Vendor Posting Group";
+#if CLEAN18
+                if DetailedVendorLedgEntry."Entry Type" = DetailedVendorLedgEntry."Entry Type"::Application then
+                    DetailedVendorLedgEntry."Appl. Across Post. Groups CZL" :=
+                        InstallApplicationCZL.IsVendorApplAcrossPostGrpTransaction(DetailedVendorLedgEntry."Transaction No.", ApplTransactionDictionary);
+#else
                 if ApplAcrossPostGrpEntryNo.Contains(DetailedVendorLedgEntry."Entry No.") then
                     DetailedVendorLedgEntry."Appl. Across Post. Groups CZL" := true;
+#endif
                 DetailedVendorLedgEntry.Modify(false);
             until DetailedVendorLedgEntry.Next() = 0;
     end;
 
-    local procedure UpdateSubstCustomerPostingGroup();
+    local procedure UpgradeSubstCustomerPostingGroup();
     var
         SubstCustomerPostingGroup: Record "Subst. Customer Posting Group";
         SubstCustPostingGroupCZL: Record "Subst. Cust. Posting Group CZL";
@@ -378,12 +492,13 @@ codeunit 31017 "Upgrade Application CZL"
                     SubstCustPostingGroupCZL.Init();
                     SubstCustPostingGroupCZL."Parent Customer Posting Group" := SubstCustomerPostingGroup."Parent Cust. Posting Group";
                     SubstCustPostingGroupCZL."Customer Posting Group" := SubstCustomerPostingGroup."Customer Posting Group";
-                    SubstCustPostingGroupCZL.Insert(false);
+                    SubstCustPostingGroupCZL.SystemId := SubstCustomerPostingGroup.SystemId;
+                    SubstCustPostingGroupCZL.Insert(false, true);
                 end;
             until SubstCustomerPostingGroup.Next() = 0;
     end;
 
-    local procedure UpdateSubstVendorPostingGroup();
+    local procedure UpgradeSubstVendorPostingGroup();
     var
         SubstVendorPostingGroup: Record "Subst. Vendor Posting Group";
         SubstVendPostingGroupCZL: Record "Subst. Vend. Posting Group CZL";
@@ -397,12 +512,13 @@ codeunit 31017 "Upgrade Application CZL"
                     SubstVendPostingGroupCZL.Init();
                     SubstVendPostingGroupCZL."Parent Vendor Posting Group" := SubstVendorPostingGroup."Parent Vend. Posting Group";
                     SubstVendPostingGroupCZL."Vendor Posting Group" := SubstVendorPostingGroup."Vendor Posting Group";
-                    SubstVendPostingGroupCZL.Insert(false);
+                    SubstVendPostingGroupCZL.SystemId := SubstVendorPostingGroup.SystemId;
+                    SubstVendPostingGroupCZL.Insert(false, true);
                 end;
             until SubstVendorPostingGroup.Next() = 0;
     end;
 
-    local procedure UpdateCertificateCZCode()
+    local procedure UpgradeCertificateCZCode()
     var
         CertificateCZCode: Record "Certificate CZ Code";
         CertificateCodeCZL: Record "Certificate Code CZL";
@@ -415,14 +531,15 @@ codeunit 31017 "Upgrade Application CZL"
                 if not CertificateCodeCZL.Get(CertificateCZCode.Code) then begin
                     CertificateCodeCZL.Init();
                     CertificateCodeCZL.Code := CertificateCZCode.Code;
-                    CertificateCodeCZL.Insert();
+                    CertificateCodeCZL.SystemId := CertificateCZCode.SystemId;
+                    CertificateCodeCZL.Insert(false, true);
                 end;
                 CertificateCodeCZL.Description := CertificateCZCode.Description;
                 CertificateCodeCZL.Modify(false);
             until CertificateCZCode.Next() = 0;
     end;
 
-    local procedure UpdateIsolatedCertificate()
+    local procedure UpgradeIsolatedCertificate()
     var
         IsolatedCertificate: Record "Isolated Certificate";
     begin
@@ -436,7 +553,7 @@ codeunit 31017 "Upgrade Application CZL"
             until IsolatedCertificate.Next() = 0;
     end;
 
-    local procedure UpdateEETServiceSetup()
+    local procedure UpgradeEETServiceSetup()
     var
         EETServiceSetup: Record "EET Service Setup";
         EETServiceSetupCZL: Record "EET Service Setup CZL";
@@ -447,9 +564,9 @@ codeunit 31017 "Upgrade Application CZL"
         if EETServiceSetup.Get() then begin
             if not EETServiceSetupCZL.Get() then begin
                 EETServiceSetupCZL.Init();
-                EETServiceSetupCZL.Insert();
+                EETServiceSetupCZL.SystemId := EETServiceSetup.SystemId;
+                EETServiceSetupCZL.Insert(false, true);
             end;
-
             EETServiceSetupCZL."Service URL" := EETServiceSetup."Service URL";
             EETServiceSetupCZL."Sales Regime" := "EET Sales Regime CZL".FromInteger(EETServiceSetup."Sales Regime");
             EETServiceSetupCZL."Limit Response Time" := EETServiceSetup."Limit Response Time";
@@ -464,7 +581,7 @@ codeunit 31017 "Upgrade Application CZL"
         end;
     end;
 
-    local procedure UpdateEETBusinessPremises()
+    local procedure UpgradeEETBusinessPremises()
     var
         EETBusinessPremises: Record "EET Business Premises";
         EETBusinessPremisesCZL: Record "EET Business Premises CZL";
@@ -477,7 +594,8 @@ codeunit 31017 "Upgrade Application CZL"
                 if not EETBusinessPremisesCZL.Get(EETBusinessPremises.Code) then begin
                     EETBusinessPremisesCZL.Init();
                     EETBusinessPremisesCZL.Code := EETBusinessPremises.Code;
-                    EETBusinessPremisesCZL.Insert();
+                    EETBusinessPremisesCZL.SystemId := EETBusinessPremises.SystemId;
+                    EETBusinessPremisesCZL.Insert(false, true);
                 end;
                 EETBusinessPremisesCZL.Description := EETBusinessPremises.Description;
                 EETBusinessPremisesCZL.Identification := EETBusinessPremises.Identification;
@@ -486,7 +604,7 @@ codeunit 31017 "Upgrade Application CZL"
             until EETBusinessPremises.Next() = 0;
     end;
 
-    local procedure UpdateEETCashRegister()
+    local procedure UpgradeEETCashRegister()
     var
         EETCashRegister: Record "EET Cash Register";
         EETCashRegisterCZL: Record "EET Cash Register CZL";
@@ -500,7 +618,8 @@ codeunit 31017 "Upgrade Application CZL"
                     EETCashRegisterCZL.Init();
                     EETCashRegisterCZL."Business Premises Code" := EETCashRegister."Business Premises Code";
                     EETCashRegisterCZL.Code := EETCashRegister.Code;
-                    EETCashRegisterCZL.Insert();
+                    EETCashRegisterCZL.SystemId := EETCashRegister.SystemId;
+                    EETCashRegisterCZL.Insert(false, true);
                 end;
                 EETCashRegisterCZL."Cash Register Type" := "EET Cash Register Type CZL".FromInteger(EETCashRegister."Register Type");
                 EETCashRegisterCZL."Cash Register No." := EETCashRegister."Register No.";
@@ -511,7 +630,7 @@ codeunit 31017 "Upgrade Application CZL"
             until EETCashRegister.Next() = 0;
     end;
 
-    local procedure UpdateEETEntry()
+    local procedure UpgradeEETEntry()
     var
         EETEntry: Record "EET Entry";
         EETEntryCZL: Record "EET Entry CZL";
@@ -524,7 +643,8 @@ codeunit 31017 "Upgrade Application CZL"
                 if not EETEntryCZL.Get(EETEntry."Entry No.") then begin
                     EETEntryCZL.Init();
                     EETEntryCZL."Entry No." := EETEntry."Entry No.";
-                    EETEntryCZL.Insert();
+                    EETEntryCZL.SystemId := EETEntry.SystemId;
+                    EETEntryCZL.Insert(false, true);
                 end;
                 EETEntryCZL."Cash Register Type" := "EET Cash Register Type CZL".FromInteger(EETEntry."Source Type");
                 EETEntryCZL."Cash Register No." := EETEntry."Source No.";
@@ -564,7 +684,7 @@ codeunit 31017 "Upgrade Application CZL"
             until EETEntry.Next() = 0;
     end;
 
-    local procedure UpdateEETEntryStatus()
+    local procedure UpgradeEETEntryStatus()
     var
         EETEntryStatus: Record "EET Entry Status";
         EETEntryStatusLogCZL: Record "EET Entry Status Log CZL";
@@ -577,7 +697,8 @@ codeunit 31017 "Upgrade Application CZL"
                 if not EETEntryStatusLogCZL.Get(EETEntryStatus."Entry No.") then begin
                     EETEntryStatusLogCZL.Init();
                     EETEntryStatusLogCZL."Entry No." := EETEntryStatus."Entry No.";
-                    EETEntryStatusLogCZL.Insert();
+                    EETEntryStatusLogCZL.SystemId := EETEntryStatus.SystemId;
+                    EETEntryStatusLogCZL.Insert(false, true);
                 end;
                 EETEntryStatusLogCZL."EET Entry No." := EETEntryStatus."EET Entry No.";
                 EETEntryStatusLogCZL.Description := EETEntryStatus.Description;
@@ -587,7 +708,7 @@ codeunit 31017 "Upgrade Application CZL"
             until EETEntryStatus.Next() = 0;
     end;
 
-    local procedure UpdateConstantSymbol();
+    local procedure UpgradeConstantSymbol();
     var
         ConstantSymbol: Record "Constant Symbol";
         ConstantSymbolCZL: Record "Constant Symbol CZL";
@@ -601,12 +722,13 @@ codeunit 31017 "Upgrade Application CZL"
                     ConstantSymbolCZL.Init();
                     ConstantSymbolCZL.Code := ConstantSymbol.Code;
                     ConstantSymbolCZL.Description := ConstantSymbol.Description;
-                    ConstantSymbolCZL.Insert(false);
+                    ConstantSymbolCZL.SystemId := ConstantSymbol.SystemId;
+                    ConstantSymbolCZL.Insert(false, true);
                 end;
             until ConstantSymbol.Next() = 0;
     end;
 
-    local procedure UpdateShipmentMethod()
+    local procedure UpgradeShipmentMethod()
     var
         ShipmentMethod: Record "Shipment Method";
     begin
@@ -623,8 +745,11 @@ codeunit 31017 "Upgrade Application CZL"
             until ShipmentMethod.Next() = 0;
     end;
 
-    local procedure UpdateTariffNumber()
+    local procedure UpgradeTariffNumber()
     var
+#if CLEAN18
+        UnitOfMeasure: Record "Unit of Measure";
+#endif
         TariffNumber: Record "Tariff Number";
     begin
         if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
@@ -634,11 +759,17 @@ codeunit 31017 "Upgrade Application CZL"
             repeat
                 TariffNumber."Description EN CZL" := CopyStr(TariffNumber."Full Name ENG", 1, MaxStrLen(TariffNumber."Description EN CZL"));
                 TariffNumber."Suppl. Unit of Meas. Code CZL" := TariffNumber."Supplem. Unit of Measure Code";
+#if not CLEAN18
+                // Field "Supplementary Units" will change from FlowField to Normal in CLEAN18. Existing data has to be Upgraded according to original CalcFormula.
+                TariffNumber.CalcFields("Supplementary Units");
+#else
+                TariffNumber."Supplementary Units" := UnitOfMeasure.Get(TariffNumber."Supplem. Unit of Measure Code");
+#endif
                 TariffNumber.Modify(false);
             until TariffNumber.Next() = 0;
     end;
 
-    local procedure UpdateStatisticIndication()
+    local procedure UpgradeStatisticIndication()
     var
         StatisticIndication: Record "Statistic Indication";
         StatisticIndicationCZL: Record "Statistic Indication CZL";
@@ -655,7 +786,7 @@ codeunit 31017 "Upgrade Application CZL"
             until StatisticIndication.Next() = 0;
     end;
 
-    local procedure UpdateSpecificMovement()
+    local procedure UpgradeSpecificMovement()
     var
         SpecificMovement: Record "Specific Movement";
         SpecificMovementCZL: Record "Specific Movement CZL";
@@ -668,14 +799,15 @@ codeunit 31017 "Upgrade Application CZL"
                 if not SpecificMovementCZL.Get(SpecificMovement.Code) then begin
                     SpecificMovementCZL.Init();
                     SpecificMovementCZL.Code := SpecificMovement.Code;
-                    SpecificMovementCZL.Insert();
+                    SpecificMOvementCZL.SystemId := SpecificMovement.SystemId;
+                    SpecificMovementCZL.Insert(false, true);
                 end;
                 SpecificMovementCZL.Description := SpecificMovement.Description;
                 SpecificMovementCZL.Modify(false);
             until SpecificMovement.Next() = 0;
     end;
 
-    local procedure UpdateIntrastatDeliveryGroup()
+    local procedure UpgradeIntrastatDeliveryGroup()
     var
         IntrastatDeliveryGroup: Record "Intrastat Delivery Group";
         IntrastatDeliveryGroupCZL: Record "Intrastat Delivery Group CZL";
@@ -688,14 +820,15 @@ codeunit 31017 "Upgrade Application CZL"
                 if not IntrastatDeliveryGroupCZL.Get(IntrastatDeliveryGroup.Code) then begin
                     IntrastatDeliveryGroupCZL.Init();
                     IntrastatDeliveryGroupCZL.Code := IntrastatDeliveryGroup.Code;
-                    IntrastatDeliveryGroupCZL.Insert();
+                    IntrastatDeliveryGroupCZL.SystemId := IntrastatDeliveryGroup.SystemId;
+                    IntrastatDeliveryGroupCZL.Insert(false, true);
                 end;
                 IntrastatDeliveryGroupCZL.Description := IntrastatDeliveryGroup.Description;
                 IntrastatDeliveryGroupCZL.Modify(false);
             until IntrastatDeliveryGroup.Next() = 0;
     end;
 
-    local procedure UpdateStatutoryReportingSetup();
+    local procedure UpgradeStatutoryReportingSetup();
     var
         StatReportingSetup: Record "Stat. Reporting Setup";
         StatutoryReportingSetupCZL: Record "Statutory Reporting Setup CZL";
@@ -725,7 +858,7 @@ codeunit 31017 "Upgrade Application CZL"
         StatutoryReportingSetupCZL.Modify(false);
     end;
 
-    local procedure UpdateCustomer();
+    local procedure UpgradeCustomer();
     var
         Customer: Record Customer;
     begin
@@ -741,7 +874,7 @@ codeunit 31017 "Upgrade Application CZL"
             until Customer.Next() = 0;
     end;
 
-    local procedure UpdateVendor();
+    local procedure UpgradeVendor();
     var
         Vendor: Record Vendor;
     begin
@@ -757,7 +890,7 @@ codeunit 31017 "Upgrade Application CZL"
             until Vendor.Next() = 0;
     end;
 
-    local procedure UpdateItem();
+    local procedure UpgradeItem();
     var
         Item: Record Item;
     begin
@@ -771,7 +904,7 @@ codeunit 31017 "Upgrade Application CZL"
             until Item.Next() = 0;
     end;
 
-    local procedure UpdateUnitofMeasure();
+    local procedure UpgradeUnitofMeasure();
     var
         UnitofMeasure: Record "Unit of Measure";
     begin
@@ -785,7 +918,7 @@ codeunit 31017 "Upgrade Application CZL"
             until UnitofMeasure.Next() = 0;
     end;
 
-    local procedure UpdateVATPostingSetup();
+    local procedure UpgradeVATPostingSetup();
     var
         VATPostingSetup: Record "VAT Posting Setup";
     begin
@@ -799,22 +932,38 @@ codeunit 31017 "Upgrade Application CZL"
             until VATPostingSetup.Next() = 0;
     end;
 
-    local procedure UpdateSalesHeader();
+    local procedure UpgradeSalesHeader();
     var
         SalesHeader: Record "Sales Header";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if SalesHeader.FindSet(true) then
             repeat
-                SalesHeader."Physical Transfer CZL" := SalesHeader."Physical Transfer";
-                SalesHeader."Intrastat Exclude CZL" := SalesHeader."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    SalesHeader."Specific Symbol CZL" := SalesHeader."Specific Symbol";
+                    SalesHeader."Variable Symbol CZL" := SalesHeader."Variable Symbol";
+                    SalesHeader."Constant Symbol CZL" := SalesHeader."Constant Symbol";
+                    SalesHeader."Bank Account Code CZL" := SalesHeader."Bank Account Code";
+                    SalesHeader."Bank Account No. CZL" := SalesHeader."Bank Account No.";
+                    SalesHeader."Bank Branch No. CZL" := SalesHeader."Bank Branch No.";
+                    SalesHeader."Bank Name CZL" := SalesHeader."Bank Name";
+                    SalesHeader."Transit No. CZL" := SalesHeader."Transit No.";
+                    SalesHeader."IBAN CZL" := SalesHeader.IBAN;
+                    SalesHeader."SWIFT Code CZL" := SalesHeader."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    SalesHeader."Physical Transfer CZL" := SalesHeader."Physical Transfer";
+                    SalesHeader."Intrastat Exclude CZL" := SalesHeader."Intrastat Exclude";
+                end;
                 SalesHeader.Modify(false);
             until SalesHeader.Next() = 0;
     end;
 
-    local procedure UpdateSalesShipmentHeader();
+    local procedure UpgradeSalesShipmentHeader();
     var
         SalesShipmentHeader: Record "Sales Shipment Header";
     begin
@@ -829,22 +978,38 @@ codeunit 31017 "Upgrade Application CZL"
             until SalesShipmentHeader.Next() = 0;
     end;
 
-    local procedure UpdateSalesInvoiceHeader();
+    local procedure UpgradeSalesInvoiceHeader();
     var
         SalesInvoiceHeader: Record "Sales Invoice Header";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if SalesInvoiceHeader.FindSet(true) then
             repeat
-                SalesInvoiceHeader."Physical Transfer CZL" := SalesInvoiceHeader."Physical Transfer";
-                SalesInvoiceHeader."Intrastat Exclude CZL" := SalesInvoiceHeader."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    SalesInvoiceHeader."Specific Symbol CZL" := SalesInvoiceHeader."Specific Symbol";
+                    SalesInvoiceHeader."Variable Symbol CZL" := SalesInvoiceHeader."Variable Symbol";
+                    SalesInvoiceHeader."Constant Symbol CZL" := SalesInvoiceHeader."Constant Symbol";
+                    SalesInvoiceHeader."Bank Account Code CZL" := SalesInvoiceHeader."Bank Account Code";
+                    SalesInvoiceHeader."Bank Account No. CZL" := SalesInvoiceHeader."Bank Account No.";
+                    SalesInvoiceHeader."Bank Branch No. CZL" := SalesInvoiceHeader."Bank Branch No.";
+                    SalesInvoiceHeader."Bank Name CZL" := SalesInvoiceHeader."Bank Name";
+                    SalesInvoiceHeader."Transit No. CZL" := SalesInvoiceHeader."Transit No.";
+                    SalesInvoiceHeader."IBAN CZL" := SalesInvoiceHeader.IBAN;
+                    SalesInvoiceHeader."SWIFT Code CZL" := SalesInvoiceHeader."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    SalesInvoiceHeader."Physical Transfer CZL" := SalesInvoiceHeader."Physical Transfer";
+                    SalesInvoiceHeader."Intrastat Exclude CZL" := SalesInvoiceHeader."Intrastat Exclude";
+                end;
                 SalesInvoiceHeader.Modify(false);
             until SalesInvoiceHeader.Next() = 0;
     end;
 
-    local procedure UpdateSalesInvoiceLine();
+    local procedure UpgradeSalesInvoiceLine();
     var
         SalesInvoiceLine: Record "Sales Invoice Line";
     begin
@@ -858,22 +1023,38 @@ codeunit 31017 "Upgrade Application CZL"
             until SalesInvoiceLine.Next() = 0;
     end;
 
-    local procedure UpdateSalesCrMemoHeader();
+    local procedure UpgradeSalesCrMemoHeader();
     var
         SalesCrMemoHeader: Record "Sales Cr.Memo Header";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if SalesCrMemoHeader.FindSet(true) then
             repeat
-                SalesCrMemoHeader."Physical Transfer CZL" := SalesCrMemoHeader."Physical Transfer";
-                SalesCrMemoHeader."Intrastat Exclude CZL" := SalesCrMemoHeader."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    SalesCrMemoHeader."Specific Symbol CZL" := SalesCrMemoHeader."Specific Symbol";
+                    SalesCrMemoHeader."Variable Symbol CZL" := SalesCrMemoHeader."Variable Symbol";
+                    SalesCrMemoHeader."Constant Symbol CZL" := SalesCrMemoHeader."Constant Symbol";
+                    SalesCrMemoHeader."Bank Account Code CZL" := SalesCrMemoHeader."Bank Account Code";
+                    SalesCrMemoHeader."Bank Account No. CZL" := SalesCrMemoHeader."Bank Account No.";
+                    SalesCrMemoHeader."Bank Branch No. CZL" := SalesCrMemoHeader."Bank Branch No.";
+                    SalesCrMemoHeader."Bank Name CZL" := SalesCrMemoHeader."Bank Name";
+                    SalesCrMemoHeader."Transit No. CZL" := SalesCrMemoHeader."Transit No.";
+                    SalesCrMemoHeader."IBAN CZL" := SalesCrMemoHeader.IBAN;
+                    SalesCrMemoHeader."SWIFT Code CZL" := SalesCrMemoHeader."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    SalesCrMemoHeader."Physical Transfer CZL" := SalesCrMemoHeader."Physical Transfer";
+                    SalesCrMemoHeader."Intrastat Exclude CZL" := SalesCrMemoHeader."Intrastat Exclude";
+                end;
                 SalesCrMemoHeader.Modify(false);
             until SalesCrMemoHeader.Next() = 0;
     end;
 
-    local procedure UpdateSalesCrMemoLine();
+    local procedure UpgradeSalesCrMemoLine();
     var
         SalesCrMemoLine: Record "Sales Cr.Memo Line";
     begin
@@ -887,22 +1068,36 @@ codeunit 31017 "Upgrade Application CZL"
             until SalesCrMemoLine.Next() = 0;
     end;
 
-    local procedure UpdateSalesHeaderArchive();
+    local procedure UpgradeSalesHeaderArchive();
     var
         SalesHeaderArchive: Record "Sales Header Archive";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if SalesHeaderArchive.FindSet(true) then
             repeat
-                SalesHeaderArchive."Physical Transfer CZL" := SalesHeaderArchive."Physical Transfer";
-                SalesHeaderArchive."Intrastat Exclude CZL" := SalesHeaderArchive."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    SalesHeaderArchive."Specific Symbol CZL" := SalesHeaderArchive."Specific Symbol";
+                    SalesHeaderArchive."Variable Symbol CZL" := SalesHeaderArchive."Variable Symbol";
+                    SalesHeaderArchive."Constant Symbol CZL" := SalesHeaderArchive."Constant Symbol";
+                    SalesHeaderArchive."Bank Account Code CZL" := SalesHeaderArchive."Bank Account Code";
+                    SalesHeaderArchive."Bank Account No. CZL" := SalesHeaderArchive."Bank Account No.";
+                    SalesHeaderArchive."Transit No. CZL" := SalesHeaderArchive."Transit No.";
+                    SalesHeaderArchive."IBAN CZL" := SalesHeaderArchive.IBAN;
+                    SalesHeaderArchive."SWIFT Code CZL" := SalesHeaderArchive."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    SalesHeaderArchive."Physical Transfer CZL" := SalesHeaderArchive."Physical Transfer";
+                    SalesHeaderArchive."Intrastat Exclude CZL" := SalesHeaderArchive."Intrastat Exclude";
+                end;
                 SalesHeaderArchive.Modify(false);
             until SalesHeaderArchive.Next() = 0;
     end;
 
-    local procedure UpdateSalesLineArchive();
+    local procedure UpgradeSalesLineArchive();
     var
         SalesLineArchive: Record "Sales Line Archive";
     begin
@@ -916,22 +1111,38 @@ codeunit 31017 "Upgrade Application CZL"
             until SalesLineArchive.Next() = 0;
     end;
 
-    local procedure UpdatePurchaseHeader();
+    local procedure UpgradePurchaseHeader();
     var
         PurchaseHeader: Record "Purchase Header";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if PurchaseHeader.FindSet(true) then
             repeat
-                PurchaseHeader."Physical Transfer CZL" := PurchaseHeader."Physical Transfer";
-                PurchaseHeader."Intrastat Exclude CZL" := PurchaseHeader."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    PurchaseHeader."Specific Symbol CZL" := PurchaseHeader."Specific Symbol";
+                    PurchaseHeader."Variable Symbol CZL" := PurchaseHeader."Variable Symbol";
+                    PurchaseHeader."Constant Symbol CZL" := PurchaseHeader."Constant Symbol";
+                    PurchaseHeader."Bank Account Code CZL" := PurchaseHeader."Bank Account Code";
+                    PurchaseHeader."Bank Account No. CZL" := PurchaseHeader."Bank Account No.";
+                    PurchaseHeader."Bank Branch No. CZL" := PurchaseHeader."Bank Branch No.";
+                    PurchaseHeader."Bank Name CZL" := PurchaseHeader."Bank Name";
+                    PurchaseHeader."Transit No. CZL" := PurchaseHeader."Transit No.";
+                    PurchaseHeader."IBAN CZL" := PurchaseHeader.IBAN;
+                    PurchaseHeader."SWIFT Code CZL" := PurchaseHeader."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    PurchaseHeader."Physical Transfer CZL" := PurchaseHeader."Physical Transfer";
+                    PurchaseHeader."Intrastat Exclude CZL" := PurchaseHeader."Intrastat Exclude";
+                end;
                 PurchaseHeader.Modify(false);
             until PurchaseHeader.Next() = 0;
     end;
 
-    local procedure UpdatePurchRcptHeader();
+    local procedure UpgradePurchRcptHeader();
     var
         PurchRcptHeader: Record "Purch. Rcpt. Header";
     begin
@@ -946,7 +1157,7 @@ codeunit 31017 "Upgrade Application CZL"
             until PurchRcptHeader.Next() = 0;
     end;
 
-    local procedure UpdatePurchRcptLine();
+    local procedure UpgradePurchRcptLine();
     var
         PurchRcptLine: Record "Purch. Rcpt. Line";
     begin
@@ -960,22 +1171,37 @@ codeunit 31017 "Upgrade Application CZL"
             until PurchRcptLine.Next() = 0;
     end;
 
-    local procedure UpdatePurchInvHeader();
+    local procedure UpgradePurchInvHeader();
     var
         PurchInvHeader: Record "Purch. Inv. Header";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if PurchInvHeader.FindSet(true) then
             repeat
-                PurchInvHeader."Physical Transfer CZL" := PurchInvHeader."Physical Transfer";
-                PurchInvHeader."Intrastat Exclude CZL" := PurchInvHeader."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    PurchInvHeader."Specific Symbol CZL" := PurchInvHeader."Specific Symbol";
+                    PurchInvHeader."Variable Symbol CZL" := PurchInvHeader."Variable Symbol";
+                    PurchInvHeader."Constant Symbol CZL" := PurchInvHeader."Constant Symbol";
+                    PurchInvHeader."Bank Account Code CZL" := PurchInvHeader."Bank Account Code";
+                    PurchInvHeader."Bank Account No. CZL" := PurchInvHeader."Bank Account No.";
+                    PurchInvHeader."Transit No. CZL" := PurchInvHeader."Transit No.";
+                    PurchInvHeader."IBAN CZL" := PurchInvHeader.IBAN;
+                    PurchInvHeader."SWIFT Code CZL" := PurchInvHeader."SWIFT Code";
+                    PurchInvHeader."VAT Date CZL" := PurchInvHeader."VAT Date";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    PurchInvHeader."Physical Transfer CZL" := PurchInvHeader."Physical Transfer";
+                    PurchInvHeader."Intrastat Exclude CZL" := PurchInvHeader."Intrastat Exclude";
+                end;
                 PurchInvHeader.Modify(false);
             until PurchInvHeader.Next() = 0;
     end;
 
-    local procedure UpdatePurchInvLine();
+    local procedure UpgradePurchInvLine();
     var
         PurchInvLine: Record "Purch. Inv. Line";
     begin
@@ -989,22 +1215,36 @@ codeunit 31017 "Upgrade Application CZL"
             until PurchInvLine.Next() = 0;
     end;
 
-    local procedure UpdatePurchCrMemoHdr();
+    local procedure UpgradePurchCrMemoHdr();
     var
         PurchCrMemoHdr: Record "Purch. Cr. Memo Hdr.";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if PurchCrMemoHdr.FindSet(true) then
             repeat
-                PurchCrMemoHdr."Physical Transfer CZL" := PurchCrMemoHdr."Physical Transfer";
-                PurchCrMemoHdr."Intrastat Exclude CZL" := PurchCrMemoHdr."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    PurchCrMemoHdr."Specific Symbol CZL" := PurchCrMemoHdr."Specific Symbol";
+                    PurchCrMemoHdr."Variable Symbol CZL" := PurchCrMemoHdr."Variable Symbol";
+                    PurchCrMemoHdr."Constant Symbol CZL" := PurchCrMemoHdr."Constant Symbol";
+                    PurchCrMemoHdr."Bank Account Code CZL" := PurchCrMemoHdr."Bank Account Code";
+                    PurchCrMemoHdr."Bank Account No. CZL" := PurchCrMemoHdr."Bank Account No.";
+                    PurchCrMemoHdr."Transit No. CZL" := PurchCrMemoHdr."Transit No.";
+                    PurchCrMemoHdr."IBAN CZL" := PurchCrMemoHdr.IBAN;
+                    PurchCrMemoHdr."SWIFT Code CZL" := PurchCrMemoHdr."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    PurchCrMemoHdr."Physical Transfer CZL" := PurchCrMemoHdr."Physical Transfer";
+                    PurchCrMemoHdr."Intrastat Exclude CZL" := PurchCrMemoHdr."Intrastat Exclude";
+                end;
                 PurchCrMemoHdr.Modify(false);
             until PurchCrMemoHdr.Next() = 0;
     end;
 
-    local procedure UpdatePurchCrMemoLine();
+    local procedure UpgradePurchCrMemoLine();
     var
         PurchCrMemoLine: Record "Purch. Cr. Memo Line";
     begin
@@ -1018,22 +1258,36 @@ codeunit 31017 "Upgrade Application CZL"
             until PurchCrMemoLine.Next() = 0;
     end;
 
-    local procedure UpdatePurchaseHeaderArchive();
+    local procedure UpgradePurchaseHeaderArchive();
     var
         PurchaseHeaderArchive: Record "Purchase Header Archive";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if PurchaseHeaderArchive.FindSet(true) then
             repeat
-                PurchaseHeaderArchive."Physical Transfer CZL" := PurchaseHeaderArchive."Physical Transfer";
-                PurchaseHeaderArchive."Intrastat Exclude CZL" := PurchaseHeaderArchive."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    PurchaseHeaderArchive."Specific Symbol CZL" := PurchaseHeaderArchive."Specific Symbol";
+                    PurchaseHeaderArchive."Variable Symbol CZL" := PurchaseHeaderArchive."Variable Symbol";
+                    PurchaseHeaderArchive."Constant Symbol CZL" := PurchaseHeaderArchive."Constant Symbol";
+                    PurchaseHeaderArchive."Bank Account Code CZL" := PurchaseHeaderArchive."Bank Account Code";
+                    PurchaseHeaderArchive."Bank Account No. CZL" := PurchaseHeaderArchive."Bank Account No.";
+                    PurchaseHeaderArchive."Transit No. CZL" := PurchaseHeaderArchive."Transit No.";
+                    PurchaseHeaderArchive."IBAN CZL" := PurchaseHeaderArchive.IBAN;
+                    PurchaseHeaderArchive."SWIFT Code CZL" := PurchaseHeaderArchive."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    PurchaseHeaderArchive."Physical Transfer CZL" := PurchaseHeaderArchive."Physical Transfer";
+                    PurchaseHeaderArchive."Intrastat Exclude CZL" := PurchaseHeaderArchive."Intrastat Exclude";
+                end;
                 PurchaseHeaderArchive.Modify(false);
             until PurchaseHeaderArchive.Next() = 0;
     end;
 
-    local procedure UpdatePurchaseLineArchive();
+    local procedure UpgradePurchaseLineArchive();
     var
         PurchaseLineArchive: Record "Purchase Line Archive";
     begin
@@ -1047,22 +1301,38 @@ codeunit 31017 "Upgrade Application CZL"
             until PurchaseLineArchive.Next() = 0;
     end;
 
-    local procedure UpdateServiceHeader();
+    local procedure UpgradeServiceHeader();
     var
         ServiceHeader: Record "Service Header";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if ServiceHeader.FindSet(true) then
             repeat
-                ServiceHeader."Physical Transfer CZL" := ServiceHeader."Physical Transfer";
-                ServiceHeader."Intrastat Exclude CZL" := ServiceHeader."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    ServiceHeader."Specific Symbol CZL" := ServiceHeader."Specific Symbol";
+                    ServiceHeader."Variable Symbol CZL" := ServiceHeader."Variable Symbol";
+                    ServiceHeader."Constant Symbol CZL" := ServiceHeader."Constant Symbol";
+                    ServiceHeader."Bank Account Code CZL" := ServiceHeader."Bank Account Code";
+                    ServiceHeader."Bank Account No. CZL" := ServiceHeader."Bank Account No.";
+                    ServiceHeader."Bank Branch No. CZL" := ServiceHeader."Bank Branch No.";
+                    ServiceHeader."Bank Name CZL" := ServiceHeader."Bank Name";
+                    ServiceHeader."Transit No. CZL" := ServiceHeader."Transit No.";
+                    ServiceHeader."IBAN CZL" := ServiceHeader.IBAN;
+                    ServiceHeader."SWIFT Code CZL" := ServiceHeader."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    ServiceHeader."Physical Transfer CZL" := ServiceHeader."Physical Transfer";
+                    ServiceHeader."Intrastat Exclude CZL" := ServiceHeader."Intrastat Exclude";
+                end;
                 ServiceHeader.Modify(false);
             until ServiceHeader.Next() = 0;
     end;
 
-    local procedure UpdateServiceShipmentHeader();
+    local procedure UpgradeServiceShipmentHeader();
     var
         ServiceShipmentHeader: Record "Service Shipment Header";
     begin
@@ -1077,22 +1347,38 @@ codeunit 31017 "Upgrade Application CZL"
             until ServiceShipmentHeader.Next() = 0;
     end;
 
-    local procedure UpdateServiceInvoiceHeader();
+    local procedure UpgradeServiceInvoiceHeader();
     var
         ServiceInvoiceHeader: Record "Service Invoice Header";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if ServiceInvoiceHeader.FindSet(true) then
             repeat
-                ServiceInvoiceHeader."Physical Transfer CZL" := ServiceInvoiceHeader."Physical Transfer";
-                ServiceInvoiceHeader."Intrastat Exclude CZL" := ServiceInvoiceHeader."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    ServiceInvoiceHeader."Specific Symbol CZL" := ServiceInvoiceHeader."Specific Symbol";
+                    ServiceInvoiceHeader."Variable Symbol CZL" := ServiceInvoiceHeader."Variable Symbol";
+                    ServiceInvoiceHeader."Constant Symbol CZL" := ServiceInvoiceHeader."Constant Symbol";
+                    ServiceInvoiceHeader."Bank Account Code CZL" := ServiceInvoiceHeader."Bank Account Code";
+                    ServiceInvoiceHeader."Bank Account No. CZL" := ServiceInvoiceHeader."Bank Account No.";
+                    ServiceInvoiceHeader."Bank Branch No. CZL" := ServiceInvoiceHeader."Bank Branch No.";
+                    ServiceInvoiceHeader."Bank Name CZL" := ServiceInvoiceHeader."Bank Name";
+                    ServiceInvoiceHeader."Transit No. CZL" := ServiceInvoiceHeader."Transit No.";
+                    ServiceInvoiceHeader."IBAN CZL" := ServiceInvoiceHeader.IBAN;
+                    ServiceInvoiceHeader."SWIFT Code CZL" := ServiceInvoiceHeader."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    ServiceInvoiceHeader."Physical Transfer CZL" := ServiceInvoiceHeader."Physical Transfer";
+                    ServiceInvoiceHeader."Intrastat Exclude CZL" := ServiceInvoiceHeader."Intrastat Exclude";
+                end;
                 ServiceInvoiceHeader.Modify(false);
             until ServiceInvoiceHeader.Next() = 0;
     end;
 
-    local procedure UpdateServiceInvoiceLine();
+    local procedure UpgradeServiceInvoiceLine();
     var
         ServiceInvoiceLine: Record "Service Invoice Line";
     begin
@@ -1106,22 +1392,38 @@ codeunit 31017 "Upgrade Application CZL"
             until ServiceInvoiceLine.Next() = 0;
     end;
 
-    local procedure UpdateServiceCrMemoHeader();
+    local procedure UpgradeServiceCrMemoHeader();
     var
         ServiceCrMemoHeader: Record "Service Cr.Memo Header";
     begin
-        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) and
+           UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag())
+        then
             exit;
 
         if ServiceCrMemoHeader.FindSet(true) then
             repeat
-                ServiceCrMemoHeader."Physical Transfer CZL" := ServiceCrMemoHeader."Physical Transfer";
-                ServiceCrMemoHeader."Intrastat Exclude CZL" := ServiceCrMemoHeader."Intrastat Exclude";
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then begin
+                    ServiceCrMemoHeader."Specific Symbol CZL" := ServiceCrMemoHeader."Specific Symbol";
+                    ServiceCrMemoHeader."Variable Symbol CZL" := ServiceCrMemoHeader."Variable Symbol";
+                    ServiceCrMemoHeader."Constant Symbol CZL" := ServiceCrMemoHeader."Constant Symbol";
+                    ServiceCrMemoHeader."Bank Account Code CZL" := ServiceCrMemoHeader."Bank Account Code";
+                    ServiceCrMemoHeader."Bank Account No. CZL" := ServiceCrMemoHeader."Bank Account No.";
+                    ServiceCrMemoHeader."Bank Branch No. CZL" := ServiceCrMemoHeader."Bank Branch No.";
+                    ServiceCrMemoHeader."Bank Name CZL" := ServiceCrMemoHeader."Bank Name";
+                    ServiceCrMemoHeader."Transit No. CZL" := ServiceCrMemoHeader."Transit No.";
+                    ServiceCrMemoHeader."IBAN CZL" := ServiceCrMemoHeader.IBAN;
+                    ServiceCrMemoHeader."SWIFT Code CZL" := ServiceCrMemoHeader."SWIFT Code";
+                end;
+                if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then begin
+                    ServiceCrMemoHeader."Physical Transfer CZL" := ServiceCrMemoHeader."Physical Transfer";
+                    ServiceCrMemoHeader."Intrastat Exclude CZL" := ServiceCrMemoHeader."Intrastat Exclude";
+                end;
                 ServiceCrMemoHeader.Modify(false);
             until ServiceCrMemoHeader.Next() = 0;
     end;
 
-    local procedure UpdateServiceCrMemoLine();
+    local procedure UpgradeServiceCrMemoLine();
     var
         ServiceCrMemoLine: Record "Service Cr.Memo Line";
     begin
@@ -1135,7 +1437,7 @@ codeunit 31017 "Upgrade Application CZL"
             until ServiceCrMemoLine.Next() = 0;
     end;
 
-    local procedure UpdateReturnShipmentHeader();
+    local procedure UpgradeReturnShipmentHeader();
     var
         ReturnShipmentHeader: Record "Return Shipment Header";
     begin
@@ -1150,7 +1452,7 @@ codeunit 31017 "Upgrade Application CZL"
             until ReturnShipmentHeader.Next() = 0;
     end;
 
-    local procedure UpdateReturnReceiptHeader();
+    local procedure UpgradeReturnReceiptHeader();
     var
         ReturnReceiptHeader: Record "Return Receipt Header";
     begin
@@ -1165,7 +1467,7 @@ codeunit 31017 "Upgrade Application CZL"
             until ReturnReceiptHeader.Next() = 0;
     end;
 
-    local procedure UpdateTransferHeader();
+    local procedure UpgradeTransferHeader();
     var
         TransferHeader: Record "Transfer Header";
     begin
@@ -1179,7 +1481,7 @@ codeunit 31017 "Upgrade Application CZL"
             until TransferHeader.Next() = 0;
     end;
 
-    local procedure UpdateTransferLine();
+    local procedure UpgradeTransferLine();
     var
         TransferLine: Record "Transfer Line";
     begin
@@ -1195,7 +1497,7 @@ codeunit 31017 "Upgrade Application CZL"
             until TransferLine.Next() = 0;
     end;
 
-    local procedure UpdateTransferReceiptHeader();
+    local procedure UpgradeTransferReceiptHeader();
     var
         TransferReceiptHeader: Record "Transfer Receipt Header";
     begin
@@ -1209,7 +1511,7 @@ codeunit 31017 "Upgrade Application CZL"
             until TransferReceiptHeader.Next() = 0;
     end;
 
-    local procedure UpdateTransferShipmentHeader();
+    local procedure UpgradeTransferShipmentHeader();
     var
         TransferShipmentHeader: Record "Transfer Shipment Header";
     begin
@@ -1223,7 +1525,7 @@ codeunit 31017 "Upgrade Application CZL"
             until TransferShipmentHeader.Next() = 0;
     end;
 
-    local procedure UpdateItemLedgerEntry();
+    local procedure UpgradeItemLedgerEntry();
     var
         ItemLedgerEntry: Record "Item Ledger Entry";
     begin
@@ -1242,7 +1544,7 @@ codeunit 31017 "Upgrade Application CZL"
             until ItemLedgerEntry.Next() = 0;
     end;
 
-    local procedure UpdateJobLedgerEntry();
+    local procedure UpgradeJobLedgerEntry();
     var
         JobLedgerEntry: Record "Job Ledger Entry";
     begin
@@ -1260,7 +1562,7 @@ codeunit 31017 "Upgrade Application CZL"
             until JobLedgerEntry.Next() = 0;
     end;
 
-    local procedure UpdateItemCharge();
+    local procedure UpgradeItemCharge();
     var
         ItemCharge: Record "Item Charge";
     begin
@@ -1275,7 +1577,7 @@ codeunit 31017 "Upgrade Application CZL"
             until ItemCharge.Next() = 0;
     end;
 
-    local procedure UpdateItemChargeAssignmentPurch();
+    local procedure UpgradeItemChargeAssignmentPurch();
     var
         ItemChargeAssignmentPurch: Record "Item Charge Assignment (Purch)";
     begin
@@ -1290,7 +1592,7 @@ codeunit 31017 "Upgrade Application CZL"
             until ItemChargeAssignmentPurch.Next() = 0;
     end;
 
-    local procedure UpdateItemChargeAssignmentSales();
+    local procedure UpgradeItemChargeAssignmentSales();
     var
         ItemChargeAssignmentSales: Record "Item Charge Assignment (Sales)";
     begin
@@ -1305,7 +1607,7 @@ codeunit 31017 "Upgrade Application CZL"
             until ItemChargeAssignmentSales.Next() = 0;
     end;
 
-    local procedure UpdatePostedGenJournalLine();
+    local procedure UpgradePostedGenJournalLine();
     var
         PostedGenJournalLine: Record "Posted Gen. Journal Line";
     begin
@@ -1326,8 +1628,7 @@ codeunit 31017 "Upgrade Application CZL"
             until PostedGenJournalLine.Next() = 0;
     end;
 
-
-    local procedure UpdateIntrastatJournalBatch();
+    local procedure UpgradeIntrastatJournalBatch();
     var
         IntrastatJnlBatch: Record "Intrastat Jnl. Batch";
     begin
@@ -1342,7 +1643,7 @@ codeunit 31017 "Upgrade Application CZL"
             until IntrastatJnlBatch.Next() = 0;
     end;
 
-    local procedure UpdateIntrastatJournalLine();
+    local procedure UpgradeIntrastatJournalLine();
     var
         IntrastatJnlLine: Record "Intrastat Jnl. Line";
     begin
@@ -1368,7 +1669,7 @@ codeunit 31017 "Upgrade Application CZL"
             until IntrastatJnlLine.Next() = 0;
     end;
 
-    local procedure UpdateInventoryPostingSetup();
+    local procedure UpgradeInventoryPostingSetup();
     var
         InventoryPostingSetup: Record "Inventory Posting Setup";
     begin
@@ -1384,7 +1685,7 @@ codeunit 31017 "Upgrade Application CZL"
             until InventoryPostingSetup.Next() = 0;
     end;
 
-    local procedure UpdateGeneralPostingSetup();
+    local procedure UpgradeGeneralPostingSetup();
     var
         GeneralPostingSetup: Record "General Posting Setup";
     begin
@@ -1398,7 +1699,7 @@ codeunit 31017 "Upgrade Application CZL"
             until GeneralPostingSetup.Next() = 0;
     end;
 
-    local procedure UpdateUserSetup();
+    local procedure UpgradeUserSetup();
     var
         UserSetup: Record "User Setup";
     begin
@@ -1426,7 +1727,7 @@ codeunit 31017 "Upgrade Application CZL"
             until UserSetup.Next() = 0;
     end;
 
-    local procedure UpdateUserSetupLine();
+    local procedure UpgradeUserSetupLine();
     var
         UserSetupLine: Record "User Setup Line";
         UserSetupLineCZL: Record "User Setup Line CZL";
@@ -1441,14 +1742,15 @@ codeunit 31017 "Upgrade Application CZL"
                     UserSetupLineCZL."User ID" := UserSetupLine."User ID";
                     UserSetupLineCZL.Type := UserSetupLine.Type;
                     UserSetupLineCZL."Line No." := UserSetupLine."Line No.";
-                    UserSetupLineCZL.Insert();
+                    UserSetupLineCZL.SystemId := UserSetupLine.SystemId;
+                    UserSetupLineCZL.Insert(false, true);
                 end;
                 UserSetupLineCZL."Code / Name" := UserSetupLine."Code / Name";
                 UserSetupLineCZL.Modify(false);
             until UserSetupLine.Next() = 0;
     end;
 
-    local procedure UpdateAccScheduleLine();
+    local procedure UpgradeAccScheduleLine();
     var
         AccScheduleLine: Record "Acc. Schedule Line";
     begin
@@ -1479,7 +1781,7 @@ codeunit 31017 "Upgrade Application CZL"
             AccScheduleLine."Totaling Type" := AccScheduleLine."Totaling Type"::"Constant CZL";
     end;
 
-    local procedure UpdateAccScheduleExtension();
+    local procedure UpgradeAccScheduleExtension();
     var
         AccScheduleExtension: Record "Acc. Schedule Extension";
         AccScheduleExtensionCZL: Record "Acc. Schedule Extension CZL";
@@ -1492,7 +1794,8 @@ codeunit 31017 "Upgrade Application CZL"
                 if not AccScheduleExtensionCZL.Get(AccScheduleExtension.Code) then begin
                     AccScheduleExtensionCZL.Init();
                     AccScheduleExtensionCZL.Code := AccScheduleExtension.Code;
-                    AccScheduleExtensionCZL.Insert();
+                    AccScheduleExtensionCZL.SystemId := AccScheduleExtension.SystemId;
+                    AccScheduleExtensionCZL.Insert(false, true);
                 end;
                 AccScheduleExtensionCZL.Description := AccScheduleExtension.Description;
                 AccScheduleExtensionCZL."Source Table" := AccScheduleExtension."Source Table";
@@ -1517,7 +1820,7 @@ codeunit 31017 "Upgrade Application CZL"
             until AccScheduleExtension.Next() = 0;
     end;
 
-    local procedure UpdateAccScheduleResultLine();
+    local procedure UpgradeAccScheduleResultLine();
     var
         AccScheduleResultLine: Record "Acc. Schedule Result Line";
         AccScheduleResultLineCZL: Record "Acc. Schedule Result Line CZL";
@@ -1531,7 +1834,8 @@ codeunit 31017 "Upgrade Application CZL"
                     AccScheduleResultLineCZL.Init();
                     AccScheduleResultLineCZL."Result Code" := AccScheduleResultLine."Result Code";
                     AccScheduleResultLineCZL."Line No." := AccScheduleResultLine."Line No.";
-                    AccScheduleResultLineCZL.Insert();
+                    AccScheduleResultLineCZL.SystemId := AccScheduleResultLine.SystemId;
+                    AccScheduleResultLineCZL.Insert(false, true);
                 end;
                 AccScheduleResultLineCZL."Row No." := AccScheduleResultLine."Row No.";
                 AccScheduleResultLineCZL.Description := AccScheduleResultLine.Description;
@@ -1549,7 +1853,7 @@ codeunit 31017 "Upgrade Application CZL"
             until AccScheduleResultLine.Next() = 0;
     end;
 
-    local procedure UpdateAccScheduleResultColumn();
+    local procedure UpgradeAccScheduleResultColumn();
     var
         AccScheduleResultColumn: Record "Acc. Schedule Result Column";
         AccScheduleResultColCZL: Record "Acc. Schedule Result Col. CZL";
@@ -1563,7 +1867,8 @@ codeunit 31017 "Upgrade Application CZL"
                     AccScheduleResultColCZL.Init();
                     AccScheduleResultColCZL."Result Code" := AccScheduleResultColumn."Result Code";
                     AccScheduleResultColCZL."Line No." := AccScheduleResultColumn."Line No.";
-                    AccScheduleResultColCZL.Insert();
+                    AccScheduleResultColCZL.SystemId := AccScheduleResultColumn.SystemId;
+                    AccScheduleResultColCZL.Insert(false, true);
                 end;
                 AccScheduleResultColCZL."Column No." := AccScheduleResultColumn."Column No.";
                 AccScheduleResultColCZL."Column Header" := AccScheduleResultColumn."Column Header";
@@ -1580,7 +1885,7 @@ codeunit 31017 "Upgrade Application CZL"
             until AccScheduleResultColumn.Next() = 0;
     end;
 
-    local procedure UpdateAccScheduleResultValue();
+    local procedure UpgradeAccScheduleResultValue();
     var
         AccScheduleResultValue: Record "Acc. Schedule Result Value";
         AccScheduleResultValueCZL: Record "Acc. Schedule Result Value CZL";
@@ -1595,14 +1900,15 @@ codeunit 31017 "Upgrade Application CZL"
                     AccScheduleResultValueCZL."Result Code" := AccScheduleResultValue."Result Code";
                     AccScheduleResultValueCZL."Row No." := AccScheduleResultValue."Row No.";
                     AccScheduleResultValueCZL."Column No." := AccScheduleResultValue."Column No.";
-                    AccScheduleResultValueCZL.Insert();
+                    AccScheduleResultValueCZL.SystemId := AccScheduleResultValue.SystemId;
+                    AccScheduleResultValueCZL.Insert(false, true);
                 end;
                 AccScheduleResultValueCZL.Value := AccScheduleResultValue.Value;
                 AccScheduleResultValueCZL.Modify(false);
             until AccScheduleResultValue.Next() = 0;
     end;
 
-    local procedure UpdateAccScheduleResultHeader();
+    local procedure UpgradeAccScheduleResultHeader();
     var
         AccScheduleResultHeader: Record "Acc. Schedule Result Header";
         AccScheduleResultHdrCZL: Record "Acc. Schedule Result Hdr. CZL";
@@ -1615,7 +1921,8 @@ codeunit 31017 "Upgrade Application CZL"
                 if not AccScheduleResultHdrCZL.Get(AccScheduleResultHeader."Result Code") then begin
                     AccScheduleResultHdrCZL.Init();
                     AccScheduleResultHdrCZL."Result Code" := AccScheduleResultHeader."Result Code";
-                    AccScheduleResultHdrCZL.Insert();
+                    AccScheduleResultHdrCZL.SystemId := AccScheduleResultHeader.SystemId;
+                    AccScheduleResultHdrCZL.Insert(false, true);
                 end;
                 AccScheduleResultHdrCZL.Description := AccScheduleResultHeader.Description;
                 AccScheduleResultHdrCZL."Date Filter" := AccScheduleResultHeader."Date Filter";
@@ -1632,7 +1939,7 @@ codeunit 31017 "Upgrade Application CZL"
             until AccScheduleResultHeader.Next() = 0;
     end;
 
-    local procedure UpdateAccScheduleResultHistory();
+    local procedure UpgradeAccScheduleResultHistory();
     var
         AccScheduleResultHistory: Record "Acc. Schedule Result History";
         AccScheduleResultHistCZL: Record "Acc. Schedule Result Hist. CZL";
@@ -1649,7 +1956,8 @@ codeunit 31017 "Upgrade Application CZL"
                     AccScheduleResultHistCZL."Row No." := AccScheduleResultHistory."Row No.";
                     AccScheduleResultHistCZL."Column No." := AccScheduleResultHistory."Column No.";
                     AccScheduleResultHistCZL."Variant No." := AccScheduleResultHistory."Variant No.";
-                    AccScheduleResultHistCZL.Insert();
+                    AccScheduleResultHistCZL.SystemId := AccScheduleResultHistory.SystemId;
+                    AccScheduleResultHistCZL.Insert(false, true);
                 end;
                 AccScheduleResultHistCZL."New Value" := AccScheduleResultHistory."New Value";
                 AccScheduleResultHistCZL."Old Value" := AccScheduleResultHistory."Old Value";
@@ -1659,7 +1967,7 @@ codeunit 31017 "Upgrade Application CZL"
             until AccScheduleResultHistory.Next() = 0;
     end;
 
-    local procedure UpdateGenJournalTemplate();
+    local procedure UpgradeGenJournalTemplate();
     var
         GenJournalTemplate: Record "Gen. Journal Template";
     begin
@@ -1674,7 +1982,7 @@ codeunit 31017 "Upgrade Application CZL"
             until GenJournalTemplate.Next() = 0;
     end;
 
-    local procedure UpdateVATEntry();
+    local procedure UpgradeVATEntry();
     var
         VATEntry: Record "VAT Entry";
     begin
@@ -1688,72 +1996,237 @@ codeunit 31017 "Upgrade Application CZL"
             until VATEntry.Next() = 0;
     end;
 
-    local procedure UpdatePermission()
+    local procedure UpgradeCustLedgerEntry();
+    var
+        CustLedgerEntry: Record "Cust. Ledger Entry";
     begin
-        UpdatePermissionVersion174();
-        UpdatePermissionVersion180();
-        UpdatePermissionVersion190();
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then
+            exit;
+
+        if CustLedgerEntry.FindSet(true) then
+            repeat
+                CustLedgerEntry."Specific Symbol CZL" := CustLedgerEntry."Specific Symbol";
+                CustLedgerEntry."Variable Symbol CZL" := CustLedgerEntry."Variable Symbol";
+                CustLedgerEntry."Constant Symbol CZL" := CustLedgerEntry."Constant Symbol";
+                CustLedgerEntry."Bank Account Code CZL" := CustLedgerEntry."Bank Account Code";
+                CustLedgerEntry."Bank Account No. CZL" := CustLedgerEntry."Bank Account No.";
+                CustLedgerEntry."Transit No. CZL" := CustLedgerEntry."Transit No.";
+                CustLedgerEntry."IBAN CZL" := CustLedgerEntry.IBAN;
+                CustLedgerEntry."SWIFT Code CZL" := CustLedgerEntry."SWIFT Code";
+                CustLedgerEntry.Modify(false);
+            until CustLedgerEntry.Next() = 0;
     end;
 
-    local procedure UpdatePermissionVersion174()
+    local procedure UpgradeVendLedgerEntry();
+    var
+        VendorLedgerEntry: Record "Vendor Ledger Entry";
+    begin
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then
+            exit;
+
+        if VendorLedgerEntry.FindSet(true) then
+            repeat
+                VendorLedgerEntry."Specific Symbol CZL" := VendorLedgerEntry."Specific Symbol";
+                VendorLedgerEntry."Variable Symbol CZL" := VendorLedgerEntry."Variable Symbol";
+                VendorLedgerEntry."Constant Symbol CZL" := VendorLedgerEntry."Constant Symbol";
+                VendorLedgerEntry."Bank Account Code CZL" := VendorLedgerEntry."Bank Account Code";
+                VendorLedgerEntry."Bank Account No. CZL" := VendorLedgerEntry."Bank Account No.";
+                VendorLedgerEntry."Transit No. CZL" := VendorLedgerEntry."Transit No.";
+                VendorLedgerEntry."IBAN CZL" := VendorLedgerEntry.IBAN;
+                VendorLedgerEntry."SWIFT Code CZL" := VendorLedgerEntry."SWIFT Code";
+                VendorLedgerEntry.Modify(false);
+            until VendorLedgerEntry.Next() = 0;
+    end;
+
+    local procedure UpgradeGenJournalLine();
+    var
+        GenJournalLine: Record "Gen. Journal Line";
+    begin
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then
+            exit;
+
+        if GenJournalLine.FindSet(true) then
+            repeat
+                GenJournalLine."Specific Symbol CZL" := GenJournalLine."Specific Symbol";
+                GenJournalLine."Variable Symbol CZL" := GenJournalLine."Variable Symbol";
+                GenJournalLine."Constant Symbol CZL" := GenJournalLine."Constant Symbol";
+                GenJournalLine."Bank Account Code CZL" := GenJournalLine."Bank Account Code";
+                GenJournalLine."Bank Account No. CZL" := GenJournalLine."Bank Account No.";
+                GenJournalLine."Transit No. CZL" := GenJournalLine."Transit No.";
+                GenJournalLine."IBAN CZL" := GenJournalLine.IBAN;
+                GenJournalLine."SWIFT Code CZL" := GenJournalLine."SWIFT Code";
+                GenJournalLine.Modify(false);
+            until GenJournalLine.Next() = 0;
+    end;
+
+    local procedure UpgradeReminderHeader();
+    var
+        ReminderHeader: Record "Reminder Header";
+    begin
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then
+            exit;
+
+        if ReminderHeader.FindSet(true) then
+            repeat
+                ReminderHeader."Specific Symbol CZL" := ReminderHeader."Specific Symbol";
+                ReminderHeader."Variable Symbol CZL" := ReminderHeader."Variable Symbol";
+                ReminderHeader."Constant Symbol CZL" := ReminderHeader."Constant Symbol";
+                ReminderHeader."Bank Account Code CZL" := ReminderHeader."Bank No.";
+                ReminderHeader."Bank Account No. CZL" := ReminderHeader."Bank Account No.";
+                ReminderHeader."Bank Branch No. CZL" := ReminderHeader."Bank Branch No.";
+                ReminderHeader."Bank Name CZL" := ReminderHeader."Bank Name";
+                ReminderHeader."Transit No. CZL" := ReminderHeader."Transit No.";
+                ReminderHeader."IBAN CZL" := ReminderHeader.IBAN;
+                ReminderHeader."SWIFT Code CZL" := ReminderHeader."SWIFT Code";
+                ReminderHeader.Modify(false);
+            until ReminderHeader.Next() = 0;
+    end;
+
+    local procedure UpgradeIssuedReminderHeader();
+    var
+        IssuedReminderHeader: Record "Issued Reminder Header";
+    begin
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then
+            exit;
+
+        if IssuedReminderHeader.FindSet(true) then
+            repeat
+                IssuedReminderHeader."Specific Symbol CZL" := IssuedReminderHeader."Specific Symbol";
+                IssuedReminderHeader."Variable Symbol CZL" := IssuedReminderHeader."Variable Symbol";
+                IssuedReminderHeader."Constant Symbol CZL" := IssuedReminderHeader."Constant Symbol";
+                IssuedReminderHeader."Bank Account Code CZL" := IssuedReminderHeader."Bank No.";
+                IssuedReminderHeader."Bank Account No. CZL" := IssuedReminderHeader."Bank Account No.";
+                IssuedReminderHeader."Bank Branch No. CZL" := IssuedReminderHeader."Bank Branch No.";
+                IssuedReminderHeader."Bank Name CZL" := IssuedReminderHeader."Bank Name";
+                IssuedReminderHeader."Transit No. CZL" := IssuedReminderHeader."Transit No.";
+                IssuedReminderHeader."IBAN CZL" := IssuedReminderHeader.IBAN;
+                IssuedReminderHeader."SWIFT Code CZL" := IssuedReminderHeader."SWIFT Code";
+                IssuedReminderHeader.Modify(false);
+            until IssuedReminderHeader.Next() = 0;
+    end;
+
+    local procedure UpgradeFinanceChargeMemoHeader();
+    var
+        FinanceChargeMemoHeader: Record "Finance Charge Memo Header";
+    begin
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then
+            exit;
+
+        if FinanceChargeMemoHeader.FindSet(true) then
+            repeat
+                FinanceChargeMemoHeader."Specific Symbol CZL" := FinanceChargeMemoHeader."Specific Symbol";
+                FinanceChargeMemoHeader."Variable Symbol CZL" := FinanceChargeMemoHeader."Variable Symbol";
+                FinanceChargeMemoHeader."Constant Symbol CZL" := FinanceChargeMemoHeader."Constant Symbol";
+                FinanceChargeMemoHeader."Bank Account Code CZL" := FinanceChargeMemoHeader."Bank No.";
+                FinanceChargeMemoHeader."Bank Account No. CZL" := FinanceChargeMemoHeader."Bank Account No.";
+                FinanceChargeMemoHeader."Bank Branch No. CZL" := FinanceChargeMemoHeader."Bank Branch No.";
+                FinanceChargeMemoHeader."Bank Name CZL" := FinanceChargeMemoHeader."Bank Name";
+                FinanceChargeMemoHeader."Transit No. CZL" := FinanceChargeMemoHeader."Transit No.";
+                FinanceChargeMemoHeader."IBAN CZL" := FinanceChargeMemoHeader.IBAN;
+                FinanceChargeMemoHeader."SWIFT Code CZL" := FinanceChargeMemoHeader."SWIFT Code";
+                FinanceChargeMemoHeader.Modify(false);
+            until FinanceChargeMemoHeader.Next() = 0;
+    end;
+
+    local procedure UpgradeIssuedFinanceChargeMemoHeader();
+    var
+        IssuedFinChargeMemoHeader: Record "Issued Fin. Charge Memo Header";
+    begin
+        if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then
+            exit;
+
+        if IssuedFinChargeMemoHeader.FindSet(true) then
+            repeat
+                IssuedFinChargeMemoHeader."Specific Symbol CZL" := IssuedFinChargeMemoHeader."Specific Symbol";
+                IssuedFinChargeMemoHeader."Variable Symbol CZL" := IssuedFinChargeMemoHeader."Variable Symbol";
+                IssuedFinChargeMemoHeader."Constant Symbol CZL" := IssuedFinChargeMemoHeader."Constant Symbol";
+                IssuedFinChargeMemoHeader."Bank Account Code CZL" := IssuedFinChargeMemoHeader."Bank No.";
+                IssuedFinChargeMemoHeader."Bank Account No. CZL" := IssuedFinChargeMemoHeader."Bank Account No.";
+                IssuedFinChargeMemoHeader."Bank Branch No. CZL" := IssuedFinChargeMemoHeader."Bank Branch No.";
+                IssuedFinChargeMemoHeader."Bank Name CZL" := IssuedFinChargeMemoHeader."Bank Name";
+                IssuedFinChargeMemoHeader."Transit No. CZL" := IssuedFinChargeMemoHeader."Transit No.";
+                IssuedFinChargeMemoHeader."IBAN CZL" := IssuedFinChargeMemoHeader.IBAN;
+                IssuedFinChargeMemoHeader."SWIFT Code CZL" := IssuedFinChargeMemoHeader."SWIFT Code";
+                IssuedFinChargeMemoHeader.Modify(false);
+            until IssuedFinChargeMemoHeader.Next() = 0;
+    end;
+
+    local procedure UpgradePermission()
+    begin
+        UpgradePermissionVersion174();
+        UpgradePermissionVersion180();
+        UpgradePermissionVersion190();
+    end;
+
+    local procedure UpgradePermissionVersion174()
     begin
         if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerDatabaseUpgradeTag()) then
             exit;
 
-        InsertTableDataPermissions(Database::"Certificate CZ Code", Database::"Certificate Code CZL");
-        InsertTableDataPermissions(Database::"EET Business Premises", Database::"EET Business Premises CZL");
-        InsertTableDataPermissions(Database::"EET Cash Register", Database::"EET Cash Register CZL");
-        InsertTableDataPermissions(Database::"EET Entry", Database::"EET Entry CZL");
-        InsertTableDataPermissions(Database::"EET Entry Status", Database::"EET Entry Status Log CZL");
-        InsertTableDataPermissions(Database::"EET Service Setup", Database::"EET Service Setup CZL");
+        NavApp.GetCurrentModuleInfo(AppInfo);
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Certificate CZ Code", Database::"Certificate Code CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"EET Business Premises", Database::"EET Business Premises CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"EET Cash Register", Database::"EET Cash Register CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"EET Entry", Database::"EET Entry CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"EET Entry Status", Database::"EET Entry Status Log CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"EET Service Setup", Database::"EET Service Setup CZL");
+
+        UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerDatabaseUpgradeTag());
     end;
 
-    local procedure UpdatePermissionVersion180()
+    local procedure UpgradePermissionVersion180()
     begin
         if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerDatabaseUpgradeTag()) then
             exit;
 
-        InsertTableDataPermissions(Database::"Subst. Customer Posting Group", Database::"Subst. Cust. Posting Group CZL");
-        InsertTableDataPermissions(Database::"Subst. Vendor Posting Group", Database::"Subst. Vend. Posting Group CZL");
-        InsertTableDataPermissions(Database::"Constant Symbol", Database::"Constant Symbol CZL");
-        InsertTableDataPermissions(Database::"Specific Movement", Database::"Specific Movement CZL");
-        InsertTableDataPermissions(Database::"Intrastat Delivery Group", Database::"Intrastat Delivery Group CZL");
-        InsertTableDataPermissions(Database::"User Setup Line", Database::"User Setup Line CZL");
+        NavApp.GetCurrentModuleInfo(AppInfo);
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Subst. Customer Posting Group", Database::"Subst. Cust. Posting Group CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Subst. Vendor Posting Group", Database::"Subst. Vend. Posting Group CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Constant Symbol", Database::"Constant Symbol CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Specific Movement", Database::"Specific Movement CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Intrastat Delivery Group", Database::"Intrastat Delivery Group CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"User Setup Line", Database::"User Setup Line CZL");
 
         UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerDatabaseUpgradeTag());
     end;
 
-    local procedure UpdatePermissionVersion190()
+    local procedure UpgradePermissionVersion190()
     begin
         if UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerDatabaseUpgradeTag()) then
             exit;
 
-        InsertTableDataPermissions(Database::"Acc. Schedule Extension", Database::"Acc. Schedule Extension CZL");
-        InsertTableDataPermissions(Database::"Acc. Schedule Result Line", Database::"Acc. Schedule Result Line CZL");
-        InsertTableDataPermissions(Database::"Acc. Schedule Result Column", Database::"Acc. Schedule Result Col. CZL");
-        InsertTableDataPermissions(Database::"Acc. Schedule Result Value", Database::"Acc. Schedule Result Value CZL");
-        InsertTableDataPermissions(Database::"Acc. Schedule Result Header", Database::"Acc. Schedule Result Hdr. CZL");
-        InsertTableDataPermissions(Database::"Acc. Schedule Result History", Database::"Acc. Schedule Result Hist. CZL");
+        NavApp.GetCurrentModuleInfo(AppInfo);
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Acc. Schedule Extension", Database::"Acc. Schedule Extension CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Acc. Schedule Result Line", Database::"Acc. Schedule Result Line CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Acc. Schedule Result Column", Database::"Acc. Schedule Result Col. CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Acc. Schedule Result Value", Database::"Acc. Schedule Result Value CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Acc. Schedule Result Header", Database::"Acc. Schedule Result Hdr. CZL");
+        InstallApplicationsMgtCZL.InsertTableDataPermissions(AppInfo.Id(), Database::"Acc. Schedule Result History", Database::"Acc. Schedule Result Hist. CZL");
 
         UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerDatabaseUpgradeTag());
     end;
 
-    local procedure InsertTableDataPermissions(OldTableID: Integer; NewTableID: Integer)
-    var
-        Permission: Record Permission;
-        NewPermission: Record Permission;
+    local procedure SetDatabaseUpgradeTags();
     begin
-        Permission.SetRange("Object Type", Permission."Object Type"::"Table Data");
-        Permission.SetRange("Object ID", OldTableID);
-        if not Permission.FindSet() then
-            exit;
-        repeat
-            if not NewPermission.Get(Permission."Role ID", Permission."Object Type", Permission."Object ID") then begin
-                NewPermission.Init();
-                NewPermission := Permission;
-                NewPermission."Object ID" := NewTableID;
-                NewPermission.Insert();
-            end;
-        until Permission.Next() = 0;
+        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerDatabaseUpgradeTag()) then
+            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerDatabaseUpgradeTag());
+        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerDatabaseUpgradeTag()) then
+            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerDatabaseUpgradeTag());
+        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerDatabaseUpgradeTag()) then
+            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerDatabaseUpgradeTag());
+        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerDatabaseUpgradeTag()) then
+            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerDatabaseUpgradeTag());
+    end;
+
+    local procedure SetCompanyUpgradeTags();
+    begin
+        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerCompanyUpgradeTag()) then
+            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion174PerCompanyUpgradeTag());
+        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag()) then
+            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion189PerCompanyUpgradeTag());
+        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag()) then
+            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion180PerCompanyUpgradeTag());
+        if not UpgradeTag.HasUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerCompanyUpgradeTag()) then
+            UpgradeTag.SetUpgradeTag(UpgradeTagDefinitionsCZL.GetDataVersion183PerCompanyUpgradeTag());
     end;
 }

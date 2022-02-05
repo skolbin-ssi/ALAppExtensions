@@ -1,7 +1,7 @@
 report 31006 "Get Item Ledger Entries CZL"
 {
     Caption = 'Get Item Ledger Entries';
-    Permissions = TableData "General Posting Setup" = imd;
+    Permissions = tabledata "General Posting Setup" = imd;
     ProcessingOnly = true;
 
     dataset
@@ -391,11 +391,12 @@ report 31006 "Get Item Ledger Entries CZL"
         IntrastatJnlLine."Indirect Cost" :=
           Round(CalculateExchangeAmount(IntrastatJnlLine."Indirect Cost", DocumentCurrencyFactor, IntrastatCurrencyFactor), 1, Direction);
         IntrastatJnlLine."Source Entry Date CZL" := "Item Ledger Entry"."Posting Date";
+        IntrastatJnlLine.Validate("Source Type", IntrastatJnlLine."Source Type"::"Item Entry");
+
         IsHandled := false;
         OnBeforeInsertItemJnlLine(IntrastatJnlLine, "Item Ledger Entry", IsHandled);
         if not IsHandled then
             IntrastatJnlLine.Insert();
-
     end;
 
     local procedure InsertJobLedgerLine()
@@ -677,6 +678,7 @@ report 31006 "Get Item Ledger Entries CZL"
 
         IntrastatJnlLine."Additional Costs CZL" := true;
         IntrastatJnlLine."Source Entry Date CZL" := "Item Ledger Entry"."Posting Date";
+        IntrastatJnlLine.Validate("Source Type", IntrastatJnlLine."Source Type"::"Item Entry");
 
         IsHandled := false;
         OnBeforeInsertValueEntryLine(IntrastatJnlLine, "Item Ledger Entry", IsHandled);

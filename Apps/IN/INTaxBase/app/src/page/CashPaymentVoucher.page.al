@@ -639,7 +639,7 @@ page 18554 "Cash Payment Voucher"
 
                     trigger OnValidate()
                     begin
-                        VoucherFunctions.SplitNarration(NarrationText, false, Rec);
+                        Error('Voucher Narration should be entered from Process - >Voucher Narration tab.');
                     end;
                 }
             }
@@ -905,6 +905,51 @@ page 18554 "Cash Payment Voucher"
                     ToolTip = 'View the history of transactions that have been posted for the selected record.';
                 }
             }
+            group("&Payments")
+            {
+                Caption = '&Payments';
+                Image = Payment;
+                action(SuggestVendorPayments)
+                {
+                    ApplicationArea = Basic, Suite;
+                    Caption = 'Suggest Vendor Payments';
+                    Ellipsis = true;
+                    Image = SuggestVendorPayments;
+                    Promoted = true;
+                    PromotedCategory = Category5;
+                    PromotedIsBig = true;
+                    ToolTip = 'Create payment suggestions as lines in the payment Voucher.';
+
+                    trigger OnAction()
+                    var
+                        SuggestVendorPayments: Report "Suggest Vendor Payments";
+                    begin
+                        Clear(SuggestVendorPayments);
+                        SuggestVendorPayments.SetGenJnlLine(Rec);
+                        SuggestVendorPayments.RunModal();
+                    end;
+                }
+                action(SuggestEmployeePayments)
+                {
+                    ApplicationArea = Basic, Suite;
+                    Caption = 'Suggest Employee Payments';
+                    Ellipsis = true;
+                    Image = SuggestVendorPayments;
+                    Promoted = true;
+                    PromotedCategory = Category5;
+                    PromotedIsBig = true;
+                    ToolTip = 'Create payment suggestions as lines in the payment Voucher.';
+
+                    trigger OnAction()
+                    var
+                        SuggestEmployeePayments: Report "Suggest Employee Payments";
+                    begin
+                        Clear(SuggestEmployeePayments);
+                        SuggestEmployeePayments.SetGenJnlLine(Rec);
+                        SuggestEmployeePayments.RunModal();
+                    end;
+                }
+            }
             action(Approvals)
             {
                 PromotedOnly = true;
@@ -1064,6 +1109,7 @@ page 18554 "Cash Payment Voucher"
                     Image = ViewPostedOrder;
                     Promoted = true;
                     PromotedCategory = Category9;
+                    ShortCutKey = 'Ctrl+Alt+F9';
                     ToolTip = 'Review the different types of entries that will be created when you post the document or journal.';
 
                     trigger OnAction()
@@ -1716,7 +1762,7 @@ page 18554 "Cash Payment Voucher"
         HasIncomingDocument := "Incoming Document Entry No." <> 0;
         CurrPage.IncomingDocAttachFactBox.Page.SetCurrentRecordID(RecordId());
         SetUserInteractions();
-        VoucherFunctions.ShowOldNarration(Rec);
+        NarrationText := VoucherFunctions.ShowOldNarration(Rec);
         //ShowOldNarration();
     end;
 

@@ -57,7 +57,7 @@ page 1801 "Assisted Setup"
                 field(Help; HelpAvailable)
                 {
                     ApplicationArea = All;
-                    Caption = 'Help';
+                    Caption = 'Learn more';
                     ToolTip = 'Learn more about the process.';
                     Width = 3;
 
@@ -74,6 +74,7 @@ page 1801 "Assisted Setup"
                     Caption = 'Video';
                     ToolTip = 'Play a video that describes the process.';
                     Width = 3;
+                    Visible = false;
 
                     trigger OnDrillDown()
                     var
@@ -82,16 +83,6 @@ page 1801 "Assisted Setup"
                         if "Video Url" <> '' then
                             Video.Play("Video Url");
                     end;
-                }
-                field(GroupName; "Assisted Setup Group")
-                {
-                    ApplicationArea = All;
-                    Caption = 'Group';
-                    ToolTip = 'Group Name';
-                    Visible = false;
-                    ObsoleteState = Pending;
-                    ObsoleteReason = 'The groups now appear as headings in the page, so this column is redundant.';
-                    ObsoleteTag = '16.0';
                 }
                 field(TranslatedName; TranslatedNameValue)
                 {
