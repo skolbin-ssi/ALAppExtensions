@@ -95,9 +95,15 @@ page 1691 "Bank Deposit List"
 
     trigger OnInit()
     var
+        SetupBankDepositReports: Codeunit "Setup Bank Deposit Reports";
+#if not CLEAN21
         FeatureBankDeposits: Codeunit "Feature Bank Deposits";
+#endif
     begin
+        SetupBankDepositReports.InsertSetupData();
+#if not CLEAN21
         FeatureBankDeposits.OpenPageGuard();
+#endif
     end;
 
     var

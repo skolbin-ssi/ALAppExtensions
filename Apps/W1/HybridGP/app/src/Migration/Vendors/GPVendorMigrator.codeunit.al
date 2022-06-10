@@ -141,12 +141,30 @@ codeunit 4022 "GP Vendor Migrator"
     local procedure MigrateVendorDetails(GPVendor: Record "GP Vendor"; VendorDataMigrationFacade: Codeunit "Vendor Data Migration Facade")
     var
         CompanyInformation: Record "Company Information";
+        GPVendorAddress: Record "GP Vendor Address";
         HelperFunctions: Codeunit "Helper Functions";
         PaymentTermsFormula: DateFormula;
         VendorName: Text[50];
         ContactName: Text[50];
         Country: Code[10];
     begin
+        // If the Remit To address is found, make that the main address
+        GPVendorAddress.SetRange(VENDORID, GPVendor.VENDORID);
+        GPVendorAddress.SetRange(ADRSCODE, 'REMIT TO');
+        if GPVendorAddress.FindFirst() then begin
+            GPVendor.VNDCNTCT := GPVendorAddress.VNDCNTCT;
+            GPVendor.ADDRESS1 := GPVendorAddress.ADDRESS1;
+            GPVendor.ADDRESS2 := GPVendorAddress.ADDRESS2;
+            GPVendor.CITY := GPVendorAddress.CITY;
+            GPVendor.STATE := GPVendorAddress.STATE;
+            GPVendor.ZIPCODE := GPVendorAddress.ZIPCODE;
+            GPVendor.PHNUMBR1 := HelperFunctions.CleanGPPhoneOrFaxNumber(GPVendorAddress.PHNUMBR1);
+            GPVendor.FAXNUMBR := HelperFunctions.CleanGPPhoneOrFaxNumber(GPVendorAddress.FAXNUMBR);
+        end else begin
+            GPVendor.PHNUMBR1 := HelperFunctions.CleanGPPhoneOrFaxNumber(GPVendor.PHNUMBR1);
+            GPVendor.FAXNUMBR := HelperFunctions.CleanGPPhoneOrFaxNumber(GPVendor.FAXNUMBR);
+        end;
+
         VendorName := CopyStr(GPVendor.VENDNAME, 1, 50);
         ContactName := CopyStr(GPVendor.VNDCNTCT, 1, 50);
         if not VendorDataMigrationFacade.CreateVendorIfNeeded(CopyStr(GPVendor.VENDORID, 1, 20), VendorName) then
@@ -167,15 +185,15 @@ codeunit 4022 "GP Vendor Migrator"
         VendorDataMigrationFacade.SetAddress(CopyStr(GPVendor.ADDRESS1, 1, 50),
             CopyStr(GPVendor.ADDRESS2, 1, 50), Country,
             CopyStr(GPVendor.ZIPCODE, 1, 20), CopyStr(GPVendor.CITY, 1, 30));
-        VendorDataMigrationFacade.SetContact(ContactName);
+
         VendorDataMigrationFacade.SetPhoneNo(GPVendor.PHNUMBR1);
+        VendorDataMigrationFacade.SetFaxNo(GPVendor.FAXNUMBR);
+        VendorDataMigrationFacade.SetContact(ContactName);
         VendorDataMigrationFacade.SetVendorPostingGroup(CopyStr(PostingGroupCodeTxt, 1, 5));
         VendorDataMigrationFacade.SetGenBusPostingGroup(CopyStr(PostingGroupCodeTxt, 1, 5));
-        VendorDataMigrationFacade.SetFaxNo(GPVendor.FAXNUMBR);
         VendorDataMigrationFacade.SetEmail(COPYSTR(GPVendor.INET1, 1, 80));
         VendorDataMigrationFacade.SetHomePage(COPYSTR(GPVendor.INET2, 1, 80));
         VendorDataMigrationFacade.SetVendorPostingGroup(CopyStr(PostingGroupCodeTxt, 1, 5));
-
 
         if (CopyStr(GPVendor.SHIPMTHD, 1, 10) <> '') then begin
             VendorDataMigrationFacade.CreateShipmentMethodIfNeeded(CopyStr(GPVendor.SHIPMTHD, 1, 10), '');
@@ -210,15 +228,12 @@ codeunit 4022 "GP Vendor Migrator"
             until GPVendorAddress.Next() = 0;
     end;
 
+#if not CLEAN21
+    [Obsolete('Method is not supported, it was using files', '21.0')]
     procedure GetAll()
-    var
-        HelperFunctions: Codeunit "Helper Functions";
-        JArray: JsonArray;
     begin
-        HelperFunctions.GetEntities('Vendor', JArray);
-        GetVendorsFromJson(JArray);
-        GetTransactions();
     end;
+#endif
 
     procedure PopulateStagingTable(JArray: JsonArray)
     begin
@@ -286,16 +301,6 @@ codeunit 4022 "GP Vendor Migrator"
         HelperFunctions.UpdateFieldValue(RecordVariant, GPVendor.FieldNO(TAXSCHID), JToken.AsObject(), 'TAXSCHID');
         HelperFunctions.UpdateFieldValue(RecordVariant, GPVendor.FieldNO(UPSZONE), JToken.AsObject(), 'UPSZONE');
         HelperFunctions.UpdateFieldValue(RecordVariant, GPVendor.FieldNO(TXIDNMBR), JToken.AsObject(), 'TXIDNMBR');
-    end;
-
-    local procedure GetTransactions()
-    var
-        HelperFunctions: Codeunit "Helper Functions";
-        JArray: JsonArray;
-    begin
-        DocumentNo := 'V00000';
-        if (HelperFunctions.GetEntities('PMTrx', JArray)) then
-            GetPMTrxFromJson(JArray);
     end;
 
     procedure PopulateVendorStagingTable(JArray: JsonArray)

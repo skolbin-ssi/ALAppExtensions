@@ -4,17 +4,6 @@ codeunit 1695 "Bank Deposit Subscribers"
                   tabledata "Posted Bank Deposit Header" = rm,
                   tabledata "Posted Bank Deposit Line" = rm;
 
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Approvals Mgmt.", 'OnCancelGeneralJournalBatchApprovalRequest', '', false, false)]
-    local procedure DeleteBankDepositsOnCancelGeneralJournalBatchApprovalRequest(var GenJournalBatch: Record "Gen. Journal Batch")
-    var
-        BankDepositHeader: Record "Bank Deposit Header";
-    begin
-        BankDepositHeader.SetCurrentKey("Journal Template Name", "Journal Batch Name");
-        BankDepositHeader.SetRange("Journal Template Name", GenJournalBatch."Journal Template Name");
-        BankDepositHeader.SetRange("Journal Batch Name", GenJournalBatch.Name);
-        BankDepositHeader.DeleteAll(true);
-    end;
-
     [EventSubscriber(ObjectType::Table, Database::"Gen. Journal Template", 'OnAfterValidateType', '', false, false)]
     local procedure OnAfterValidateType(var GenJournalTemplate: Record "Gen. Journal Template"; SourceCodeSetup: Record "Source Code Setup")
     begin
@@ -63,6 +52,24 @@ codeunit 1695 "Bank Deposit Subscribers"
         Session.LogMessage('0000GIB', PostedBankDepositLinesLbl, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, Attributes);
     end;
 
+    [EventSubscriber(ObjectType::Table, Database::"Posted Bank Deposit Header", 'OnBeforeUndoPostedBankDeposit', '', true, true)]
+    local procedure LogTelemetryOnBeforeUndoPostedBankDeposit(var PostedBankDepositHeader: Record "Posted Bank Deposit Header")
+    var
+        Attributes: Dictionary of [Text, Text];
+    begin
+        Attributes.Add('Bank Deposit Number', Format(PostedBankDepositHeader."No."));
+        Session.LogMessage('0000GVJ', OnBeforeUndoPostingBankDepositLbl, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, Attributes);
+    end;
+
+    [EventSubscriber(ObjectType::Table, Database::"Posted Bank Deposit Header", 'OnAfterUndoPostedBankDeposit', '', true, true)]
+    local procedure LogTelemetryOnAfterUndoPostedBankDeposit(var PostedBankDepositHeader: Record "Posted Bank Deposit Header")
+    var
+        Attributes: Dictionary of [Text, Text];
+    begin
+        Attributes.Add('Bank Deposit Number', Format(PostedBankDepositHeader."No."));
+        Session.LogMessage('0000GVK', OnAfterUndoPostingBankDepositLbl, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, Attributes);
+    end;
+
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Bank Deposit-Post", 'OnBeforeBankDepositPost', '', true, true)]
     local procedure LogNumberOfPostedDepositLinesOnBeforeBankDepositPost(BankDepositHeader: Record "Bank Deposit Header")
     var
@@ -88,7 +95,31 @@ codeunit 1695 "Bank Deposit Subscribers"
         SetupBankDepositReports.SetupReportSelections();
     end;
 
+#if not CLEAN21
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Feature Management Facade", 'OnAfterFeatureDisableConfirmed', '', false, false)]
+    local procedure HandleOnAfterFeatureDisableConfirmed(FeatureKey: Record "Feature Key")
+    var
+        BankAccReconciliation: Record "Bank Acc. Reconciliation";
+        BankDepositHeader: Record "Bank Deposit Header";
+        BankDepositFeatureMgt: Codeunit "Bank Deposit Feature Mgt.";
+    begin
+        if FeatureKey.ID <> BankDepositFeatureMgt.GetFeatureKeyId() then
+            exit;
+
+        BankAccReconciliation.SetRange("Statement Type", BankAccReconciliation."Statement Type"::"Bank Reconciliation");
+        if BankDepositHeader.IsEmpty() and BankAccReconciliation.IsEmpty() then
+            exit;
+
+        Error(EnableFeatureErr);
+    end;
+#endif
+
     var
         PostedBankDepositLinesLbl: Label 'Posted bank deposit - line information', Locked = true;
         PostingBankDepositLinesLbl: Label 'Before posting bank deposit - line information', Locked = true;
+        OnBeforeUndoPostingBankDepositLbl: Label 'User is attempting to undo posted bank deposit.', Locked = true;
+        OnAfterUndoPostingBankDepositLbl: Label 'User successfully reversed all transactions in posted bank deposit.', Locked = true;
+#if not CLEAN21
+        EnableFeatureErr: Label 'You must either post or delete all bank deposits and bank account reconcililations before disabling Bank Deposits feature.';
+#endif
 }

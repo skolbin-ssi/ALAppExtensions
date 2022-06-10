@@ -134,12 +134,10 @@ codeunit 8900 "Email Impl"
         if not IsEnqueued then begin
             // Modify the outbox only if it hasn't been enqueued yet
             CreateOrUpdateEmailOutbox(EmailMessageImpl, EmailAccountId, EmailConnector, Enum::"Email Status"::Draft, '', EmailOutbox);
-            Commit(); // Commit the changes in case the message is to be open modally
-        end;
 
-        // Set the record as new so that there is a save prompt and no arrows
-        if not IsEnqueued then
+            // Set the record as new so that there is a save prompt and no arrows
             EmailEditor.SetAsNew();
+        end;
 
         exit(EmailEditor.Open(EmailOutbox, IsModal));
     end;
@@ -296,8 +294,9 @@ codeunit 8900 "Email Impl"
         repeat
             if AllObj.Get(AllObj."Object Type"::Table, EmailRelatedRecord."Table Id") then begin
                 SourceRecordRef.Open(EmailRelatedRecord."Table Id");
-                if SourceRecordRef.GetBySystemId(EmailRelatedRecord."System Id") then
-                    EmailRelatedRecord.Mark(true);
+                if SourceRecordRef.ReadPermission() then
+                    if SourceRecordRef.GetBySystemId(EmailRelatedRecord."System Id") then
+                        EmailRelatedRecord.Mark(true);
                 SourceRecordRef.Close();
             end;
         until EmailRelatedRecord.Next() = 0;
@@ -426,13 +425,11 @@ codeunit 8900 "Email Impl"
         end;
 
         // Try get the default view policy
-        if EmailViewPolicy.Get(NullGuid) then begin
-            EmitUsedTelemetry(EmailViewPolicy);
+        if EmailViewPolicy.Get(NullGuid) then
             exit(EmailViewPolicy."Email View Policy");
-        end;
 
-        // Fallback to "Own emails" if email view policy has not been configured
-        Result := Enum::"Email View Policy"::OwnEmails;
+        // Fallback to "All Related Records Emails" if email view policy has not been configured
+        Result := Enum::"Email View Policy"::AllRelatedRecordsEmails;
 
         Telemetry.LogMessage('0000GPE', StrSubstNo(EmailViewPolicyDefaultTxt, Result.AsInteger()), Verbosity::Normal, DataClassification::SystemMetadata);
         exit(Result);
@@ -561,17 +558,9 @@ codeunit 8900 "Email Impl"
     var
         FeatureTelemetry: Codeunit "Feature Telemetry";
     begin
-        FeatureTelemetry.LogUptake('0000GO9', EmailViewPolicyLbl, Enum::"Feature Uptake Status"::Used, false, GetTelemetryDimensions(EmailViewPolicy));
+        FeatureTelemetry.LogUptake('0000GO9', EmailViewPolicyLbl, Enum::"Feature Uptake Status"::Used, GetTelemetryDimensions(EmailViewPolicy));
 
         FeatureTelemetry.LogUsage('0000GPD', EmailViewPolicyLbl, EmailViewPolicyUsedTxt, GetTelemetryDimensions(EmailViewPolicy));
-    end;
-
-    [EventSubscriber(ObjectType::Page, Page::"Email View Policy List", 'OnOpenPageEvent', '', false, false)]
-    local procedure EmitDiscoveredTelemetryOnListPage()
-    var
-        FeatureTelemetry: Codeunit "Feature Telemetry";
-    begin
-        FeatureTelemetry.LogUptake('0000GOA', EmailViewPolicyLbl, Enum::"Feature Uptake Status"::Discovered);
     end;
 
     [EventSubscriber(ObjectType::Table, Database::"Email View Policy", 'OnAfterInsertEvent', '', false, false)]
@@ -579,7 +568,8 @@ codeunit 8900 "Email Impl"
     var
         FeatureTelemetry: Codeunit "Feature Telemetry";
     begin
-        FeatureTelemetry.LogUptake('0000GOB', EmailViewPolicyLbl, Enum::"Feature Uptake Status"::"Set up", false, GetTelemetryDimensions(Rec));
+        if not IsNullGuid(Rec."User Security ID") then
+            FeatureTelemetry.LogUptake('0000GOB', EmailViewPolicyLbl, Enum::"Feature Uptake Status"::"Set up", GetTelemetryDimensions(Rec));
     end;
 
     local procedure GetTelemetryDimensions(EmailViewPolicy: Record "Email View Policy") TelemetryDimensions: Dictionary of [Text, Text]

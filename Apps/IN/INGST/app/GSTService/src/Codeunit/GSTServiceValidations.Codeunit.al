@@ -241,10 +241,7 @@ codeunit 18440 "GST Service Validations"
     [EventSubscriber(ObjectType::Table, Database::"Service Header", 'OnAfterCopyBillToCustomerFields', '', false, false)]
     local procedure UpdateBilltoCustomerNoInfo(Customer: Record Customer; var ServiceHeader: Record "Service Header")
     begin
-        if not (Customer."GST Customer Type" in [
-            Customer."GST Customer Type"::Export,
-            Customer."GST Customer Type"::"SEZ Development",
-            Customer."GST Customer Type"::"SEZ Unit"]) then
+        if not (Customer."GST Customer Type" in [Customer."GST Customer Type"::Export]) then
             ServiceHeader."GST Bill-to State Code" := Customer."State Code";
 
         if not (Customer."GST Customer Type" in [Customer."GST Customer Type"::Export]) then
@@ -638,11 +635,30 @@ codeunit 18440 "GST Service Validations"
     var
         ShiptoAddress: Record "Ship-to Address";
     begin
-        if ShiptoAddress.Get(ServiceHeader."Bill-to Customer No.", ServiceHeader."Ship-to Code") and (ServiceHeader."Location State Code" <> ShiptoAddress."State") then
-            ServiceLine."GST Jurisdiction Type" := ServiceLine."GST Jurisdiction Type"::Interstate
-        else
-            if ServiceHeader."Location State Code" = ShiptoAddress."State" then
-                ServiceLine."GST Jurisdiction Type" := ServiceLine."GST Jurisdiction Type"::Intrastate
+        if not ServiceHeader.IsEmpty() then begin
+            if ServiceHeader."GST Customer Type" in [ServiceHeader."GST Customer Type"::"SEZ Unit", ServiceHeader."GST Customer Type"::"SEZ Development"] then begin
+                ServiceLine."GST Jurisdiction Type" := ServiceLine."GST Jurisdiction Type"::Interstate;
+                exit;
+            end;
+
+            case ServiceLine."GST Place Of Supply" of
+                ServiceLine."GST Place Of Supply"::"Ship-to Address":
+                    if ShiptoAddress.Get(ServiceHeader."Bill-to Customer No.", ServiceHeader."Ship-to Code") and
+                    (ServiceHeader."Location State Code" <> ShiptoAddress."State") then
+                        ServiceLine."GST Jurisdiction Type" := ServiceLine."GST Jurisdiction Type"::Interstate
+                    else
+                        if ServiceHeader."Location State Code" = ShiptoAddress."State" then
+                            ServiceLine."GST Jurisdiction Type" := ServiceLine."GST Jurisdiction Type"::Intrastate;
+
+                ServiceLine."GST Place Of Supply"::"Bill-to Address":
+                    if ServiceHeader."Location State Code" <> ServiceHeader."State" then
+                        ServiceLine."GST Jurisdiction Type" := ServiceLine."GST Jurisdiction Type"::Interstate
+                    else
+                        if ServiceHeader."Location State Code" = ServiceHeader."State" then
+                            ServiceLine."GST Jurisdiction Type" := ServiceLine."GST Jurisdiction Type"::Intrastate;
+
+            end;
+        end;
     end;
 
     procedure CallTaxEngineOnServiceHeader(ServiceHeader: Record "Service Header")

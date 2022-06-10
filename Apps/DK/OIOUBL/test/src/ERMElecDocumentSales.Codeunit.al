@@ -38,6 +38,7 @@ codeunit 148053 "OIOUBL-ERM Elec Document Sales"
         WrongInvoiceLineCountErr: Label 'Wrong count of "InvoiceLine".';
         BaseQuantityTxt: Label 'cbc:BaseQuantity';
         NonExistingDocumentFormatErr: Label 'The electronic document format OIOUBL does not exist for the document type %1.';
+        WrongFileNameErr: Label 'File name should be: %1', Comment = '%1 - Client File Name';
         isInitialized: Boolean;
 
     [Test]
@@ -961,6 +962,7 @@ codeunit 148053 "OIOUBL-ERM Elec Document Sales"
         end;
         VerifyFileListInZipArchive(FileNameLst);
     end;
+
     [Test]
     [HandlerFunctions('ProfileSelectionMethodAndCloseEmailStrMenuHandler,StandardSalesInvoiceRequestPageHandler,EmailEditorHandler')]
     procedure SendPostedSalesInvoiceOIOUBLAndPDFWithPrintAndEmail();
@@ -1224,6 +1226,262 @@ codeunit 148053 "OIOUBL-ERM Elec Document Sales"
         InitializeLibraryXPathXMLReader(OIOUBLNewFileMock.PopFilePath());
         LibraryXPathXMLReader.VerifyNodeValueByXPath('//cac:InvoiceLine/cac:Price/cbc:PriceAmount', '123.4567');
         LibraryXPathXMLReader.VerifyNodeValueByXPath('//cac:InvoiceLine/cbc:LineExtensionAmount', '12345.67');
+    end;
+
+    [Test]
+    [HandlerFunctions('SelectSendingOptionsOKModalPageHandler')]
+    procedure SendPostedSalesInvoiceNonBlankExternalDocNo()
+    var
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        SalesInvoiceHeader: Record "Sales Invoice Header";
+        DocumentSendingProfile: Record "Document Sending Profile";
+        ExternalDocNo: Code[35];
+        PostedDocNo: Code[20];
+    begin
+        // [SCENARIO 428611] Create OIOUBL document for Posted Sales Invoice with non-blank External Document No.
+        Initialize();
+
+        // [GIVEN] Default Document Sending Profile with Disk "Electronic Document", Format "OIOUBL".
+        CreateElectronicDocumentFormat(
+            OIOUBLFormatNameTxt, "Electronic Document Format Usage"::"Sales Invoice", Codeunit::"OIOUBL-Export Sales Invoice");
+        SetDefaultDocumentSendingProfile(DocumentSendingProfile.Disk::"Electronic Document", OIOUBLFormatNameTxt);
+
+        // [GIVEN] Posted Sales Invoice with External Document No. = "E".
+        CreateSalesDocumentWithItem(SalesLine, "Sales Document Type"::Invoice);
+        SalesHeader.Get(SalesLine."Document Type", SalesLine."Document No.");
+        ExternalDocNo := LibraryUtility.GenerateGUID();
+        UpdateExtDocNoOnSalesHeader(SalesHeader, ExternalDocNo);
+        PostedDocNo := LibrarySales.PostSalesDocument(SalesHeader, false, true);
+
+        // [WHEN] Run "Send" for Posted Sales Invoice.
+        SalesInvoiceHeader.SetRange("No.", PostedDocNo);
+        SalesInvoiceHeader.SendRecords();
+
+        // [THEN] OIOUBL XML document is created, nodes cbc:ID have value "E".
+        InitializeLibraryXPathXMLReader(OIOUBLNewFileMock.PopFilePath());
+        LibraryXPathXMLReader.VerifyNodeValueByXPathWithIndex('//cac:OrderReference/cbc:ID', ExternalDocNo, 0);
+        LibraryXPathXMLReader.VerifyNodeValueByXPath('//cac:InvoiceLine/cac:OrderLineReference/cac:OrderReference/cbc:ID', ExternalDocNo);
+    end;
+
+    [Test]
+    [HandlerFunctions('SelectSendingOptionsOKModalPageHandler')]
+    procedure SendPostedSalesInvoiceBlankExternalDocNo()
+    var
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        SalesInvoiceHeader: Record "Sales Invoice Header";
+        DocumentSendingProfile: Record "Document Sending Profile";
+        PostedDocNo: Code[20];
+    begin
+        // [SCENARIO 428611] Create OIOUBL document for Posted Sales Invoice with blank External Document No.
+        Initialize();
+
+        // [GIVEN] Default Document Sending Profile with Disk "Electronic Document", Format "OIOUBL".
+        CreateElectronicDocumentFormat(
+            OIOUBLFormatNameTxt, "Electronic Document Format Usage"::"Sales Invoice", Codeunit::"OIOUBL-Export Sales Invoice");
+        SetDefaultDocumentSendingProfile(DocumentSendingProfile.Disk::"Electronic Document", OIOUBLFormatNameTxt);
+
+        // [GIVEN] "Document No. as Ext. Doc. No." is set on Sales & Receivables Setup.
+        UpdateDocNoAsExtDocNoOnSalesSetup(true);
+
+        // [GIVEN] Posted Sales Invoice with blank External Document No. and No. = "A".
+        CreateSalesDocumentWithItem(SalesLine, "Sales Document Type"::Invoice);
+        SalesHeader.Get(SalesLine."Document Type", SalesLine."Document No.");
+        UpdateExtDocNoOnSalesHeader(SalesHeader, '');
+        PostedDocNo := LibrarySales.PostSalesDocument(SalesHeader, false, true);
+
+        // [WHEN] Run "Send" for Posted Sales Invoice.
+        SalesInvoiceHeader.SetRange("No.", PostedDocNo);
+        SalesInvoiceHeader.SendRecords();
+
+        // [THEN] OIOUBL XML document is created, nodes cbc:ID have value "A".
+        InitializeLibraryXPathXMLReader(OIOUBLNewFileMock.PopFilePath());
+        LibraryXPathXMLReader.VerifyNodeValueByXPathWithIndex('//cac:OrderReference/cbc:ID', PostedDocNo, 0);
+        LibraryXPathXMLReader.VerifyNodeValueByXPath('//cac:InvoiceLine/cac:OrderLineReference/cac:OrderReference/cbc:ID', PostedDocNo);
+    end;
+
+    [Test]
+    [HandlerFunctions('SelectSendingOptionsOKModalPageHandler')]
+    procedure SendPostedSalesOrderNonBlankExternalDocNo()
+    var
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        SalesInvoiceHeader: Record "Sales Invoice Header";
+        DocumentSendingProfile: Record "Document Sending Profile";
+        ExternalDocNo: Code[35];
+        PostedDocNo: Code[20];
+    begin
+        // [SCENARIO 428611] Create OIOUBL document for Posted Sales Order with non-blank External Document No.
+        Initialize();
+
+        // [GIVEN] Default Document Sending Profile with Disk "Electronic Document", Format "OIOUBL".
+        CreateElectronicDocumentFormat(
+            OIOUBLFormatNameTxt, "Electronic Document Format Usage"::"Sales Invoice", Codeunit::"OIOUBL-Export Sales Invoice");
+        SetDefaultDocumentSendingProfile(DocumentSendingProfile.Disk::"Electronic Document", OIOUBLFormatNameTxt);
+
+        // [GIVEN] Posted Sales Order with External Document No. = "E".
+        CreateSalesDocumentWithItem(SalesLine, "Sales Document Type"::Order);
+        SalesHeader.Get(SalesLine."Document Type", SalesLine."Document No.");
+        ExternalDocNo := LibraryUtility.GenerateGUID();
+        UpdateExtDocNoOnSalesHeader(SalesHeader, ExternalDocNo);
+        PostedDocNo := LibrarySales.PostSalesDocument(SalesHeader, true, true);
+
+        // [WHEN] Run "Send" for Posted Sales Invoice.
+        SalesInvoiceHeader.SetRange("No.", PostedDocNo);
+        SalesInvoiceHeader.SendRecords();
+
+        // [THEN] OIOUBL XML document is created, nodes cbc:ID have value "E".
+        InitializeLibraryXPathXMLReader(OIOUBLNewFileMock.PopFilePath());
+        LibraryXPathXMLReader.VerifyNodeValueByXPathWithIndex('//cac:OrderReference/cbc:ID', ExternalDocNo, 0);
+        LibraryXPathXMLReader.VerifyNodeValueByXPath('//cac:InvoiceLine/cac:OrderLineReference/cac:OrderReference/cbc:ID', ExternalDocNo);
+    end;
+
+    [Test]
+    [HandlerFunctions('SelectSendingOptionsOKModalPageHandler')]
+    procedure SendPostedSalesOrderBlankExternalDocNo()
+    var
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        SalesInvoiceHeader: Record "Sales Invoice Header";
+        DocumentSendingProfile: Record "Document Sending Profile";
+        PostedDocNo: Code[20];
+    begin
+        // [SCENARIO 428611] Create OIOUBL document for Posted Sales Order with blank External Document No.
+        Initialize();
+
+        // [GIVEN] Default Document Sending Profile with Disk "Electronic Document", Format "OIOUBL".
+        CreateElectronicDocumentFormat(
+            OIOUBLFormatNameTxt, "Electronic Document Format Usage"::"Sales Invoice", Codeunit::"OIOUBL-Export Sales Invoice");
+        SetDefaultDocumentSendingProfile(DocumentSendingProfile.Disk::"Electronic Document", OIOUBLFormatNameTxt);
+
+        // [GIVEN] "Document No. as Ext. Doc. No." is set on Sales & Receivables Setup.
+        UpdateDocNoAsExtDocNoOnSalesSetup(true);
+
+        // [GIVEN] Posted Sales Order with blank External Document No. and No. = "A".
+        CreateSalesDocumentWithItem(SalesLine, "Sales Document Type"::Order);
+        SalesHeader.Get(SalesLine."Document Type", SalesLine."Document No.");
+        UpdateExtDocNoOnSalesHeader(SalesHeader, '');
+        PostedDocNo := LibrarySales.PostSalesDocument(SalesHeader, true, true);
+
+        // [WHEN] Run "Send" for Posted Sales Invoice.
+        SalesInvoiceHeader.SetRange("No.", PostedDocNo);
+        SalesInvoiceHeader.SendRecords();
+
+        // [THEN] OIOUBL XML document is created, nodes cbc:ID have value "A".
+        InitializeLibraryXPathXMLReader(OIOUBLNewFileMock.PopFilePath());
+        LibraryXPathXMLReader.VerifyNodeValueByXPathWithIndex('//cac:OrderReference/cbc:ID', PostedDocNo, 0);
+        LibraryXPathXMLReader.VerifyNodeValueByXPath('//cac:InvoiceLine/cac:OrderLineReference/cac:OrderReference/cbc:ID', PostedDocNo);
+    end;
+
+    [Test]
+    [HandlerFunctions('SelectSendingOptionsOKModalPageHandler')]
+    procedure SendPostedSalesCrMemoNonBlankExternalDocNo()
+    var
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        DocumentSendingProfile: Record "Document Sending Profile";
+        ExternalDocNo: Code[35];
+        PostedDocNo: Code[20];
+    begin
+        // [SCENARIO 428611] Create OIOUBL document for Posted Sales Credit Memo with non-blank External Document No.
+        Initialize();
+
+        // [GIVEN] Default Document Sending Profile with Disk "Electronic Document", Format "OIOUBL".
+        CreateElectronicDocumentFormat(
+            OIOUBLFormatNameTxt, "Electronic Document Format Usage"::"Sales Credit Memo", Codeunit::"OIOUBL-Export Sales Cr. Memo");
+        SetDefaultDocumentSendingProfile(DocumentSendingProfile.Disk::"Electronic Document", OIOUBLFormatNameTxt);
+
+        // [GIVEN] Posted Sales Credit Memo with External Document No. = "E".
+        CreateSalesDocumentWithItem(SalesLine, "Sales Document Type"::"Credit Memo");
+        SalesHeader.Get(SalesLine."Document Type", SalesLine."Document No.");
+        ExternalDocNo := LibraryUtility.GenerateGUID();
+        UpdateExtDocNoOnSalesHeader(SalesHeader, ExternalDocNo);
+        PostedDocNo := LibrarySales.PostSalesDocument(SalesHeader, false, true);
+
+        // [WHEN] Run "Send" for Posted Sales Credit Memo.
+        SalesCrMemoHeader.SetRange("No.", PostedDocNo);
+        SalesCrMemoHeader.SendRecords();
+
+        // [THEN] OIOUBL XML document is created, node cbc:ID has value "E".
+        InitializeLibraryXPathXMLReader(OIOUBLNewFileMock.PopFilePath());
+        LibraryXPathXMLReader.VerifyNodeValueByXPathWithIndex('//cac:OrderReference/cbc:ID', ExternalDocNo, 0);
+    end;
+
+    [Test]
+    [HandlerFunctions('SelectSendingOptionsOKModalPageHandler')]
+    procedure SendPostedSalesCrMemoBlankExternalDocNo()
+    var
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        SalesCrMemoHeader: Record "Sales Cr.Memo Header";
+        DocumentSendingProfile: Record "Document Sending Profile";
+        PostedDocNo: Code[20];
+    begin
+        // [SCENARIO 428611] Create OIOUBL document for Posted Sales Credit Memo with blank External Document No.
+        Initialize();
+
+        // [GIVEN] Default Document Sending Profile with Disk "Electronic Document", Format "OIOUBL".
+        CreateElectronicDocumentFormat(
+            OIOUBLFormatNameTxt, "Electronic Document Format Usage"::"Sales Credit Memo", Codeunit::"OIOUBL-Export Sales Cr. Memo");
+        SetDefaultDocumentSendingProfile(DocumentSendingProfile.Disk::"Electronic Document", OIOUBLFormatNameTxt);
+
+        // [GIVEN] "Document No. as Ext. Doc. No." is set on Sales & Receivables Setup.
+        UpdateDocNoAsExtDocNoOnSalesSetup(true);
+
+        // [GIVEN] Posted Sales Invoice with blank External Document No. and No. = "A".
+        CreateSalesDocumentWithItem(SalesLine, "Sales Document Type"::"Credit Memo");
+        SalesHeader.Get(SalesLine."Document Type", SalesLine."Document No.");
+        UpdateExtDocNoOnSalesHeader(SalesHeader, '');
+        PostedDocNo := LibrarySales.PostSalesDocument(SalesHeader, false, true);
+
+        // [WHEN] Run "Send" for Posted Sales Credit Memo.
+        SalesCrMemoHeader.SetRange("No.", PostedDocNo);
+        SalesCrMemoHeader.SendRecords();
+
+        // [THEN] OIOUBL XML document is created, node cbc:ID has value "A".
+        InitializeLibraryXPathXMLReader(OIOUBLNewFileMock.PopFilePath());
+        LibraryXPathXMLReader.VerifyNodeValueByXPathWithIndex('//cac:OrderReference/cbc:ID', PostedDocNo, 0);
+    end;
+
+    [Test]
+    procedure SendPostedSalesInvoiceOIOUBLAndVerifyFileName()
+    var
+        SalesLine: Record "Sales Line";
+        SalesInvoiceHeader: Record "Sales Invoice Header";
+        DocumentSendingProfile: Record "Document Sending Profile";
+        ElectronicDocumentFormat: Record "Electronic Document Format";
+        FileMgt: Codeunit "File Management";
+        PostedDocNo: Code[20];
+        ExpectedFileName: Text;
+        ActualFileName: Text;
+    begin
+        // [SCENARIO 435433] To verify if file name with Electronic Document option from Posted Sales Invoice is following a nomenclature : CompanyName - Invoice Document No.xml
+        Initialize();
+        CreateElectronicDocumentFormat(
+            OIOUBLFormatNameTxt, ElectronicDocumentFormat.Usage::"Sales Invoice", Codeunit::"OIOUBL-Export Sales Invoice");
+
+        // [GIVEN] Default DocumentSendingProfile with Printer = No; Disk = "Electronic Document", Format = OIOUBL;
+        // [GIVEN] E-Mail = No, E-Mail Attachment = "Electronic Document", Format = OIOUBL. One Posted Sales Invoice.
+        CreateDocumentSendingProfile(
+            DocumentSendingProfile, DocumentSendingProfile.Printer::No,
+            DocumentSendingProfile."E-Mail"::No,
+            DocumentSendingProfile."E-Mail Attachment"::"Electronic Document", OIOUBLFormatNameTxt,
+            DocumentSendingProfile.Disk::"Electronic Document", OIOUBLFormatNameTxt);
+
+        PostedDocNo := CreateAndPostSalesDocument(SalesLine, "Sales Document Type"::Order);
+        SalesInvoiceHeader.Get(PostedDocNo);
+        SetDocumentSendingProfileToCustomer(SalesInvoiceHeader."Sell-to Customer No.", DocumentSendingProfile.Code);
+        ExpectedFileName := CopyStr(
+            StrSubstNo('%1 - %2 %3.%4', FileMgt.StripNotsupportChrInFileName(CompanyName), Format("Sales Document Type"::Invoice), SalesInvoiceHeader."No.", 'XML'), 1, 250);
+
+        // [WHEN] Export the xml file for electronic document
+        SalesInvoiceHeader.SetRecFilter();
+        ActualFileName := GetXMLExportFileName(SalesInvoiceHeader, OIOUBLFormatNameTxt);
+
+        // [THEN] Client File Name should be CompanyName - Invoice Document No.xml
+        Assert.AreEqual(ExpectedFileName, ActualFileName, StrSubstNo(WrongFileNameErr, ExpectedFileName));
     end;
 
     local procedure Initialize();
@@ -1599,7 +1857,7 @@ codeunit 148053 "OIOUBL-ERM Elec Document Sales"
     local procedure InitializeLibraryXPathXMLReader(FileName: Text)
     begin
         Clear(LibraryXPathXMLReader);
-        LibraryXPathXMLReader.Initialize(FileName, '');
+        LibraryXPathXMLReader.Initialize(FileName, 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2');
         LibraryXPathXMLReader.SetDefaultNamespaceUsage(false);
         LibraryXPathXMLReader.AddAdditionalNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
         LibraryXPathXMLReader.AddAdditionalNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
@@ -1705,6 +1963,15 @@ codeunit 148053 "OIOUBL-ERM Elec Document Sales"
         end;
     end;
 
+    local procedure UpdateDocNoAsExtDocNoOnSalesSetup(DocNoAsExtDocNo: Boolean)
+    var
+        SalesReceivablesSetup: Record "Sales & Receivables Setup";
+    begin
+        SalesReceivablesSetup.Get();
+        SalesReceivablesSetup.Validate("Document No. as Ext. Doc. No.", DocNoAsExtDocNo);
+        SalesReceivablesSetup.Modify(true);
+    end;
+
     local procedure UpdateCompanySwiftCode()
     var
         CompanyInformation: Record "Company Information";
@@ -1714,6 +1981,12 @@ codeunit 148053 "OIOUBL-ERM Elec Document Sales"
             Validate("SWIFT Code", DelStr(LibraryUtility.GenerateGUID(), 1, 2));
             Modify(true);
         end;
+    end;
+
+    local procedure UpdateExtDocNoOnSalesHeader(var SalesHeader: Record "Sales Header"; ExternalDocumentNo: Code[35])
+    begin
+        SalesHeader.Validate("External Document No.", ExternalDocumentNo);
+        SalesHeader.Modify(true);
     end;
 
     local procedure ModifyGeneralLedgerSetup(UnitAmountRoundingPrecision: Decimal);
@@ -1894,6 +2167,16 @@ codeunit 148053 "OIOUBL-ERM Elec Document Sales"
             '//cac:LegalMonetaryTotal/cbc:LineExtensionAmount', FormatAmount(TotalLineExtensionAmount));
         LibraryXPathXMLReader.VerifyNodeValueByXPath(
             '//cac:AllowanceCharge/cbc:Amount', FormatAmount(TotalAllowanceChargeAmount));
+    end;
+
+    local procedure GetXMLExportFileName(DocumentVariant: Variant; FormatCode: Code[20]): Text
+    var
+        ElectronicDocumentFormat: Record "Electronic Document Format";
+        TempBlob: Codeunit "Temp Blob";
+        ClientFileName: Text[250];
+    begin
+        ElectronicDocumentFormat.SendElectronically(TempBlob, ClientFileName, DocumentVariant, FormatCode);
+        exit(ClientFileName);
     end;
 
     [ConfirmHandler]

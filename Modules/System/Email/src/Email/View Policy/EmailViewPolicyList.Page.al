@@ -4,12 +4,10 @@
 // ------------------------------------------------------------------------------------------------
 
 /// <summary>
-/// Page to display and control what policies user have been assigned.
+/// Page to display and control what view policies users have been assigned.
 /// </summary>
 page 8930 "Email View Policy List"
 {
-    AboutText = 'Email view policies control the emails a user can get access to.';
-    AboutTitle = 'About email view policies';
     AdditionalSearchTerms = 'Email Personalization,Email Preferences,Policies';
     ApplicationArea = All;
     Caption = 'User Email Policies';
@@ -20,6 +18,10 @@ page 8930 "Email View Policy List"
     UsageCategory = Administration;
     Permissions = tabledata "Email View Policy" = rimd,
                   tabledata User = r;
+
+    AboutText = 'Email view policies control the emails a user can get access to.';
+    AboutTitle = 'About email view policies';
+    ContextSensitiveHelpPage = 'admin-how-setup-email#set-up-view-policies';
 
     layout
     {
@@ -32,14 +34,21 @@ page 8930 "Email View Policy List"
                 {
                     ApplicationArea = All;
                     Caption = 'User ID';
-                    ToolTip = 'Specifies the user’s unique identifier.';
+                    ToolTip = 'Specifies a unique identifier for the user.';
                     LookupPageId = "User Lookup";
+                    Editable = not IsDefault;
+
+                    AboutTitle = 'Pick a user';
+                    AboutText = 'You can define an email view policy for a specific user. However, make sure you have a default policy, which is a line with a policy that is not assigned to a user.';
                 }
                 field("Policy"; Rec."Email View Policy")
                 {
                     ApplicationArea = All;
                     ToolTip = 'Assigned email policy';
                     Editable = true;
+
+                    AboutTitle = 'Specify a policy';
+                    AboutText = 'Here, you assign a policy to the specified user by choosing a view policy from the list. If you''ve not added a user, then this policy becomes the default view policy.';
                 }
             }
         }
@@ -47,9 +56,9 @@ page 8930 "Email View Policy List"
 
     trigger OnOpenPage()
     var
-        EmailViewPolicy: Codeunit "Email View Policy";
+        FeatureTelemetry: Codeunit "Feature Telemetry";
     begin
-        EmailViewPolicy.CheckForDefaultEntry();
+        FeatureTelemetry.LogUptake('0000GOA', EmailViewPolicyLbl, Enum::"Feature Uptake Status"::Discovered);
     end;
 
     trigger OnDeleteRecord(): Boolean
@@ -59,5 +68,16 @@ page 8930 "Email View Policy List"
         exit(EmailViewPolicy.CheckIfCanDeleteRecord(Rec));
     end;
 
+    trigger OnAfterGetCurrRecord()
+    var
+        EmailViewPolicy: Codeunit "Email View Policy";
+        NullGuid: Guid;
+    begin
+        IsDefault := (Rec."User Security ID" = NullGuid) and (Rec."User ID" = EmailViewPolicy.GetDefaultUserId());
+    end;
 
+    var
+        [InDataSet]
+        IsDefault: Boolean;
+        EmailViewPolicyLbl: Label 'Email View Policy', Locked = true;
 }

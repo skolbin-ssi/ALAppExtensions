@@ -14,13 +14,13 @@ codeunit 8930 "Email View Policy"
     var
         DefaultRecordCannotDeleteMsg: Label 'The default user email policy cannot be deleted.';
 
-    procedure CheckForDefaultEntry()
+    procedure CheckForDefaultEntry(EmailViewPolicy: Enum "Email View Policy")
     var
         EmailViewPolicyRecord: Record "Email View Policy";
     begin
         EmailViewPolicyRecord.SetRange("User ID", GetDefaultUserId());
         If EmailViewPolicyRecord.IsEmpty() then
-            InsertDefault();
+            InsertDefault(EmailViewPolicy)
     end;
 
     procedure CheckIfCanDeleteRecord(EmailViewPolicyRecord: Record "Email View Policy"): Boolean
@@ -32,7 +32,7 @@ codeunit 8930 "Email View Policy"
         exit(false);
     end;
 
-    procedure GetFilteredSentEmails(EmailRelatedRecord: Record "Email Related Record"; var AccessibleSentEmail: Record "Sent Email" temporary; var SentEmails: Record "Sent Email" temporary)
+    procedure GetFilteredSentEmails(var EmailRelatedRecord: Record "Email Related Record"; var AccessibleSentEmail: Record "Sent Email" temporary; var SentEmails: Record "Sent Email" temporary)
     begin
         if EmailRelatedRecord.FindSet() then
             repeat
@@ -45,7 +45,7 @@ codeunit 8930 "Email View Policy"
             until EmailRelatedRecord.Next() = 0;
     end;
 
-    procedure GetFilteredOutboxEmails(EmailRelatedRecord: Record "Email Related Record"; var AccessibleEmailOutbox: Record "Email Outbox" temporary; var EmailOutbox: Record "Email Outbox" temporary)
+    procedure GetFilteredOutboxEmails(var EmailRelatedRecord: Record "Email Related Record"; var AccessibleEmailOutbox: Record "Email Outbox" temporary; var EmailOutbox: Record "Email Outbox" temporary)
     begin
         if EmailRelatedRecord.FindSet() then
             repeat
@@ -58,19 +58,19 @@ codeunit 8930 "Email View Policy"
             until EmailRelatedRecord.Next() = 0;
     end;
 
-    local procedure InsertDefault()
+    local procedure InsertDefault(EmailViewPolicy: Enum "Email View Policy")
     var
         EmailViewPolicyRecord: Record "Email View Policy";
         NullGuid: Guid;
     begin
         EmailViewPolicyRecord."User ID" := CopyStr(GetDefaultUserId(), 1, 50);
         EmailViewPolicyRecord."User Security ID" := NullGuid;
-        EmailViewPolicyRecord."Email View Policy" := Enum::"Email View Policy"::AllRelatedRecordsEmails;
+        EmailViewPolicyRecord."Email View Policy" := EmailViewPolicy;
         EmailViewPolicyRecord.Insert();
     end;
 
     procedure GetDefaultUserId(): Text
     begin
-        exit('');
+        exit('_');
     end;
 }
