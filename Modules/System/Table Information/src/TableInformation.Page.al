@@ -52,8 +52,10 @@ page 8700 "Table Information"
                     ToolTip = 'The number of records in the table';
 
                     trigger OnDrillDown()
+                    var
+                        TableInformationCacheImpl: Codeunit "Table Information Cache Impl.";
                     begin
-                        Hyperlink(GetUrl(CLIENTTYPE::Web, CompanyName, ObjectType::Table, "Table No."));
+                        Hyperlink(TableInformationCacheImpl.GetTableUrl(Rec."Company Name", Rec."Table No."));
                     end;
                 }
 
@@ -100,6 +102,18 @@ page 8700 "Table Information"
             Rec.SetRange("Company Name")
         else
             Rec.SetFilter("Company Name", '%1|%2', '', CompanyName);
-        FilterGroup(0);
+        Rec.FilterGroup(0);
+    end;
+
+    local procedure GetTableUrl(TableInformation: Record "Table Information"): Text
+    var
+        Company: Text;
+    begin
+        Company := TableInformation."Company Name";
+
+        if Company = '' then
+            Company := CompanyName(); // use the current company for the URL for the cases when table is not per company
+
+        exit(GetUrl(ClientType::Web, Company, ObjectType::Table, TableInformation."Table No."));
     end;
 }

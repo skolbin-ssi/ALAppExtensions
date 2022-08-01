@@ -44,6 +44,14 @@ codeunit 4025 "GP Cloud Migration"
         GPSY40100Lbl: Label 'SY40100', Locked = true;
         GPSY40101Lbl: Label 'SY40101', Locked = true;
         GPCM20600Lbl: Label 'CM20600', Locked = true;
+        GPMC40200Lbl: Label 'MC40200', Locked = true;
+        GPSY06000Lbl: Label 'SY06000', Locked = true;
+        GPPM00100Lbl: Label 'PM00100', Locked = true;
+        GPPM00200Lbl: Label 'PM00200', Locked = true;
+        GPRM00101Lbl: Label 'RM00101', Locked = true;
+        GPRM00201Lbl: Label 'RM00201', Locked = true;
+        GPIV00101Lbl: Label 'IV00101', Locked = true;
+        GPIV40400Lbl: Label 'IV40400', Locked = true;
 
     local procedure InitiateGPMigration()
     var
@@ -144,6 +152,14 @@ codeunit 4025 "GP Cloud Migration"
         UpdateOrInsertRecord(Database::"GP SY40100", GPSY40100Lbl);
         UpdateOrInsertRecord(Database::"GP SY40101", GPSY40101Lbl);
         UpdateOrInsertRecord(Database::"GP CM20600", GPCM20600Lbl);
+        UpdateOrInsertRecord(Database::"GP MC40200", GPMC40200Lbl);
+        UpdateOrInsertRecord(Database::"GP SY06000", GPSY06000Lbl);
+        UpdateOrInsertRecord(Database::"GP PM00100", GPPM00100Lbl);
+        UpdateOrInsertRecord(Database::"GP PM00200", GPPM00200Lbl);
+        UpdateOrInsertRecord(Database::"GP RM00101", GPRM00101Lbl);
+        UpdateOrInsertRecord(Database::"GP RM00201", GPRM00201Lbl);
+        UpdateOrInsertRecord(Database::"GP IV00101", GPIV00101Lbl);
+        UpdateOrInsertRecord(Database::"GP IV40400", GPIV40400Lbl);
     end;
 
     local procedure UpdateOrInsertRecord(TableID: Integer; SourceTableName: Text[128])
