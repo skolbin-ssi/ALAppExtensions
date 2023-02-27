@@ -150,7 +150,7 @@ codeunit 9044 "ABS Format Helper"
     [NonDebuggable]
     procedure TagsDictionaryToSearchExpression(Tags: Dictionary of [Text, Text]): Text
     var
-        Helper: Codeunit "Uri";
+        UriHelper: Codeunit "Uri";
         Keys: List of [Text];
         "Key": Text;
         SingleQuoteChar: Char;
@@ -164,7 +164,7 @@ codeunit 9044 "ABS Format Helper"
                 Expression += ' AND ';
             Expression += StrSubstNo(ExpressionPartLbl, "Key".Trim(), GetOperatorFromValue(Tags.Get("Key")).Trim(), SingleQuoteChar, GetValueWithoutOperator(Tags.Get("Key")).Trim(), SingleQuoteChar);
         end;
-        Expression := Helper.EscapeDataString(Expression);
+        Expression := UriHelper.EscapeDataString(Expression);
         exit(Expression);
     end;
 
@@ -239,6 +239,17 @@ codeunit 9044 "ABS Format Helper"
             exit(NewBoolean);
     end;
 
+    procedure ConvertToEnum(FieldName: Text; PropertyValue: Text): Variant
+    begin
+        if FieldName = 'Resource Type' then
+            case PropertyValue of
+                Text.LowerCase(Format(Enum::"ABS Blob Resource Type"::File)):
+                    exit(Enum::"ABS Blob Resource Type"::File);
+                Text.LowerCase(Format(Enum::"ABS Blob Resource Type"::Directory)):
+                    exit(Enum::"ABS Blob Resource Type"::Directory);
+            end;
+    end;
+
     procedure GetNewLineCharacter(): Text
     var
         LF: Char;
@@ -249,12 +260,12 @@ codeunit 9044 "ABS Format Helper"
 
     procedure GetIso8601DateTime(MyDateTime: DateTime): Text
     begin
-        exit(FormatDateTime(MyDateTime, 's')); // https://docs.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings
+        exit(FormatDateTime(MyDateTime, 's')); // https://go.microsoft.com/fwlink/?linkid=2210384
     end;
 
     procedure GetRfc1123DateTime(MyDateTime: DateTime): Text
     begin
-        exit(FormatDateTime(MyDateTime, 'R')); // https://docs.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings
+        exit(FormatDateTime(MyDateTime, 'R')); // https://go.microsoft.com/fwlink/?linkid=2210384
     end;
 
     local procedure FormatDateTime(MyDateTime: DateTime; FormatSpecifier: Text): Text

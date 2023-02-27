@@ -1,6 +1,7 @@
 codeunit 4001 "Hybrid Cloud Management"
 {
-    Permissions = tabledata "Installed Application" = r,
+    Permissions = tabledata "Published Application" = r,
+                  tabledata AllObj = r,
                   tabledata "Intelligent Cloud" = rimd,
                   tabledata "Intelligent Cloud Status" = rimd,
                   tabledata "Hybrid DA Approval" = rim,
@@ -42,6 +43,7 @@ codeunit 4001 "Hybrid Cloud Management"
         CannotStartUpgradeFromOldRunErr: Label 'The selected summary is not from the latest replication run. To start the upgrade, select the summary from the lastest run.';
         ResetCloudFailedErr: Label 'Failed to reset cloud data';
         DisablereplicationTxt: Label 'Cloud Migration has been disabled.';
+        DisabledCloudMigrationFromCompanyTxt: Label 'Cloud Migration has been disabled from company %1.', Locked = true;
 
     procedure CanHandleNotification(SubscriptionId: Text; ProductId: Text): Boolean
     var
@@ -233,6 +235,8 @@ codeunit 4001 "Hybrid Cloud Management"
         HybridReplicationSummary: Record "Hybrid Replication Summary";
         IntelligentCloud: Record "Intelligent Cloud";
         HybridDeployment: Codeunit "Hybrid Deployment";
+        FeatureTelemetry: Codeunit "Feature Telemetry";
+        HybridCloudManagement: Codeunit "Hybrid Cloud Management";
     begin
         RestoreDataPerDatabaseTables(HybridReplicationSummary."Run ID", SourceProduct);
 
@@ -259,6 +263,8 @@ codeunit 4001 "Hybrid Cloud Management"
         Commit(); // Manual commit in case subscriber to the call below crashes
 
         OnAfterDisableMigration(SourceProduct);
+        FeatureTelemetry.LogUptake('0000JMT', HybridCloudManagement.GetFeatureTelemetryName(), Enum::"Feature Uptake Status"::Used);
+        FeatureTelemetry.LogUsage('0000JMX', HybridCloudManagement.GetFeatureTelemetryName(), 'Disabling cloud migration');
     end;
 
     local procedure DisableMigrationOnly(Reason: Text)
@@ -287,24 +293,25 @@ codeunit 4001 "Hybrid Cloud Management"
     procedure RepairCompanionTableRecordConsistency()
     var
         AllObj: Record AllObj;
-        InstalledApplication: Record "Installed Application";
+        PublishedApplication: Record "Published Application";
         CompanionTableRecordConsistencyRepair: DotNet CompanionTableRecordConsistencyRepair;
     begin
         Session.LogMessage('0000FJ1', 'Starting Repair of Companion Tables', Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
         CompanionTableRecordConsistencyRepair := CompanionTableRecordConsistencyRepair.CompanionTableRecordConsistencyRepair();
         AllObj.SetRange("Object Type", AllObj."Object Type"::"TableExtension");
-        if InstalledApplication.FindSet() then
+        PublishedApplication.SetRange(Installed, true);
+        if PublishedApplication.FindSet() then
             repeat
-                AllObj.SetRange("App Runtime Package ID", InstalledApplication."Runtime Package ID");
+                AllObj.SetRange("App Runtime Package ID", PublishedApplication."Runtime Package ID");
                 if not AllObj.IsEmpty() then begin
 #pragma warning disable AA0217
-                    Session.LogMessage('0000FJ2', StrSubstNo('Starting Repair of Companion Tables for Package ID %1', InstalledApplication."Package ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
-                    CompanionTableRecordConsistencyRepair.UpdateCompanionTablesInAppWithMissingRecords(InstalledApplication."Runtime Package ID");
+                    Session.LogMessage('0000FJ2', StrSubstNo('Starting Repair of Companion Tables for Package ID %1', PublishedApplication."Package ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
+                    CompanionTableRecordConsistencyRepair.UpdateCompanionTablesInAppWithMissingRecords(PublishedApplication."Runtime Package ID");
                     Commit();
-                    Session.LogMessage('0000FJ3', StrSubstNo('Completed Repair of Companion Tables for Package ID %1', InstalledApplication."Package ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
+                    Session.LogMessage('0000FJ3', StrSubstNo('Completed Repair of Companion Tables for Package ID %1', PublishedApplication."Package ID"), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
 #pragma warning restore
                 end;
-            until InstalledApplication.Next() = 0;
+            until PublishedApplication.Next() = 0;
 
         Session.LogMessage('0000FJ4', 'Completed Repair of Companion Tables', Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
     end;
@@ -500,22 +507,25 @@ codeunit 4001 "Hybrid Cloud Management"
     var
         HybridCompany: Record "Hybrid Company";
         GuidedExperience: Codeunit "Guided Experience";
+        FeatureTelemetry: Codeunit "Feature Telemetry";
         TelemetryDimensions: Dictionary of [Text, Text];
     begin
+        TelemetryDimensions.Add('TotalNumberOfOnPremCompanies', Format(HybridCompany.Count(), 0, 9));
         HybridCompany.SetRange(Replicate, true);
-
-        TelemetryDimensions.Add('Category', CloudMigrationTok);
-        TelemetryDimensions.Add('NumberOfCompanies', Format(HybridCompany.Count(), 0, 9));
-        TelemetryDimensions.Add('TotalMigrationSize', Format(HybridCompany.GetTotalMigrationSize(), 0, 9));
-
-        Session.LogMessage('0000EUR', CompletedCloudMigrationSetupMsg, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, TelemetryDimensions);
-
         GuidedExperience.CompleteAssistedSetup(ObjectType::Page, Page::"Hybrid Cloud Setup Wizard");
         IntelligentCloudSetup.Validate("Replication User", UserId());
         IntelligentCloudSetup.Modify();
         RestoreDefaultMigrationTableMappings(false);
         RefreshIntelligentCloudStatusTable();
         CreateCompanies();
+
+        FeatureTelemetry.LogUptake('0000JMU', GetFeatureTelemetryName(), Enum::"Feature Uptake Status"::"Set up");
+        TelemetryDimensions.Add('Category', CloudMigrationTok);
+        TelemetryDimensions.Add('NumberOfCompanies', Format(HybridCompany.Count(), 0, 9));
+        TelemetryDimensions.Add('TotalMigrationSize', Format(HybridCompany.GetTotalMigrationSize(), 0, 9));
+        TelemetryDimensions.Add('TotalOnPremSize', Format(HybridCompany.GetTotalOnPremSize(), 0, 9));
+        TelemetryDimensions.Add('Product', IntelligentCloudSetup."Product ID");
+        FeatureTelemetry.LogUsage('0000EUR', GetFeatureTelemetryName(), CompletedCloudMigrationSetupMsg, TelemetryDimensions);
     end;
 
     procedure HandleShowIRInstructionsStep(var HybridProductType: Record "Hybrid Product Type"; var IRName: Text; var PrimaryKey: Text)
@@ -630,6 +640,7 @@ codeunit 4001 "Hybrid Cloud Management"
     var
         IntelligentCloudSetup: Record "Intelligent Cloud Setup";
         HybridReplicationSummary: Record "Hybrid Replication Summary";
+        FeatureTelemetry: Codeunit "Feature Telemetry";
         HybridDeployment: Codeunit "Hybrid Deployment";
         Handled: Boolean;
     begin
@@ -643,6 +654,13 @@ codeunit 4001 "Hybrid Cloud Management"
             HybridDeployment.RunReplication(RunId, ReplicationType);
 
         HybridReplicationSummary.CreateInProgressRecord(RunId, ReplicationType);
+        FeatureTelemetry.LogUptake('0000JMV', GetFeatureTelemetryName(), Enum::"Feature Uptake Status"::Used);
+        FeatureTelemetry.LogUsage('0000JMY', GetFeatureTelemetryName(), 'Running data replication');
+    end;
+
+    internal procedure GetFeatureTelemetryName(): Text
+    begin
+        exit('Cloud Migration');
     end;
 
     procedure CheckFixDataOnReplicationCompleted(NotificationText: Text): Boolean
@@ -1080,7 +1098,6 @@ codeunit 4001 "Hybrid Cloud Management"
     begin
     end;
 
-
     [IntegrationEvent(false, false)]
     local procedure OnCanCreateCompanies(var CanCreateCompanies: Boolean)
     begin
@@ -1090,7 +1107,6 @@ codeunit 4001 "Hybrid Cloud Management"
     local procedure OnCanStartupgrade(var Handled: Boolean)
     begin
     end;
-
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Hybrid Deployment", 'OnCanStartUpgrade', '', false, false)]
     local procedure DisableCloudMigrationUnderUpgrade(CompanyName: Text)
@@ -1109,6 +1125,8 @@ codeunit 4001 "Hybrid Cloud Management"
             DisableMigration(IntelligentCloudSetup."Product ID", CloudMigrationDisabledDueToUpgradeMsg, false)
         else
             DisableMigrationOnly(CloudMigrationDisabledDueToUpgradeMsg);
+
+        Session.LogMessage('0000IGC', StrSubstNo(DisabledCloudMigrationFromCompanyTxt, CompanyName), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', CloudMigrationTok);
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Hybrid Deployment", 'OnBeforeEnableReplication', '', false, false)]
@@ -1207,6 +1225,7 @@ codeunit 4001 "Hybrid Cloud Management"
     procedure RunDataUpgrade(var HybridReplicationSummary: Record "Hybrid Replication Summary")
     var
         ExistingHybridReplicationSummary: Record "Hybrid Replication Summary";
+        FeatureTelemetry: Codeunit "Feature Telemetry";
         Handled: Boolean;
         ErrorMessage: Text;
     begin
@@ -1218,8 +1237,12 @@ codeunit 4001 "Hybrid Cloud Management"
             Error(CannotStartUpgradeFromOldRunErr);
 
         OnInvokeDataUpgrade(HybridReplicationSummary, Handled);
+
         if not Handled then
             Error(UpgradeNotExecutedErr);
+
+        FeatureTelemetry.LogUptake('0000JMW', GetFeatureTelemetryName(), Enum::"Feature Uptake Status"::Used);
+        FeatureTelemetry.LogUsage('0000JMZ', GetFeatureTelemetryName(), 'Running data replication');
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Guided Experience", 'OnRegisterAssistedSetup', '', false, false)]

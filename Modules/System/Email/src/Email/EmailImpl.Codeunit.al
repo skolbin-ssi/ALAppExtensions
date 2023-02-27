@@ -15,6 +15,7 @@ codeunit 8900 "Email Impl"
                   tabledata "Email View Policy" = r;
 
     var
+        EmailCategoryLbl: Label 'Email', Locked = true;
         EmailMessageDoesNotExistMsg: Label 'The email message has been deleted by another user.';
         EmailMessageCannotBeEditedErr: Label 'The email message has already been sent and cannot be edited.';
         EmailMessageQueuedErr: Label 'The email has already been queued.';
@@ -25,6 +26,7 @@ codeunit 8900 "Email Impl"
         EmailViewPolicyLbl: Label 'Email View Policy', Locked = true;
         EmailViewPolicyUsedTxt: Label 'Email View Policy is used', Locked = true;
         EmailViewPolicyDefaultTxt: Label 'Falling back to default email view policy: %1', Locked = true;
+        EmailModifiedByEventTxt: Label 'Email has been modified by event', Locked = true;
 
     #region API
 
@@ -142,6 +144,36 @@ codeunit 8900 "Email Impl"
         exit(EmailEditor.Open(EmailOutbox, IsModal));
     end;
 
+    procedure OpenInEditorWithScenario(EmailMessage: Codeunit "Email Message"; EmailAccountId: Guid; EmailConnector: Enum "Email Connector"; IsModal: Boolean; Scenario: Enum "Email Scenario"): Enum "Email Action"
+    var
+        EmailOutbox: Record "Email Outbox";
+        EmailMessageImpl: Codeunit "Email Message Impl.";
+        EmailScenarioAttachmentsImpl: Codeunit "Email Scenario Attach Impl.";
+        EmailEditor: Codeunit "Email Editor";
+        IsNew, IsEnqueued : Boolean;
+    begin
+        if not EmailMessageImpl.Get(EmailMessage.GetId()) then
+            Error(EmailMessageDoesNotExistMsg);
+
+        if EmailMessageImpl.IsRead() then
+            Error(EmailMessageCannotBeEditedErr);
+
+        IsNew := not GetEmailOutbox(EmailMessageImpl.GetId(), EmailOutbox);
+        IsEnqueued := (not IsNew) and IsOutboxEnqueued(EmailOutbox);
+
+        if not IsEnqueued then begin
+            // Modify the outbox only if it hasn't been enqueued yet
+            CreateOrUpdateEmailOutbox(EmailMessageImpl, EmailAccountId, EmailConnector, Enum::"Email Status"::Draft, '', EmailOutbox);
+
+            // Set the record as new so that there is a save prompt and no arrows
+            EmailEditor.SetAsNew();
+        end;
+
+        EmailScenarioAttachmentsImpl.AddAttachmentToMessage(EmailMessage, Scenario);
+
+        exit(EmailEditor.OpenWithScenario(EmailOutbox, IsModal, Scenario));
+    end;
+
     local procedure GetEmailOutbox(EmailMessageId: Guid; var EmailOutbox: Record "Email Outbox"): Boolean
     begin
         EmailOutbox.SetRange("Message Id", EmailMessageId);
@@ -190,6 +222,7 @@ codeunit 8900 "Email Impl"
         if CurrentUser.Get(UserSecurityId()) then
             Email.AddRelation(EmailMessage, Database::User, CurrentUser.SystemId, Enum::"Email Relation Type"::"Related Entity", Enum::"Email Relation Origin"::"Compose Context");
 
+        BeforeSendEmail(EmailMessage);
         CreateOrUpdateEmailOutbox(EmailMessageImpl, EmailAccountId, EmailConnector, Enum::"Email Status"::Queued, EmailAccountRec."Email Address", EmailOutbox);
         Email.OnEnqueuedInOutbox(EmailMessage.GetId());
 
@@ -203,6 +236,27 @@ codeunit 8900 "Email Impl"
 
             if EmailDispatcher.Run(EmailOutbox) then;
             exit(EmailDispatcher.GetSuccess());
+        end;
+    end;
+
+    local procedure BeforeSendEmail(var EmailMessage: codeunit "Email Message")
+    var
+        Email: Codeunit Email;
+        Telemetry: Codeunit Telemetry;
+        Dimensions: Dictionary of [Text, Text];
+        LastModifiedNo: Integer;
+        EmailMessageId: Guid;
+    begin
+        EmailMessageId := EmailMessage.GetId(); // Prevent different email message from being sent if overwritten in event
+        LastModifiedNo := EmailMessage.GetNoOfModifies();
+
+        Email.OnBeforeSendEmail(EmailMessage);
+
+        EmailMessage.Get(EmailMessageId); // Get any latest changes
+        if LastModifiedNo < EmailMessage.GetNoOfModifies() then begin
+            Dimensions.Add('Category', EmailCategoryLbl);
+            Dimensions.Add('EmailMessageId', EmailMessage.GetId());
+            Telemetry.LogMessage('0000I2F', EmailModifiedByEventTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::All, Dimensions);
         end;
     end;
 
@@ -314,9 +368,8 @@ codeunit 8900 "Email Impl"
     procedure GetSentEmailsForRecord(TableId: Integer; SystemId: Guid; var ResultSentEmails: Record "Sent Email" temporary)
     var
         NullGuid: Guid;
-        NullDate: DateTime;
     begin
-        GetSentEmails(NullGuid, NullDate, TableId, SystemId, ResultSentEmails);
+        GetSentEmails(NullGuid, 0DT, TableId, SystemId, ResultSentEmails);
     end;
 
     procedure GetSentEmails(AccountId: Guid; NewerThan: DateTime; var SentEmails: Record "Sent Email" temporary)
@@ -494,7 +547,7 @@ codeunit 8900 "Email Impl"
         EmailRelatedRecord: Record "Email Related Record";
         Email: Codeunit Email;
     begin
-        if EmailRelatedRecord.Get(EmailMessage.GetId(), TableId, SystemId) then
+        if EmailRelatedRecord.Get(TableId, SystemId, EmailMessage.GetId()) then
             if EmailRelatedRecord.Delete() then begin
                 Email.OnAfterRemoveRelation(EmailMessage.GetId(), TableId, SystemId);
                 exit(true);
@@ -516,6 +569,20 @@ codeunit 8900 "Email Impl"
     begin
         SentEmails.SetRelatedRecord(TableId, SystemId);
         SentEmails.Run();
+    end;
+
+    procedure GetEmailOutboxSentEmailWithinRateLimit(var SentEmail: Record "Sent Email"; var EmailOutbox: Record "Email Outbox"; AccountId: Guid): Duration
+    var
+        EmailCheckWindowTime: DateTime;
+        RateLimitDuration: Duration;
+    begin
+        RateLimitDuration := 1000 * 60; // one minute, rate limit is defined as emails per minute
+        EmailCheckWindowTime := CurrentDateTime() - RateLimitDuration;
+        SentEmail.SetRange("Account Id", AccountId);
+        SentEmail.SetFilter("Date Time Sent", '>%1', EmailCheckWindowTime);
+        EmailOutbox.SetRange("Account Id", AccountId);
+        EmailOutbox.SetRange(Status, Enum::"Email Status"::Processing);
+        exit(RateLimitDuration);
     end;
 
     internal procedure GetRecordRef(RecRelatedVariant: Variant; var ResultRecordRef: RecordRef): Boolean

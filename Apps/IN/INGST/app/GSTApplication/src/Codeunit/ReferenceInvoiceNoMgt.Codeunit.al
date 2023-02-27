@@ -4505,6 +4505,7 @@ codeunit 18435 "Reference Invoice No. Mgt."
         var Rec: Record "Reference Invoice No.";
         var xRec: Record "Reference Invoice No.")
     var
+        SalesHeader: Record "Sales Header";
         PurchaseHeader: Record "Purchase Header";
         VendorLedgerEntry: Record "Vendor Ledger Entry";
         VendorLedgerEntryToCheck: Record "Vendor Ledger Entry";
@@ -4520,15 +4521,18 @@ codeunit 18435 "Reference Invoice No. Mgt."
             Error(ReferenceVerifyErr);
 
         if Rec."Reference Invoice Nos." <> '' then
-            if Rec."Source Type" = Rec."Source Type"::Vendor then begin
+            if Purchaseheader.Get(Rec."Document Type", Rec."Document No.") then begin
+                VendorLedgerEntryToCheck.LoadFields("Document No.");
                 VendorLedgerEntryToCheck.SetRange("Document No.", Rec."Reference Invoice Nos.");
                 if VendorLedgerEntryToCheck.IsEmpty() then
                     Error(VendInvNoErr, Rec."Reference Invoice Nos.");
-            end else begin
-                CustLedgerEntry.SetRange("Document No.", Rec."Reference Invoice Nos.");
-                if CustLedgerEntry.IsEmpty() then
-                    Error(CustInvNoErr, Rec."Reference Invoice Nos.");
-            end;
+            end else
+                if SalesHeader.Get(Rec."Document Type", Rec."Document No.") then begin
+                    CustLedgerEntry.LoadFields("Document No.");
+                    CustLedgerEntry.SetRange("Document No.", Rec."Reference Invoice Nos.");
+                    if CustLedgerEntry.IsEmpty() then
+                        Error(CustInvNoErr, Rec."Reference Invoice Nos.");
+                end;
 
         if Rec."Source Type" <> "Source Type"::Customer then begin
             if PurchaseHeader.Get(Rec."Document Type", Rec."Document No.") then begin
@@ -4661,14 +4665,10 @@ codeunit 18435 "Reference Invoice No. Mgt."
                 exit;
 
             GSTSetup.TestField("GST Tax Type");
-            if not (GenJnlLine."Document Type" in [GenJnlLine."Document Type"::Invoice, GenJnlLine."Document Type"::"Credit Memo"]) then begin
-                GenJnlLine."GST in Journal" := false;
-                GenJnlLine.Modify();
-                exit;
-            end;
-
-            GenJnlLine."GST in Journal" := FilterTaxTransactionValue(GSTSetup."GST Tax Type", GenJnlLine.RecordId);
-            GenJnlLine.Modify();
+            if not (GenJnlLine."Document Type" in [GenJnlLine."Document Type"::Invoice, GenJnlLine."Document Type"::"Credit Memo"]) then
+                GenJnlLine."GST in Journal" := false
+            else
+                GenJnlLine."GST in Journal" := FilterTaxTransactionValue(GSTSetup."GST Tax Type", GenJnlLine.RecordId);
         end;
     end;
 

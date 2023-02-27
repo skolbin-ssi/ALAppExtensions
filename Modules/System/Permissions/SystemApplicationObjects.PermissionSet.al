@@ -15,6 +15,7 @@ PermissionSet 219 "System Application - Objects"
                              "Azure AD Plan - Objects",
                              "Azure AD Tenant - Objects",
                              "Azure AD User - Objects",
+                             "Azure Function - Objects",
                              "AAD User Management - Objects",
                              "Azure Blob S. API - Objects",
                              "Azure Key Vault - Objects",
@@ -55,19 +56,25 @@ PermissionSet 219 "System Application - Objects"
                              "OAuth2 - Objects",
                              "Object Selection - Objects",
                              "Page Summary Provider - Obj.",
+                             "Page Action Provider - Obj.",
                              "Password - Objects",
                              "Performance Profiler - Objects",
+                             "Permission Sets - Objects",
                              "Printer Management - Objects",
                              "Record Link Management - Obj.",
+                             "Record Reference - Objects",
                              "Recurrence Schedule - Objects",
                              "Regex - Objects",
                              "Retention Policy - Objects",
 #if not CLEAN20
+#pragma warning disable AL0432
                              "Sandbox Cleanup - Objects",
+#pragma warning restore AL0432
 #endif
                              "Environment Cleanup - Objects",
                              "Satisfaction Survey - Objects",
                              "Secrets - Objects",
+                             "SharePoint API - Objects",
                              "System Initialization - Obj.",
                              "Table Information - Objects",
                              "Telemetry - Objects",

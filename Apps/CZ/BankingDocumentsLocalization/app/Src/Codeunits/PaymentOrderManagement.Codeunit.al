@@ -64,6 +64,7 @@ codeunit 31356 "Payment Order Management CZB"
 
     procedure CheckPaymentOrderLineFormat(PaymentOrderLineCZB: Record "Payment Order Line CZB"; ShowErrorMessages: Boolean): Boolean
     var
+        PaymentOrderHeaderCZB: Record "Payment Order Header CZB";
         TempErrorMessage2: Record "Error Message" temporary;
         IsHandled: Boolean;
         MustBeSpecifiedErr: Label '%1 or %2 in %3 must be specified.', Comment = '%1 = Account No. FieldCaption; %2 = IBAN FieldCaption; %3 = RecordId';
@@ -79,8 +80,10 @@ codeunit 31356 "Payment Order Management CZB"
                 PaymentOrderLineCZB, PaymentOrderLineCZB.FieldNo(PaymentOrderLineCZB.Amount), TempErrorMessage2."Message Type"::Error, 0);
             TempErrorMessage2.LogIfEmpty(
                 PaymentOrderLineCZB, PaymentOrderLineCZB.FieldNo(PaymentOrderLineCZB."Due Date"), TempErrorMessage2."Message Type"::Error);
-            TempErrorMessage2.LogIfEmpty(
-                PaymentOrderLineCZB, PaymentOrderLineCZB.FieldNo(PaymentOrderLineCZB."Variable Symbol"), TempErrorMessage2."Message Type"::Error);
+            PaymentOrderHeaderCZB.Get(PaymentOrderLineCZB."Payment Order No.");
+            if not PaymentOrderHeaderCZB."Foreign Payment Order" then
+                TempErrorMessage2.LogIfEmpty(
+                    PaymentOrderLineCZB, PaymentOrderLineCZB.FieldNo(PaymentOrderLineCZB."Variable Symbol"), TempErrorMessage2."Message Type"::Error);
             TempErrorMessage2.LogIfInvalidCharacters(
                 PaymentOrderLineCZB, PaymentOrderLineCZB.FieldNo(PaymentOrderLineCZB."Variable Symbol"), TempErrorMessage2."Message Type"::Error,
                 BankOperationsFunctionsCZB.GetValidCharactersForVariableSymbol());
@@ -180,7 +183,6 @@ codeunit 31356 "Payment Order Management CZB"
         TempErrorMessage2: Record "Error Message" temporary;
         ErrorMessageID: Integer;
         TempErrorMessageLogSuspended: Boolean;
-        SuggestedAmountToApplyQst: Label '%1 Ledger Entry No. %2 is suggested to application on other documents in the system.\Do you want to use it for this Payment Order?', Comment = '%1 = Type, %2 = Applies-to C/V/E Entry No.';
     begin
         TempErrorMessage.Reset();
         if TempErrorMessage.FindLast() then
@@ -189,15 +191,9 @@ codeunit 31356 "Payment Order Management CZB"
         TempErrorMessageLogSuspended := ErrorMessageLogSuspended;
         ErrorMessageLogSuspended := false;
 
-        if ShowErrorMessages then
-            if PaymentOrderLineCZB."Applies-to C/V/E Entry No." <> 0 then
-                if PaymentOrderLineCZB.CalcRelatedAmountToApply() <> 0 then
-                    if not ConfirmManagement.GetResponseOrDefault(StrSubstNo(SuggestedAmountToApplyQst, PaymentOrderLineCZB.Type, PaymentOrderLineCZB."Applies-to C/V/E Entry No."), false) then
-                        Error('');
-
-        CheckPaymentOrderLineApplyToOtherEntries(PaymentOrderLineCZB, ShowErrorMessages);
+        CheckPaymentOrderLineApplyToOtherEntries(PaymentOrderLineCZB, false);
 #if not CLEAN19
-        CheckPaymentOrderLineApplyToAdvanceLetter(PaymentOrderLineCZB, ShowErrorMessages);
+        CheckPaymentOrderLineApplyToAdvanceLetter(PaymentOrderLineCZB, false);
 #endif
 
         ErrorMessageLogSuspended := TempErrorMessageLogSuspended;
@@ -226,7 +222,7 @@ codeunit 31356 "Payment Order Management CZB"
     var
         TempErrorMessage2: Record "Error Message" temporary;
         IsHandled: Boolean;
-        CustVendLedgEntryAlreadyAppliedErr: Label '%1 %2 in %3 is already applied on other or the same payment order.', Comment = '%1 = Applies-to C/V Entry No. FieldCaption; %2 = Applies-to C/V Entry No; %3 = RecordId';
+        SuggestedAmountToApplyErr: Label '%1 Ledger Entry No. %2 is suggested to application on other documents in the system.', Comment = '%1 = Type, %2 = Applies-to C/V/E Entry No.';
     begin
         IsHandled := false;
         OnBeforeCheckPaymentOrderLineApplyToOtherEntries(PaymentOrderLineCZB, ShowErrorMessages, TempErrorMessage2, IsHandled);
@@ -235,9 +231,9 @@ codeunit 31356 "Payment Order Management CZB"
                 exit;
 
             TempErrorMessage2.LogMessage(
-                PaymentOrderLineCZB, PaymentOrderLineCZB.FieldNo(PaymentOrderLineCZB."Applies-to C/V/E Entry No."), TempErrorMessage2."Message Type"::Warning,
+                PaymentOrderLineCZB, PaymentOrderLineCZB.FieldNo("Applies-to C/V/E Entry No."), TempErrorMessage2."Message Type"::Warning,
                 StrSubstNo(
-                    CustVendLedgEntryAlreadyAppliedErr,
+                    SuggestedAmountToApplyErr,
                     PaymentOrderLineCZB.FieldCaption(PaymentOrderLineCZB."Applies-to C/V/E Entry No."), PaymentOrderLineCZB."Applies-to C/V/E Entry No.", PaymentOrderLineCZB.RecordId()));
         end;
 
@@ -246,31 +242,11 @@ codeunit 31356 "Payment Order Management CZB"
     end;
 
     local procedure IsLedgerEntryApplied(PaymentOrderLineCZB: Record "Payment Order Line CZB"): Boolean
-    var
-        IssPaymentOrderLineCZB: Record "Iss. Payment Order Line CZB";
-        PaymentOrderLineCZB2: Record "Payment Order Line CZB";
     begin
         if PaymentOrderLineCZB."Applies-to C/V/E Entry No." = 0 then
             exit(false);
 
-        IssPaymentOrderLineCZB.SetRange(Type, PaymentOrderLineCZB.Type);
-        IssPaymentOrderLineCZB.SetRange("No.", PaymentOrderLineCZB."No.");
-        IssPaymentOrderLineCZB.SetRange("Applies-to C/V/E Entry No.", PaymentOrderLineCZB."Applies-to C/V/E Entry No.");
-        IssPaymentOrderLineCZB.SetRange(Status, IssPaymentOrderLineCZB.Status::" ");
-        if not IssPaymentOrderLineCZB.IsEmpty() then
-            exit(true);
-
-        PaymentOrderLineCZB2.SetRange(Type, PaymentOrderLineCZB.Type);
-        PaymentOrderLineCZB2.SetRange("No.", PaymentOrderLineCZB."No.");
-        PaymentOrderLineCZB2.SetRange("Applies-to C/V/E Entry No.", PaymentOrderLineCZB."Applies-to C/V/E Entry No.");
-        PaymentOrderLineCZB2.SetFilter("Payment Order No.", '<>%1', PaymentOrderLineCZB."Payment Order No.");
-        if not PaymentOrderLineCZB2.IsEmpty() then
-            exit(true);
-
-        PaymentOrderLineCZB2.SetRange("Payment Order No.", PaymentOrderLineCZB."Payment Order No.");
-        PaymentOrderLineCZB2.SetFilter("Line No.", '<>%1', PaymentOrderLineCZB."Line No.");
-        if not PaymentOrderLineCZB2.IsEmpty() then
-            exit(true);
+        exit(PaymentOrderLineCZB.CalcRelatedAmountToApply() <> 0);
     end;
 
     local procedure HasErrorMessages(var TempErrorMessage2: Record "Error Message" temporary; ShowErrorMessages: Boolean): Boolean
@@ -330,7 +306,7 @@ codeunit 31356 "Payment Order Management CZB"
         TempErrorMessage.SetFilter("Field Number", '%1', PaymentOrderLineCZB.FieldNo("Applies-to C/V/E Entry No."));
         if TempErrorMessage.FindSet() then
             repeat
-                if not ConfirmManagement.GetResponseOrDefault(StrSubstNo(TwoPlaceholdersTok, TempErrorMessage.Description, ContinueQst), false) then
+                if not ConfirmManagement.GetResponseOrDefault(StrSubstNo(TwoPlaceholdersTok, TempErrorMessage."Message", ContinueQst), false) then
                     Error('');
             until TempErrorMessage.Next() = 0;
     end;

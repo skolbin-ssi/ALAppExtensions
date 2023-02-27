@@ -40,6 +40,7 @@ codeunit 10673 "Generate SAF-T File"
         GlobalVendor: Record Vendor;
         GlobalCustomerPostingGroup: Record "Customer Posting Group";
         GlobalVendorPostingGroup: Record "Vendor Posting Group";
+        GlobalCurrency: Record Currency;
         SAFTXMLHelper: Codeunit "SAF-T XML Helper";
         Window: Dialog;
         SAFTSetupGot: Boolean;
@@ -647,6 +648,8 @@ codeunit 10673 "Generate SAF-T File"
         Amount: Decimal;
         CurrencyCode: Code[10];
         ExchangeRate: Decimal;
+        EntryAmount: Decimal;
+        EntryAmountLCY: Decimal;
         LastTransactionNo: Integer;
         IsHandled: Boolean;
     begin
@@ -657,7 +660,7 @@ codeunit 10673 "Generate SAF-T File"
                     SAFTXMLHelper.FinalizeXMLNode();
                 ExportGLEntryTransactionInfo(GLEntry);
                 LastTransactionNo := GLEntry."Transaction No.";
-                GetFCYData(CurrencyCode, ExchangeRate, SAFTExportHeader, GLEntry);
+                GetFCYData(CurrencyCode, ExchangeRate, EntryAmount, EntryAmountLCY, SAFTExportHeader, GLEntry);
             end;
             SAFTXMLHelper.AddNewXMLNode('Line', '');
             SAFTXMLHelper.AppendXMLNode('RecordID', format(GLEntry."Entry No."));
@@ -694,7 +697,7 @@ codeunit 10673 "Generate SAF-T File"
             IsHandled := false;
             OnBeforeExportGLEntryAmountInfo(SAFTXMLHelper, AmountXMLNode, GLEntry, IsHandled);
             If not IsHandled then
-                ExportAmountWithCurrencyInfo(AmountXMLNode, GLEntry."G/L Account No.", CurrencyCode, ExchangeRate, Amount);
+                ExportAmountWithCurrencyInfo(AmountXMLNode, GLEntry."G/L Account No.", CurrencyCode, ExchangeRate, Amount, EntryAmount, EntryAmountLCY);
             if (GLEntry."VAT Bus. Posting Group" <> '') or (GLEntry."VAT Prod. Posting Group" <> '') then begin
                 GLEntryVATEntryLink.SetRange("G/L Entry No.", GLEntry."Entry No.");
                 if GLEntryVATEntryLink.FindFirst() then begin
@@ -765,9 +768,11 @@ codeunit 10673 "Generate SAF-T File"
         SAFTXMLHelper.FinalizeXMLNode();
     end;
 
-    local procedure ExportAmountWithCurrencyInfo(ParentNodeName: Text; GLAccNo: Code[20]; CurrencyCode: Code[10]; ExchangeRate: Decimal; Amount: Decimal)
+    local procedure ExportAmountWithCurrencyInfo(ParentNodeName: Text; GLAccNo: Code[20]; CurrencyCode: Code[10]; ExchangeRate: Decimal; Amount: Decimal; EntryAmount: Decimal; EntryAmountLCY: Decimal)
     var
         ExportAmountWithNoCurrency: Boolean;
+        CurrentAmount: Decimal;
+        CurrentAmountLCY: Decimal;
     begin
         if CurrencyCode = '' then
             ExportAmountWithNoCurrency := true
@@ -779,9 +784,10 @@ codeunit 10673 "Generate SAF-T File"
         end;
 
         SAFTXMLHelper.AddNewXMLNode(ParentNodeName, '');
-        SAFTXMLHelper.AppendXMLNode('Amount', FormatAmount(Amount));
+        GetCurrencyAmounts(CurrentAmount, CurrentAmountLCY, CurrencyCode, ExchangeRate, Amount, EntryAmount, EntryAmountLCY);
+        SAFTXMLHelper.AppendXMLNode('Amount', FormatAmount(CurrentAmountLCY));
         SAFTXMLHelper.AppendXMLNode('CurrencyCode', CurrencyCode);
-        SAFTXMLHelper.AppendXMLNode('CurrencyAmount', FormatAmount(Round(Amount / ExchangeRate, 0.01)));
+        SAFTXMLHelper.AppendXMLNode('CurrencyAmount', FormatAmount(CurrentAmount));
         SAFTXMLHelper.AppendXMLNode('ExchangeRate', FormatAmount(Round(ExchangeRate, 0.00001)));
         SAFTXMLHelper.FinalizeXMLNode();
     end;
@@ -812,13 +818,15 @@ codeunit 10673 "Generate SAF-T File"
 
         SAFTXMLHelper.AddNewXMLNode('BankAccount', '');
         SAFTXMLHelper.AppendXMLNode('IBANNumber', IBAN);
-        SAFTXMLHelper.AppendXMLNode('BankAccountNumber', BankNumber);
-        SAFTXMLHelper.AppendXMLNode('BankAccountName', BankName);
-        if ClearingCode = '' then
-            SortCode := BranchNo
-        else
-            SortCode := ClearingCode;
-        SAFTXMLHelper.AppendXMLNode('SortCode', SortCode);
+        if IBAN = '' then begin
+            SAFTXMLHelper.AppendXMLNode('BankAccountNumber', BankNumber);
+            SAFTXMLHelper.AppendXMLNode('BankAccountName', BankName);
+            if ClearingCode = '' then
+                SortCode := BranchNo
+            else
+                SortCode := ClearingCode;
+            SAFTXMLHelper.AppendXMLNode('SortCode', SortCode);
+        end;
         SAFTXMLHelper.AppendXMLNode('BIC', SWIFT);
 
         SAFTXMLHelper.AppendXMLNode('CurrencyCode', SAFTExportMgt.GetISOCurrencyCode(CurrencyCode));
@@ -937,6 +945,24 @@ codeunit 10673 "Generate SAF-T File"
         exit(BankAccPostingGroup."G/L Account No.");
     end;
 
+    local procedure GetCurrencyAmounts(var Amount: Decimal; var AmountLCY: Decimal; CurrencyCode: Code[10]; ExchangeRate: Decimal; OriginalLCYAmount: Decimal; EntryAmount: Decimal; EntryAmountLCY: Decimal)
+    begin
+        AmountLCY := EntryAmountLCY;
+        Amount := EntryAmount;
+        if Amount <> 0 then
+            exit;
+        if CurrencyCode <> GlobalCurrency.Code then begin
+            GlobalCurrency.Get(CurrencyCode);
+            GlobalCurrency.InitRoundingPrecision();
+        end;
+        AmountLCY := OriginalLCYAmount;
+        if ExchangeRate = 0 then
+            Amount := 0
+        else
+            Amount := Round(OriginalLCYAmount / ExchangeRate, GlobalCurrency."Amount Rounding Precision");
+        exit;
+    end;
+
     local procedure FinalizeExport(var SAFTExportLine: Record "SAF-T Export Line"; SAFTExportHeader: Record "SAF-T Export Header")
     var
         SAFTExportMgt: Codeunit "SAF-T Export Mgt.";
@@ -1001,7 +1027,7 @@ codeunit 10673 "Generate SAF-T File"
         SAFTSetupGot := true;
     end;
 
-    local procedure GetFCYData(var CurrencyCode: Code[10]; var ExchangeRate: Decimal; SAFTExportHeader: Record "SAF-T Export Header"; GLEntry: Record "G/L Entry")
+    local procedure GetFCYData(var CurrencyCode: Code[10]; var ExchangeRate: Decimal; var EntryAmount: Decimal; var EntryAmountLCY: Decimal; SAFTExportHeader: Record "SAF-T Export Header"; GLEntry: Record "G/L Entry")
     var
         CustLedgEntry: Record "Cust. Ledger Entry";
         VendLedgEntry: Record "Vendor Ledger Entry";
@@ -1009,6 +1035,8 @@ codeunit 10673 "Generate SAF-T File"
     begin
         CurrencyCode := '';
         ExchangeRate := 0;
+        EntryAmount := 0;
+        EntryAmountLCY := 0;
         if not SAFTExportHeader."Export Currency Information" then
             exit;
 
@@ -1022,7 +1050,11 @@ codeunit 10673 "Generate SAF-T File"
             if CustLedgEntry.Amount = 0 then
                 exit;
             CurrencyCode := CustLedgEntry."Currency Code";
-            ExchangeRate := CustLedgEntry."Amount (LCY)" / CustLedgEntry.Amount;
+            ExchangeRate := GetCurrencyFactor(CustLedgEntry."Original Currency Factor", CustLedgEntry.Amount, CustLedgEntry."Amount (LCY)");
+            if CustLedgEntry."Entry No." = GLEntry."Entry No." then begin
+                EntryAmount := CustLedgEntry.Amount;
+                EntryAmountLCY := CustLedgEntry."Amount (LCY)";
+            end;
             exit;
         end;
         if GLEntry."Source Type" in [GLEntry."Source Type"::Vendor, GLEntry."Source Type"::" "] then begin
@@ -1035,7 +1067,11 @@ codeunit 10673 "Generate SAF-T File"
             if VendLedgEntry.Amount = 0 then
                 exit;
             CurrencyCode := VendLedgEntry."Currency Code";
-            ExchangeRate := VendLedgEntry."Amount (LCY)" / VendLedgEntry.Amount;
+            ExchangeRate := GetCurrencyFactor(VendLedgEntry."Original Currency Factor", VendLedgEntry.Amount, VendLedgEntry."Amount (LCY)");
+            if VendLedgEntry."Entry No." = GLEntry."Entry No." then begin
+                EntryAmount := VendLedgEntry.Amount;
+                EntryAmountLCY := VendLedgEntry."Amount (LCY)";
+            end;
             exit;
         end;
         if GLEntry."Source Type" in [GLEntry."Source Type"::"Bank Account", GLEntry."Source Type"::" "] then begin
@@ -1047,9 +1083,20 @@ codeunit 10673 "Generate SAF-T File"
             if BankAccLedgEntry.Amount = 0 then
                 exit;
             CurrencyCode := BankAccLedgEntry."Currency Code";
-            ExchangeRate := BankAccLedgEntry."Amount (LCY)" / BankAccLedgEntry.Amount;
+            ExchangeRate := GetCurrencyFactor(0, BankAccLedgEntry.Amount, BankAccLedgEntry."Amount (LCY)");
+            if BankAccLedgEntry."Entry No." = GLEntry."Entry No." then begin
+                EntryAmount := BankAccLedgEntry.Amount;
+                EntryAmountLCY := BankAccLedgEntry."Amount (LCY)";
+            end;
             exit;
         end;
+    end;
+
+    local procedure GetCurrencyFactor(OriginalCurrencyFactor: Decimal; Amount: Decimal; AmountLCY: Decimal): Decimal
+    begin
+        if OriginalCurrencyFactor <> 0 then
+            exit(OriginalCurrencyFactor);
+        exit(AmountLCY / Amount);
     end;
 
     local procedure GLAccInCurrencyGainLossAcc(GLAccNo: Code[20]; CurrencyCode: Code[10]): Boolean

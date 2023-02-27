@@ -323,6 +323,8 @@ page 4000 "Hybrid Cloud Setup Wizard"
                     group("Para5.1.2")
                     {
                         ShowCaption = false;
+                        Visible = CompanySelectionSelectAllVisible;
+
 #pragma warning disable AA0218
                         field(SelectAll; ChooseAll)
                         {
@@ -632,7 +634,9 @@ page 4000 "Hybrid Cloud Setup Wizard"
     trigger OnOpenPage()
     var
         HybridReplicationSummary: Record "Hybrid Replication Summary";
+        FeatureTelemetry: Codeunit "Feature Telemetry";
     begin
+        FeatureTelemetry.LogUptake('0000JMS', HybridCloudManagement.GetFeatureTelemetryName(), Enum::"Feature Uptake Status"::Discovered);
         IsSaas := EnvironmentInformation.IsSaaS();
 
         if GetFilter("Product ID") = 'TM' then begin
@@ -655,12 +659,18 @@ page 4000 "Hybrid Cloud Setup Wizard"
     trigger OnQueryClosePage(CloseAction: Action): Boolean
     var
         GuidedExperience: Codeunit "Guided Experience";
+        Handled: Boolean;
+        CloseWizard: Boolean;
     begin
         if not (CloseAction = Action::OK) then
             exit(true);
 
         if not IsSaas then
             exit(true);
+
+        OnHandleCloseWizard(Handled, CloseWizard);
+        if Handled then
+            exit(CloseWizard);
 
         if not GuidedExperience.Exists("Guided Experience Type"::"Assisted Setup", ObjectType::Page, Page::"Hybrid Cloud Setup Wizard") then
             exit;
@@ -672,6 +682,11 @@ page 4000 "Hybrid Cloud Setup Wizard"
         end else
             if not Confirm(HybridNotSetupQst, false) then
                 exit(false);
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnHandleCloseWizard(var Handled: Boolean; var CloseWizard: Boolean)
+    begin
     end;
 
     protected var
@@ -694,6 +709,7 @@ page 4000 "Hybrid Cloud Setup Wizard"
         SQLServerTypeVisible: Boolean;
         IRInstructionsVisible: Boolean;
         CompanySelectionVisible: Boolean;
+        CompanySelectionSelectAllVisible: Boolean;
         ScheduleVisible: Boolean;
         DoneVisible: Boolean;
         BackEnabled: Boolean;
@@ -869,6 +885,8 @@ page 4000 "Hybrid Cloud Setup Wizard"
     end;
 
     local procedure ShowCompanySelectionStep(Backwards: Boolean)
+    var
+        HybridCompany: Record "Hybrid Company";
     begin
         if not Backwards and IsChanged then begin
             HybridCloudManagement.HandleShowCompanySelectionStep(TempHybridProductType, SqlConnectionStringTxt, ConvertSqlServerTypeToText(), RuntimeNameTxt);
@@ -878,6 +896,7 @@ page 4000 "Hybrid Cloud Setup Wizard"
         ResetWizardControls();
         CompanySelectionVisible := true;
 
+        CompanySelectionSelectAllVisible := HybridCompany.Count() < HybridCompany.GetRecommendedNumberOfCompaniesToReplicateInBatch();
         // Get latest changes from database to refresh the company list
         SelectLatestVersion();
         CurrPage.Update();

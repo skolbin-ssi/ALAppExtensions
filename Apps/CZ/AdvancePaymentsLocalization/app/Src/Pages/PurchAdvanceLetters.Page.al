@@ -1,4 +1,4 @@
-#pragma warning disable AL0204, AL0604
+#pragma warning disable AL0604
 page 31180 "Purch. Advance Letters CZZ"
 {
     ApplicationArea = Basic, Suite;
@@ -358,8 +358,12 @@ page 31180 "Purch. Advance Letters CZZ"
                 ToolTip = 'Create a PDF file and attach it to the document.';
 
                 trigger OnAction()
+                var
+                    PurchAdvLetterHeaderCZZ: Record "Purch. Adv. Letter Header CZZ";
                 begin
-                    Rec.PrintToDocumentAttachment();
+                    PurchAdvLetterHeaderCZZ := Rec;
+                    CurrPage.SetSelectionFilter(PurchAdvLetterHeaderCZZ);
+                    PurchAdvLetterHeaderCZZ.PrintToDocumentAttachment();
                 end;
             }
             action(AdvanceLetters)
@@ -391,11 +395,4 @@ page 31180 "Purch. Advance Letters CZZ"
             }
         }
     }
-
-    trigger OnOpenPage()
-    var
-        AdvancePaymentsMgtCZZ: Codeunit "Advance Payments Mgt. CZZ";
-    begin
-        AdvancePaymentsMgtCZZ.TestIsEnabled();
-    end;
 }

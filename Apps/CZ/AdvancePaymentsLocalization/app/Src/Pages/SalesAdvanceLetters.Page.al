@@ -351,8 +351,12 @@ page 31170 "Sales Advance Letters CZZ"
                 ToolTip = 'Create a PDF file and attach it to the document.';
 
                 trigger OnAction()
+                var
+                    SalesAdvLetterHeaderCZZ: Record "Sales Adv. Letter Header CZZ";
                 begin
-                    Rec.PrintToDocumentAttachment();
+                    SalesAdvLetterHeaderCZZ := Rec;
+                    CurrPage.SetSelectionFilter(SalesAdvLetterHeaderCZZ);
+                    SalesAdvLetterHeaderCZZ.PrintToDocumentAttachment();
                 end;
             }
             action(AdvanceLetters)
@@ -384,11 +388,4 @@ page 31170 "Sales Advance Letters CZZ"
             }
         }
     }
-
-    trigger OnOpenPage()
-    var
-        AdvancePaymentsMgtCZZ: Codeunit "Advance Payments Mgt. CZZ";
-    begin
-        AdvancePaymentsMgtCZZ.TestIsEnabled();
-    end;
 }

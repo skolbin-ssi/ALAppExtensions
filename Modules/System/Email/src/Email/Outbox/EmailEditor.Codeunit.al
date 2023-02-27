@@ -9,7 +9,9 @@ codeunit 8906 "Email Editor"
     Permissions = tabledata "Email Outbox" = rimd,
                   tabledata "Tenant Media" = r,
                   tabledata "Email Related Record" = rd,
-                  tabledata "Email View Policy" = r;
+                  tabledata "Email View Policy" = r,
+                  tabledata "Email Rate Limit" = r,
+                  tabledata "Sent Email" = r;
 
     procedure Open(EmailOutbox: Record "Email Outbox"; IsModal: Boolean): Enum "Email Action"
     var
@@ -18,6 +20,50 @@ codeunit 8906 "Email Editor"
         CheckPermissions(EmailOutbox);
 
         EmailEditor.SetRecord(EmailOutbox);
+
+        if IsNewOutbox then
+            EmailEditor.SetAsNew();
+
+        BeforeOpenEmailEditor(EmailOutbox.GetMessageId());
+
+        if IsModal then begin
+            Commit(); // Commit before opening modally
+            EmailEditor.RunModal();
+            exit(EmailEditor.GetAction());
+        end
+        else
+            EmailEditor.Run();
+    end;
+
+    local procedure BeforeOpenEmailEditor(MessageId: Guid)
+    var
+        Email: Codeunit Email;
+        EmailMessage: Codeunit "Email Message";
+        Telemetry: Codeunit Telemetry;
+        Dimensions: Dictionary of [Text, Text];
+        LastModifiedNo: Integer;
+    begin
+        EmailMessage.Get(MessageId);
+        LastModifiedNo := EmailMessage.GetNoOfModifies();
+
+        Email.OnBeforeOpenEmailEditor(EmailMessage, IsNewOutbox);
+
+        EmailMessage.Get(MessageId); // Get any latest changes
+        if LastModifiedNo < EmailMessage.GetNoOfModifies() then begin
+            Dimensions.Add('Category', EmailCategoryLbl);
+            Dimensions.Add('EmailMessageId', EmailMessage.GetId());
+            Telemetry.LogMessage('0000I2G', EmailModifiedByEventTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::All, Dimensions);
+        end;
+    end;
+
+    procedure OpenWithScenario(EmailOutbox: Record "Email Outbox"; IsModal: Boolean; Scenario: Enum "Email Scenario"): Enum "Email Action"
+    var
+        EmailEditor: Page "Email Editor";
+    begin
+        CheckPermissions(EmailOutbox);
+
+        EmailEditor.SetRecord(EmailOutbox);
+        EmailEditor.SetEmailScenario(Scenario);
 
         if IsNewOutbox then
             EmailEditor.SetAsNew();
@@ -110,7 +156,7 @@ codeunit 8906 "Email Editor"
         AttachamentSize: Integer;
     begin
         if not UploadIntoStream('', '', '', FileName, Instream) then
-            exit;
+            Error(GetLastErrorText());
 
         AttachmentName := CopyStr(FileName, 1, 250);
         ContentType := EmailMessageImpl.GetContentTypeFromFilename(Filename);
@@ -174,7 +220,7 @@ codeunit 8906 "Email Editor"
             if not Confirm(ConfirmDiscardEmailQst, true) then
                 exit(false);
 
-        exit(EmailOutbox.Delete(true)); // This should detele the email message, recipients and attachments as well.
+        exit(EmailOutbox.Delete(true)); // This should delete the email message, recipients and attachments as well.
     end;
 
     procedure AttachFromRelatedRecords(EmailMessageID: Guid);
@@ -195,40 +241,46 @@ codeunit 8906 "Email Editor"
             until EmailRelatedAttachment.Next() = 0;
     end;
 
-    local procedure GetPrimarySourceEntity(var PrimarySource: Integer; EmailMessageID: Guid; Dict: Dictionary of [Integer, Guid]): Boolean
+    local procedure GetPrimarySourceEntity(var PrimarySource: Integer; EmailMessageID: Guid; RelatedIds: List of [Integer]): Boolean
     var
         EmailRelatedRecord: Record "Email Related Record";
-        Count: Integer;
+        RelatedId: Integer;
     begin
         // If there is only one key in the dict, then there is no need to use DB resources.
-        If Dict.Keys.Count = 1 then begin
-            PrimarySource := Dict.Keys.Get(1);
+        If RelatedIds.Count = 1 then begin
+            PrimarySource := RelatedIds.Get(1);
             exit(true);
         end;
 
         EmailRelatedRecord.SetRange("Email Message Id", EmailMessageID);
-        for Count := 1 to Dict.Keys.Count() do begin
-            EmailRelatedRecord.SetFilter("Table Id", Format(Dict.Keys.Get(Count)));
-            EmailRelatedRecord.FindFirst();
+        foreach RelatedId in RelatedIds do begin
+            EmailRelatedRecord.SetFilter("Table Id", Format(RelatedId));
 
-            if EmailRelatedRecord."Relation Type" = EmailRelatedRecord."Relation Type"::"Primary Source" then begin
-                PrimarySource := Dict.Keys.Get(Count);
-                exit(true);
-            end;
+            if EmailRelatedRecord.FindSet() then
+                repeat
+                    if EmailRelatedRecord."Relation Type" = EmailRelatedRecord."Relation Type"::"Primary Source" then begin
+                        PrimarySource := RelatedId;
+                        exit(true);
+                    end;
+                until EmailRelatedRecord.Next() = 0;
         end;
 
         exit(false);
     end;
 
-    local procedure FindEmailSourceEntities(EmailMessageID: Guid; var Dict: Dictionary of [Integer, Guid]): Boolean
+    local procedure FindEmailSourceEntities(EmailMessageID: Guid; var Dict: Dictionary of [Integer, Text]): Boolean
     var
         EmailRelatedRecord: Record "Email Related Record";
+        SystemIdFilter: Text;
     begin
         EmailRelatedRecord.SetRange("Email Message Id", EmailMessageID);
-        EmailRelatedRecord.FindSet();
-        repeat
-            Dict.Add(EmailRelatedRecord."Table Id", EmailRelatedRecord."System Id");
-        until EmailRelatedRecord.Next() <= 0;
+        if EmailRelatedRecord.FindSet() then
+            repeat
+                if Dict.Get(EmailRelatedRecord."Table Id", SystemIdFilter) then
+                    Dict.Set(EmailRelatedRecord."Table Id", SystemIdFilter + '|' + Format(EmailRelatedRecord."System Id"))
+                else
+                    Dict.Add(EmailRelatedRecord."Table Id", Format(EmailRelatedRecord."System Id"));
+            until EmailRelatedRecord.Next() <= 0;
 
         exit(EmailRelatedRecord.Count() > 0);
     end;
@@ -238,11 +290,11 @@ codeunit 8906 "Email Editor"
         WordTemplateRecord: Record "Word Template";
         WordTemplateToTextWizard: Page "Word Template To Text Wizard";
         TemplateSize: Integer;
-        Dict: Dictionary of [Integer, Guid];
+        Dict: Dictionary of [Integer, Text];
         PrimarySource: Integer;
     begin
         if FindEmailSourceEntities(EmailMessageID, Dict) then begin
-            if not GetPrimarySourceEntity(PrimarySource, EmailMessageID, Dict) then
+            if not GetPrimarySourceEntity(PrimarySource, EmailMessageID, Dict.Keys) then
                 Error(NoPrimarySourceOnEmailErr);
 
             WordTemplateToTextWizard.SetData(Dict, PrimarySource);
@@ -274,7 +326,7 @@ codeunit 8906 "Email Editor"
         Filename: Text;
         FileSize: Integer;
         ContentType: Text[250];
-        Dict: Dictionary of [Integer, Guid];
+        Dict: Dictionary of [Integer, Text];
     begin
         if FindEmailSourceEntities(EmailMessageID, Dict) then begin
             WordTemplateSelectionWizard.SetData(Dict);
@@ -297,41 +349,11 @@ codeunit 8906 "Email Editor"
         end;
     end;
 
-
-    local procedure InsertRelatedAttachments(TableID: Integer; SystemID: Guid; var EmailRelatedAttachment2: Record "Email Related Attachment"; var EmailRelatedAttachment: Record "Email Related Attachment")
-    var
-        RecordRef: RecordRef;
-    begin
-        RecordRef.Open(TableID);
-        if not RecordRef.GetBySystemId(SystemID) then begin
-            Session.LogMessage('0000CTZ', StrSubstNo(RecordNotFoundMsg, TableID), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', EmailCategoryLbl);
-            exit;
-        end;
-
-        repeat
-            EmailRelatedAttachment.Copy(EmailRelatedAttachment2);
-            EmailRelatedAttachment."Attachment Source" := CopyStr(Format(RecordRef.RecordId(), 0, 1), 1, MaxStrLen(EmailRelatedAttachment."Attachment Source"));
-            EmailRelatedAttachment.Insert();
-        until EmailRelatedAttachment2.Next() = 0;
-    end;
-
     procedure GetRelatedAttachments(EmailMessageId: Guid; var EmailRelatedAttachmentOut: Record "Email Related Attachment")
     var
-        EmailRelatedAttachment: Record "Email Related Attachment";
-        EmailRelatedRecord: Record "Email Related Record";
-        Email: Codeunit "Email";
-        EmailImpl: Codeunit "Email Impl";
+        EmailMessageImpl: Codeunit "Email Message Impl.";
     begin
-        EmailRelatedRecord.SetRange("Email Message Id", EmailMessageId);
-        EmailImpl.FilterRemovedSourceRecords(EmailRelatedRecord);
-        if EmailRelatedRecord.FindSet() then
-            repeat
-                Email.OnFindRelatedAttachments(EmailRelatedRecord."Table Id", EmailRelatedRecord."System Id", EmailRelatedAttachment);
-                if EmailRelatedAttachment.FindSet() then
-                    InsertRelatedAttachments(EmailRelatedRecord."Table Id", EmailRelatedRecord."System Id", EmailRelatedAttachment, EmailRelatedAttachmentOut);
-                EmailRelatedAttachment.DeleteAll();
-            until EmailRelatedRecord.Next() = 0
-        else
+        if not EmailMessageImpl.GetRelatedAttachments(EmailMessageId, EmailRelatedAttachmentOut) then
             Message(NoRelatedAttachmentsErr);
     end;
 
@@ -473,11 +495,11 @@ codeunit 8906 "Email Editor"
         LoadingTemplateMsg: Label 'Applied word template to email body with size: %1.', Comment = '%1 - File size', Locked = true;
         UploadingAttachmentMsg: Label 'Attached file with size: %1, Content type: %2', Comment = '%1 - File size, %2 - Content type', Locked = true;
         UploadingTemplateAttachmentMsg: Label 'Attached word template with size: %1, Content type: %2', Comment = '%1 - File size, %2 - Content type', Locked = true;
-        RecordNotFoundMsg: Label 'Record not found in table: %1', Comment = '%1 - File size, %2 - Content type', Locked = true;
         EmailCategoryLbl: Label 'Email', Locked = true;
         SendingFailedErr: Label 'The email was not sent because of the following error: "%1" \\Depending on the error, you might need to contact your administrator.', Comment = '%1 - the error that occurred.';
         NoRelatedAttachmentsErr: Label 'Did not find any attachments related to this email.';
         LoadingTemplateExitedMsg: Label 'Did not apply word template to email as user exited dialog.';
         NoPrimarySourceOnEmailErr: Label 'Failed to find the primary source entity';
         NoAttachmentContentMsg: Label 'The attachment content is no longer available.';
+        EmailModifiedByEventTxt: Label 'Email has been modified by event', Locked = true;
 }

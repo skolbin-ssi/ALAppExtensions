@@ -13,6 +13,7 @@ page 13 "Email Editor"
     Caption = 'Compose an Email';
     Permissions = tabledata "Email Outbox" = rm,
                   tabledata "Email Message Attachment" = rid;
+
     UsageCategory = Tasks;
     ApplicationArea = All;
     DataCaptionExpression = '';
@@ -351,7 +352,8 @@ page 13 "Email Editor"
         EmailScheduled := Rec.Status in [Enum::"Email Status"::Queued, Enum::"Email Status"::Processing];
         HasSourceRecord := EmailImpl.HasSourceRecord(Rec."Message Id");
         IsHTMLFormatted := EmailMessageImpl.IsBodyHTMLFormatted();
-        CurrPage.Attachments.Page.UpdateValues(EmailMessageImpl.GetId(), not EmailScheduled);
+        CurrPage.Attachments.Page.UpdateValues(EmailMessageImpl, not EmailScheduled);
+        CurrPage.Attachments.Page.UpdateEmailScenario(EmailScenario);
     end;
 
     trigger OnOpenPage()
@@ -377,6 +379,8 @@ page 13 "Email Editor"
         end;
 
         EmailEditor.PopulateRelatedRecordCache(Rec."Message Id");
+
+        DefaultExitOption := 1;
     end;
 
     trigger OnQueryClosePage(CloseAction: Action): Boolean
@@ -404,7 +408,7 @@ page 13 "Email Editor"
         SelectedCloseOption: Integer;
     begin
         CloseOptions := OptionsOnClosePageNewEmailLbl;
-        SelectedCloseOption := Dialog.StrMenu(CloseOptions, 1, CloseThePageQst);
+        SelectedCloseOption := Dialog.StrMenu(CloseOptions, DefaultExitOption, CloseThePageQst);
 
         case SelectedCloseOption of
             1:
@@ -440,18 +444,23 @@ page 13 "Email Editor"
         IsNewOutbox := true;
     end;
 
+    internal procedure SetEmailScenario(Scenario: Enum "Email Scenario")
+    begin
+        EmailScenario := Scenario;
+    end;
+
     var
         TempEmailAccount: Record "Email Account" temporary;
         EmailMessageImpl: Codeunit "Email Message Impl.";
         EmailEditor: Codeunit "Email Editor";
         EmailImpl: Codeunit "Email Impl";
-
         EmailAction: Enum "Email Action";
         FromDisplayName: Text;
         EmailScheduled: Boolean;
         IsNewOutbox: Boolean;
         HasSourceRecord: Boolean;
         EmailBody, EmailSubject : Text;
+        EmailScenario: Enum "Email Scenario";
         [InDataSet]
         IsHTMLFormatted: Boolean;
         FromDisplayNameLbl: Label '%1 (%2)', Comment = '%1 - Account Name, %2 - Email address', Locked = true;
@@ -461,4 +470,5 @@ page 13 "Email Editor"
 
     protected var
         ToRecipient, CcRecipient, BccRecipient : Text;
+        DefaultExitOption: Integer;
 }

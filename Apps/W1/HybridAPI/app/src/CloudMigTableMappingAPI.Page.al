@@ -26,10 +26,37 @@ page 40022 "Cloud Mig Table Mapping API"
                     Caption = 'id';
                 }
 
-                field(tableId; Rec."Table ID")
+                field(targetTableType; Rec."Target Table Type")
+                {
+                    ApplicationArea = All;
+                    Caption = 'tableType';
+                    Description = 'Specifies the type of the target table.';
+                    trigger OnValidate()
+                    begin
+                        Rec."Target Table Type" := Rec."Target Table Type";
+                    end;
+                }
+
+                field(appId; Rec."App ID")
+                {
+                    ApplicationArea = All;
+                    Caption = 'applicationID';
+                }
+                field(extensionName; Rec."Extension Name")
+                {
+                    ApplicationArea = All;
+                    Caption = 'extensionName';
+                    Editable = false;
+                }
+
+                field(tableId; tableID)
                 {
                     ApplicationArea = All;
                     Caption = 'tableId';
+                    trigger OnValidate()
+                    begin
+                        Rec."Table ID" := tableID;
+                    end;
                 }
 
                 field(tableName; Rec."Table Name")
@@ -44,19 +71,23 @@ page 40022 "Cloud Mig Table Mapping API"
                     Caption = 'sourceTableName';
                 }
 
-                field(extensionName; Rec."Extension Name")
+                field(dataPerCompany; Rec."Data Per Company")
                 {
                     ApplicationArea = All;
-                    Caption = 'extensionName';
-
+                    Caption = 'dataPerCompany';
                     trigger OnValidate()
                     begin
-                        Rec.UpdateExtensionName(Rec."Extension Name");
+                        Rec.TestField(Rec."Target Table Type", Rec."Target Table Type"::"Table Extension");
                     end;
                 }
             }
         }
     }
+
+    trigger OnAfterGetRecord()
+    begin
+        tableID := Rec."Table ID";
+    end;
 
     [ServiceEnabled]
     [Scope('Cloud')]
@@ -78,4 +109,7 @@ page 40022 "Cloud Mig Table Mapping API"
         MigrationTableMapping.DeleteAll();
         ActionContext.SetResultCode(WebServiceActionResultCode::Deleted);
     end;
+
+    var
+        tableID: Integer;
 }

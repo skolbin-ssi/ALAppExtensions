@@ -259,6 +259,19 @@ codeunit 8901 "Email"
     end;
 
     /// <summary>
+    /// Opens an email message in "Email Editor" page modally with scenario.
+    /// </summary>
+    /// <param name="EmailMessage">The email message to use as payload.</param>
+    /// <param name="EmailAccount">The email account to fill in.</param>
+    /// <param name="Scenario">The email scenario to fill in.</param>
+    /// <remarks>Both "Account Id" and Connector fields need to be set on the <paramref name="EmailAccount"/> parameter.</remarks>
+    /// <returns>The action that the user performed with the email message.</returns>
+    procedure OpenInEditorModallyWithScenario(EmailMessage: Codeunit "Email Message"; EmailAccount: Record "Email Account" temporary; Scenario: Enum "Email Scenario"): Enum "Email Action"
+    begin
+        exit(EmailImpl.OpenInEditorWithScenario(EmailMessage, EmailAccount."Account Id", EmailAccount.Connector, true, Scenario));
+    end;
+
+    /// <summary>
     /// Opens an email message in "Email Editor" page modally.
     /// </summary>
     /// <param name="EmailMessage">The email message to use as payload.</param>
@@ -527,6 +540,25 @@ codeunit 8901 "Email"
     /// <param name="EmailOutbox">The record of the email outbox that failed to send.</param>
     [IntegrationEvent(false, false, true)]
     internal procedure OnAfterEmailSendFailed(EmailOutbox: Record "Email Outbox")
+    begin
+    end;
+
+    /// <summary>
+    /// Integration event that allows updating of the email message before the email editor opens.
+    /// </summary>
+    /// <param name="EmailMessage">Email message codeunit which is linked to the current email.</param>
+    /// <param name="IsNewEmail">True if this is a newly created email.</param>
+    [IntegrationEvent(false, false)]
+    internal procedure OnBeforeOpenEmailEditor(var EmailMessage: Codeunit "Email Message"; IsNewEmail: Boolean)
+    begin
+    end;
+
+    /// <summary>
+    /// Integration event that allows updating of the email message before the email is queued for sending.
+    /// </summary>
+    /// <param name="EmailMessage">Email message codeunit which is linked to the current email.</param>
+    [IntegrationEvent(false, false)]
+    internal procedure OnBeforeSendEmail(var EmailMessage: Codeunit "Email Message")
     begin
     end;
 

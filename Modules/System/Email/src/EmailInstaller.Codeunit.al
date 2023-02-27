@@ -12,37 +12,34 @@ codeunit 1596 "Email Installer"
     Permissions = tabledata Field = r;
 
     trigger OnInstallAppPerCompany()
+    var
+        EmailViewPolicy: Codeunit "Email View Policy";
     begin
         AddRetentionPolicyAllowedTables();
-        SetDefaultEmailViewPolicy(Enum::"Email View Policy"::AllRelatedRecordsEmails);
+        EmailViewPolicy.CheckForDefaultEntry(Enum::"Email View Policy"::AllRelatedRecordsEmails); // Default record is AllRelatedRecords for new tenants
     end;
 
     procedure AddRetentionPolicyAllowedTables()
+    begin
+        AddRetentionPolicyAllowedTables(false);
+    end;
+
+    procedure AddRetentionPolicyAllowedTables(ForceUpdate: Boolean)
     var
         Field: Record Field;
         RetenPolAllowedTables: Codeunit "Reten. Pol. Allowed Tables";
         UpgradeTag: Codeunit "Upgrade Tag";
+        IsInitialSetup: Boolean;
     begin
-        if UpgradeTag.HasUpgradeTag(GetEmailTablesAddedToAllowedListUpgradeTag()) then
+        IsInitialSetup := not UpgradeTag.HasUpgradeTag(GetEmailTablesAddedToAllowedListUpgradeTag());
+        if not (IsInitialSetup or ForceUpdate) then
             exit;
 
         RetenPolAllowedTables.AddAllowedTable(Database::"Email Outbox", Field.FieldNo(SystemCreatedAt), 7);
         RetenPolAllowedTables.AddAllowedTable(Database::"Sent Email", Field.FieldNo(SystemCreatedAt), 7);
 
-        UpgradeTag.SetUpgradeTag(GetEmailTablesAddedToAllowedListUpgradeTag());
-    end;
-
-    procedure SetDefaultEmailViewPolicy(DefaultEmailViewPolicy: Enum "Email View Policy")
-    var
-        EmailViewPolicy: Codeunit "Email View Policy";
-        UpgradeTag: Codeunit "Upgrade Tag";
-    begin
-        if UpgradeTag.HasUpgradeTag(GetDefaultEmailViewPolicyUpgradeTag()) then
-            exit;
-
-        EmailViewPolicy.CheckForDefaultEntry(DefaultEmailViewPolicy);
-
-        UpgradeTag.SetUpgradeTag(GetDefaultEmailViewPolicyUpgradeTag());
+        if IsInitialSetup then
+            UpgradeTag.SetUpgradeTag(GetEmailTablesAddedToAllowedListUpgradeTag());
     end;
 
     local procedure GetEmailTablesAddedToAllowedListUpgradeTag(): Code[250]
@@ -50,26 +47,15 @@ codeunit 1596 "Email Installer"
         exit('MS-373161-EmailLogEntryAdded-20201005');
     end;
 
-    local procedure GetDefaultEmailViewPolicyUpgradeTag(): Code[250]
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Reten. Pol. Allowed Tables", 'OnRefreshAllowedTables', '', false, false)]
+    local procedure AddAllowedTablesOnRefreshAllowedTables()
     begin
-        exit('MS-434130-DefaultEmailViewPolicyChanged-20220905');
+        AddRetentionPolicyAllowedTables(true);
     end;
 
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"System Initialization", 'OnAfterInitialization', '', false, false)]
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"System Initialization", 'OnAfterLogin', '', false, false)]
     local procedure AddAllowedTablesOnAfterSystemInitialization()
     begin
         AddRetentionPolicyAllowedTables();
-    end;
-
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Upgrade Tag", 'OnGetPerCompanyUpgradeTags', '', false, false)]
-    local procedure RegisterPerCompanyTags(var PerCompanyUpgradeTags: List of [Code[250]])
-    var
-        UpgradeTag: Codeunit "Upgrade Tag";
-    begin
-        if not UpgradeTag.HasUpgradeTag(GetEmailTablesAddedToAllowedListUpgradeTag()) then
-            PerCompanyUpgradeTags.Add(GetEmailTablesAddedToAllowedListUpgradeTag());
-
-        if not UpgradeTag.HasUpgradeTag(GetDefaultEmailViewPolicyUpgradeTag()) then
-            PerCompanyUpgradeTags.Add(GetDefaultEmailViewPolicyUpgradeTag());
     end;
 }

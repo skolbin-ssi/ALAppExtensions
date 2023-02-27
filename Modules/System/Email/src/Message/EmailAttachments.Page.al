@@ -22,7 +22,7 @@ page 8889 "Email Attachments"
                 field(FileName; Rec."Attachment Name")
                 {
                     ApplicationArea = All;
-                    Caption = 'Filename';
+                    Caption = 'File Name';
                     ToolTip = 'Specifies the name of the attachment';
 
                     trigger OnDrillDown()
@@ -45,9 +45,6 @@ page 8889 "Email Attachments"
             action(Upload)
             {
                 ApplicationArea = All;
-                Promoted = true;
-                PromotedCategory = Process;
-                PromotedOnly = true;
                 Image = Attach;
                 Caption = 'Add File';
                 ToolTip = 'Attach files, such as documents or images, to the email.';
@@ -63,12 +60,44 @@ page 8889 "Email Attachments"
                 end;
             }
 
-            action(SourceAttachments)
+            action(UploadFromScenario)
             {
                 ApplicationArea = All;
                 Promoted = true;
                 PromotedCategory = Process;
                 PromotedOnly = true;
+                Image = Attach;
+                Caption = 'Add Files from Default Selection';
+                ToolTip = 'Add additional attachments from default email attachments. These files are not attached by default.';
+                Scope = Page;
+                Visible = IsEmailEditable;
+
+                trigger OnAction()
+                var
+                    EmailAttachments: Record "Email Attachments";
+                    FeatureTelemetry: Codeunit "Feature Telemetry";
+                    EmailChooseScenarioAttachments: Page "Email Choose Scenario Attach";
+                begin
+                    EmailChooseScenarioAttachments.SetEmailScenario(EmailScenario);
+
+                    EmailChooseScenarioAttachments.LookupMode(true);
+                    if EmailChooseScenarioAttachments.RunModal() = Action::LookupOK then begin
+                        FeatureTelemetry.LogUptake('0000I8R', 'Email Default Attachments', Enum::"Feature Uptake Status"::"Used");
+
+                        EmailChooseScenarioAttachments.GetSelectedAttachments(EmailAttachments);
+                        EmailMessageImpl.Get(EmailMessageId);
+                        EmailMessageImpl.AddAttachmentsFromScenario(EmailAttachments);
+
+                        FeatureTelemetry.LogUsage('0000I8T', 'Email Default Attachments', 'Upload attachments from scenarios');
+                    end;
+                    UpdateDeleteActionEnablement();
+                end;
+
+            }
+
+            action(SourceAttachments)
+            {
+                ApplicationArea = All;
                 Image = Attach;
                 Caption = 'Add File from Source';
                 ToolTip = 'Attach a file that was originally attached to the source document, such as a Customer Record, Sales Invoice, etc.';
@@ -80,6 +109,7 @@ page 8889 "Email Attachments"
                     EmailEditor: Codeunit "Email Editor";
                 begin
                     EmailEditor.AttachFromRelatedRecords(EmailMessageId);
+                    EmailMessageImpl.Get(EmailMessageId); // refresh the record on the email message implementation
                     UpdateDeleteActionEnablement();
                 end;
             }
@@ -87,12 +117,9 @@ page 8889 "Email Attachments"
             action(WordTemplate)
             {
                 ApplicationArea = All;
-                Promoted = true;
-                PromotedCategory = Process;
-                PromotedOnly = true;
                 Image = Word;
                 Caption = 'Add File from Word Template';
-                ToolTip = 'Create and Attach a document using a Word Template.';
+                ToolTip = 'Create and attach a document using a Word Template.';
                 Scope = Page;
                 Visible = IsEmailEditable;
 
@@ -108,9 +135,6 @@ page 8889 "Email Attachments"
             action(Delete)
             {
                 ApplicationArea = All;
-                Promoted = true;
-                PromotedCategory = Process;
-                PromotedOnly = true;
                 Enabled = DeleteActionEnabled;
                 Image = Delete;
                 Caption = 'Delete';
@@ -153,13 +177,18 @@ page 8889 "Email Attachments"
     end;
 #endif
 
-    internal procedure UpdateValues(MessageId: Guid; EmailEditable: Boolean)
+    internal procedure UpdateValues(SourceEmailMessageImpl: Codeunit "Email Message Impl."; EmailEditable: Boolean)
     begin
-        EmailMessageId := MessageId;
+        EmailMessageId := SourceEmailMessageImpl.GetId();
+        EmailMessageImpl := SourceEmailMessageImpl;
 
-        EmailMessageImpl.Get(EmailMessageId);
         UpdateDeleteActionEnablement();
         IsEmailEditable := EmailEditable;
+    end;
+
+    internal procedure UpdateEmailScenario(Scenario: Enum "Email Scenario")
+    begin
+        EmailScenario := Scenario;
     end;
 
     var
@@ -168,5 +197,6 @@ page 8889 "Email Attachments"
         DeleteActionEnabled: Boolean;
         IsEmailEditable: Boolean;
         EmailMessageId: Guid;
+        EmailScenario: Enum "Email Scenario";
         DeleteQst: Label 'Go ahead and delete?';
 }

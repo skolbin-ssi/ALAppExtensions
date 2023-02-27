@@ -15,6 +15,8 @@ page 9854 "Lookup Permission Set"
     ModifyAllowed = false;
     PageType = List;
     SourceTable = "Aggregate Permission Set";
+    SourceTableView = sorting(Scope, "Role ID", "App ID")
+                      order(Ascending);
 
     layout
     {
@@ -24,6 +26,7 @@ page 9854 "Lookup Permission Set"
             {
                 field("Role ID"; Rec."Role ID")
                 {
+                    Caption = 'Permission Set';
                     ApplicationArea = All;
                     ToolTip = 'Specifies a permission set that defines the role.';
                 }
@@ -52,12 +55,25 @@ page 9854 "Lookup Permission Set"
         SelectedRecord := Rec;
     end;
 
-    var
-        SelectedRecord: Record "Aggregate Permission Set";
-
     procedure GetSelectedRecord(var CurrSelectedRecord: Record "Aggregate Permission Set")
     begin
         CurrSelectedRecord := SelectedRecord;
     end;
+
+    procedure GetSelectedRecords(var CurrSelectedRecords: Record "Aggregate Permission Set")
+    begin
+        CurrPage.SetSelectionFilter(Rec);
+
+        if not Rec.FindSet() then
+            exit;
+
+        repeat
+            CurrSelectedRecords.Copy(Rec);
+            CurrSelectedRecords.Insert();
+        until Rec.Next() = 0;
+    end;
+
+    var
+        SelectedRecord: Record "Aggregate Permission Set";
 }
 

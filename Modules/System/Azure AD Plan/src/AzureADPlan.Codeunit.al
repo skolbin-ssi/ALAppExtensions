@@ -60,13 +60,14 @@ codeunit 9016 "Azure AD Plan"
     end;
 
     /// <summary>
-    /// Assign the delegated admin plan and default user groups to the current user.
+    /// Assigns a plan to the user based on their delegated role.
     /// </summary>
+    /// <param name="UserSecurityId">The security ID of the user</param>
     [Scope('OnPrem')]
     [NonDebuggable]
-    procedure AssignDelegatedAdminPlanAndUserGroups()
+    procedure AssignPlanToUserWithDelegatedRole(UserSecurityId: Guid)
     begin
-        AzureAdPlanImpl.AssignDelegatedAdminPlanAndUserGroups();
+        AzureAdPlanImpl.AssignPlanToUserWithDelegatedRole(UserSecurityId);
     end;
 
     /// <summary>
@@ -241,6 +242,17 @@ codeunit 9016 "Azure AD Plan"
     end;
 
     /// <summary>
+    /// Returns the list of all valid Business Central plan IDs.
+    /// </summary>
+    /// <returns>The list of all valid Business Central plan IDs.</returns>
+    [Scope('OnPrem')]
+    [NonDebuggable]
+    procedure GetAllPlanIds(): List of [Guid]
+    begin
+        exit(AzureAdPlanImpl.GetAllPlanIds());
+    end;
+
+    /// <summary>
     /// Checks whether the plan configuration mixes different plans.
     /// </summary>
     /// <raises>The OnCanCurrentUserManagePlansAndGroups event to ensure this API is called with the proper authorization.</raises>
@@ -333,15 +345,15 @@ codeunit 9016 "Azure AD Plan"
         exit(AzureAdPlanImpl.IsBCServicePlan(ServicePlanId));
     end;
 
-    /// <summary>
-    /// Sets this codeunit in test mode (for running unit tests).
+    /// <summary>    
+    /// Checks whether the current user is external.
     /// </summary>
-    /// <param name="EnableTestability">True to enable the test mode.</param>
+    /// <returns>True if the current user is external, false otherwise.</returns>
     [Scope('OnPrem')]
     [NonDebuggable]
-    procedure SetTestInProgress(EnableTestability: Boolean)
+    procedure IsUserExternal(): Boolean
     begin
-        AzureAdPlanImpl.SetTestInProgress(EnableTestability);
+        exit(AzureAdPlanImpl.IsUserExternal());
     end;
 
     /// <summary>

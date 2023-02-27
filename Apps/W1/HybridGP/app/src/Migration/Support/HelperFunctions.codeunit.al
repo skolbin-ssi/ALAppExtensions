@@ -20,7 +20,6 @@ Codeunit 4037 "Helper Functions"
                     tabledata "Payment Terms" = rimd,
                     tabledata "Payment Term Translation" = rimd,
                     tabledata "Data Migration Entity" = rimd,
-                    tabledata "O365 Payment Terms" = rimd,
                     tabledata "Item Tracking Code" = rimd,
                     tabledata "Gen. Journal Line" = rimd,
                     tabledata "G/L - Item Ledger Relation" = rimd,
@@ -109,6 +108,7 @@ Codeunit 4037 "Helper Functions"
         DecimalVar: Decimal;
         DummyDateVar: Date;
     begin
+        Clear(DummyDateVar);
         TextToWrite := TrimStringQuotes(TextToWrite);
         case Format(DestinationFieldRef.Type()) of
             'Text', 'Code':
@@ -365,55 +365,55 @@ Codeunit 4037 "Helper Functions"
 
     procedure AssignSubAccountCategory(GPAccount: Record "GP Account") AcctSubCategory: Integer
     var
-        GLAccount: Record "G/L Account";
+        GLAccountCategory: Record "G/L Account Category";
     begin
         case GPAccount.AccountCategory of
             1:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Assets, CashTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Assets, CashTxt);
             2, 4, 6:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Assets, CurrentAssetsTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Assets, CurrentAssetsTxt);
             3:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Assets, ARTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Assets, ARTxt);
             5:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Assets, InventoryTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Assets, InventoryTxt);
             7:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Assets, PrepaidExpensesTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Assets, PrepaidExpensesTxt);
             8, 11, 12:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Assets, InventoryTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Assets, InventoryTxt);
             9:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Assets, EquipementTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Assets, EquipementTxt);
             10:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Assets, AccumDeprecTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Assets, AccumDeprecTxt);
             13, 14, 15, 16, 17, 18, 19, 20, 21:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Liabilities, CurrentLiabilitiesTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Liabilities, CurrentLiabilitiesTxt);
             22:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Liabilities, LongTermLiabilitiesTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Liabilities, LongTermLiabilitiesTxt);
             23:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Equity, CommonStockTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Equity, CommonStockTxt);
             24, 25, 26, 28:
-                AcctSubCategory := GetAcctCategoryEntryNo(GLAccount."Account Category"::Equity);
+                AcctSubCategory := GetAcctCategoryEntryNo(GLAccountCategory."Account Category"::Equity);
             27:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Equity, RetEarningsTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Equity, RetEarningsTxt);
             29, 30:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Equity, DistrToShareholdersTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Equity, DistrToShareholdersTxt);
             31:
-                AcctSubCategory := GetAcctCategoryEntryNo(GLAccount."Account Category"::Income);
+                AcctSubCategory := GetAcctCategoryEntryNo(GLAccountCategory."Account Category"::Income);
             32:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Income, IncomeSalesReturnsTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Income, IncomeSalesReturnsTxt);
             33:
-                AcctSubCategory := GetAcctCategoryEntryNo(GLAccount."Account Category"::"Cost of Goods Sold");
+                AcctSubCategory := GetAcctCategoryEntryNo(GLAccountCategory."Account Category"::"Cost of Goods Sold");
             34, 35:
-                AcctSubCategory := GetAcctCategoryEntryNo(GLAccount."Account Category"::Expense);
+                AcctSubCategory := GetAcctCategoryEntryNo(GLAccountCategory."Account Category"::Expense);
             36:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Expense, PayrollExpenseTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Expense, PayrollExpenseTxt);
             37:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Expense, BenefitsExpenseTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Expense, BenefitsExpenseTxt);
             38:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Expense, InterestExpenseTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Expense, InterestExpenseTxt);
             39, 41:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Expense, TaxExpenseTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Expense, TaxExpenseTxt);
             40, 42, 43, 44, 45, 46, 47:
-                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccount."Account Category"::Expense, OtherIncomeExpenseTxt);
+                AcctSubCategory := GetAcctSubCategoryEntryNo(GLAccountCategory."Account Category"::Expense, OtherIncomeExpenseTxt);
             else
                 AcctSubCategory := 0;
         end;
@@ -793,7 +793,7 @@ Codeunit 4037 "Helper Functions"
         GPPOPReceiptHist: Record "GPPOPReceiptHist"; //4116
         GPPOPPOHist: Record "GPPOPPOHist"; //4123
         GPPMHist: Record "GPPMHist"; //4126
-        GPPOPPOHeader: Record "GP POPPOHeader";
+        GPPOP10100: Record "GP POP10100";
         PaymentTerm: Text[22];
         PaymentTerm_New: Text[10];
     begin
@@ -806,82 +806,70 @@ Codeunit 4037 "Helper Functions"
             // if the "old" and "new" payment terms are the same, skip
             if PaymentTerm <> PaymentTerm_New THEN begin
                 // update the payment terms in the tables that have this field
-                WITH GPCustomer DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
+                Clear(GPCustomer);
+                GPCustomer.SetRange(GPCustomer."PYMTRMID", PaymentTerm);
+                if not GPCustomer.IsEmpty() then
+                    GPCustomer.MODIFYALL(GPCustomer."PYMTRMID", PaymentTerm_New);
 
-                WITH GPCustomerTrans DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
 
-                WITH GPVendor DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
+                Clear(GPCustomerTrans);
+                GPCustomerTrans.SetRange(GPCustomerTrans."PYMTRMID", PaymentTerm);
+                if not GPCustomerTrans.IsEmpty() then
+                    GPCustomerTrans.MODIFYALL(GPCustomerTrans."PYMTRMID", PaymentTerm_New);
 
-                WITH GPVendorTransactions DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
 
-                WITH GPSOPTrxHist DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
+                Clear(GPVendor);
+                GPVendor.SetRange(GPVendor."PYMTRMID", PaymentTerm);
+                if not GPVendor.IsEmpty() then
+                    GPVendor.MODIFYALL(GPVendor."PYMTRMID", PaymentTerm_New);
 
-                WITH GPRMOpen DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
 
-                WITH GPRMHist DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
+                Clear(GPVendorTransactions);
+                GPVendorTransactions.SetRange(GPVendorTransactions."PYMTRMID", PaymentTerm);
+                if not GPVendorTransactions.IsEmpty() then
+                    GPVendorTransactions.MODIFYALL(GPVendorTransactions."PYMTRMID", PaymentTerm_New);
 
-                WITH GPPOPReceiptHist DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
 
-                WITH GPPOPPOHist DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
+                Clear(GPSOPTrxHist);
+                GPSOPTrxHist.SetRange(GPSOPTrxHist."PYMTRMID", PaymentTerm);
+                if not GPSOPTrxHist.IsEmpty() then
+                    GPSOPTrxHist.MODIFYALL(GPSOPTrxHist."PYMTRMID", PaymentTerm_New);
 
-                WITH GPPMHist DO BEGIN
-                    RESET();
-                    SetRange("PYMTRMID", PaymentTerm);
-                    if FINDFIRST() then
-                        MODIFYALL("PYMTRMID", PaymentTerm_New);
-                END;
 
-                with GPPOPPOHeader do begin
-                    Reset();
-                    SetRange(PYMTRMID, PaymentTerm);
-                    if FindFirst() then
-                        ModifyAll(PYMTRMID, PaymentTerm_New);
-                end;
+                Clear(GPRMOpen);
+                GPRMOpen.SetRange(GPRMOpen."PYMTRMID", PaymentTerm);
+                if not GPRMOpen.IsEmpty() then
+                    GPRMOpen.MODIFYALL(GPRMOpen."PYMTRMID", PaymentTerm_New);
+
+
+                Clear(GPRMHist);
+                GPRMHist.SetRange(GPRMHist."PYMTRMID", PaymentTerm);
+                if not GPRMHist.IsEmpty() then
+                    GPRMHist.MODIFYALL(GPRMHist."PYMTRMID", PaymentTerm_New);
+
+
+                Clear(GPPOPReceiptHist);
+                GPPOPReceiptHist.SetRange(GPPOPReceiptHist."PYMTRMID", PaymentTerm);
+                if not GPPOPReceiptHist.IsEmpty() then
+                    GPPOPReceiptHist.MODIFYALL(GPPOPReceiptHist."PYMTRMID", PaymentTerm_New);
+
+
+                Clear(GPPOPPOHist);
+                GPPOPPOHist.SetRange(GPPOPPOHist."PYMTRMID", PaymentTerm);
+                if not GPPOPPOHist.IsEmpty() then
+                    GPPOPPOHist.MODIFYALL(GPPOPPOHist."PYMTRMID", PaymentTerm_New);
+
+
+                Clear(GPPMHist);
+                GPPMHist.SetRange(GPPMHist."PYMTRMID", PaymentTerm);
+                if not GPPMHist.IsEmpty() then
+                    GPPMHist.MODIFYALL(GPPMHist."PYMTRMID", PaymentTerm_New);
+
+                Clear(GPPOP10100);
+                GPPOP10100.SetRange(GPPOP10100.PYMTRMID, PaymentTerm);
+                if not GPPOP10100.IsEmpty() then
+                    GPPOP10100.ModifyAll(GPPOP10100.PYMTRMID, PaymentTerm_New);
+
             end;
         until GPPaymentTerms.Next() = 0;
     end;
@@ -952,80 +940,6 @@ Codeunit 4037 "Helper Functions"
             until GPCompanyMigrationSettings.Next() = 0;
     end;
 
-    local procedure GetSegmentsFromJson(JArray: JsonArray)
-    var
-        GPSegments: Record "GP Segments";
-        RecordVariant: Variant;
-        ChildJToken: JsonToken;
-        EntityId: Text[75];
-        i: Integer;
-    begin
-        i := 0;
-
-        while JArray.Get(i, ChildJToken) do begin
-            EntityId := CopyStr(TrimStringQuotes(GetTextFromJToken(ChildJToken, 'SEGMENTCODE')), 1, MaxStrLen(GPSegments.Id));
-
-            if not GPSegments.Get(EntityId) then begin
-                GPSegments.Init();
-                GPSegments.Validate(GPSegments.Id, EntityId);
-                GPSegments.Insert(true);
-            end;
-
-            RecordVariant := GPSegments;
-            UpdateSegmentFromJson(RecordVariant, ChildJToken);
-            GPSegments := RecordVariant;
-            GPSegments.Modify(false);
-
-            i := i + 1;
-        end;
-    end;
-
-    local procedure UpdateSegmentFromJson(var RecordVariant: Variant; JToken: JsonToken)
-    var
-        GPSegments: Record "GP Segments";
-    begin
-        UpdateFieldValue(RecordVariant, GPSegments.FieldNo(Name), JToken.AsObject(), 'SGMTNAME');
-        UpdateFieldValue(RecordVariant, GPSegments.FieldNo(CodeCaption), JToken.AsObject(), 'SEGMENTCODECAPTION');
-        UpdateFieldValue(RecordVariant, GPSegments.FieldNo(FilterCaption), JToken.AsObject(), 'SEGMENTFILTERCAPTION');
-    end;
-
-    local procedure GetCodesFromJson(JArray: JsonArray)
-    var
-        GPCodes: Record "GP Codes";
-        RecordVariant: Variant;
-        ChildJToken: JsonToken;
-        EntityId: Text[75];
-        Name: Text[50];
-        i: Integer;
-    begin
-        i := 0;
-
-        while JArray.Get(i, ChildJToken) do begin
-            EntityId := CopyStr(TrimStringQuotes(GetTextFromJToken(ChildJToken, 'SGMTNUMB')), 1, MaxStrLen(GPCodes.Id));
-            Name := CopyStr(TrimStringQuotes(GetTextFromJToken(ChildJToken, 'SGMTNAME')), 1, MaxStrLen(GPCodes.Name));
-
-            if not GPCodes.Get(EntityId, Name) then begin
-                GPCodes.Init();
-                GPCodes.Validate(GPCodes.Id, EntityId);
-                GPCodes.Validate(GPCodes.Name, Name);
-                GPCodes.Insert(true);
-            end;
-
-            RecordVariant := GPCodes;
-            UpdateCodeFromJson(RecordVariant, ChildJToken);
-            GPCodes := RecordVariant;
-            GPCodes.Modify(false);
-
-            i := i + 1;
-        end;
-    end;
-
-    local procedure UpdateCodeFromJson(var RecordVariant: Variant; JToken: JsonToken)
-    var
-        GPCodes: Record "GP Codes";
-    begin
-        UpdateFieldValue(RecordVariant, GPCodes.FieldNo(Description), JToken.AsObject(), 'DSCRIPTN');
-    end;
 
     procedure Cleanup();
     var
@@ -1093,7 +1007,7 @@ Codeunit 4037 "Helper Functions"
 
         GPRM00101.DeleteAll();
         GPRM00201.DeleteAll();
-        
+
         GPIV00101.DeleteAll();
         GPIV40400.DeleteAll();
 
@@ -1122,7 +1036,6 @@ Codeunit 4037 "Helper Functions"
         PaymentTerms: Record "Payment Terms";
         PaymentTermTranslation: Record "Payment Term Translation";
         DataMigrationEntity: Record "Data Migration Entity";
-        O365PaymentTerms: Record "O365 Payment Terms";
         ItemTrackingCode: Record "Item Tracking Code";
         GenJournalLine: Record "Gen. Journal Line";
         GLItemLedgerRelation: Record "G/L - Item Ledger Relation";
@@ -1170,7 +1083,6 @@ Codeunit 4037 "Helper Functions"
         Dimension.DeleteAll(true);
         PaymentTerms.DeleteAll(true);
         PaymentTermTranslation.DeleteAll(true);
-        O365PaymentTerms.DeleteAll(true);
         DataMigrationEntity.DeleteAll();
         Location.DeleteAll(true);
         ItemTrackingCode.DeleteAll(true);
@@ -1247,22 +1159,42 @@ Codeunit 4037 "Helper Functions"
 
     procedure GetNumberOfItems(): Integer;
     var
-        GPItem: Record "GP Item";
+        GPCompanyAdditionalSettings: Record "GP Company Additional Settings";
+        GPIV00101: Record "GP IV00101";
     begin
-        exit(GPItem.Count());
+        if not GPCompanyAdditionalSettings.GetInventoryModuleEnabled() then
+            exit(0);
+
+        GPIV00101.SetFilter(ITEMTYPE, '<>%1', GPIV00101.KitItemTypeId());
+
+        if not GPCompanyAdditionalSettings.GetMigrateInactiveItems() then
+            GPIV00101.SetRange(INACTIVE, false);
+
+        if not GPCompanyAdditionalSettings.GetMigrateDiscontinuedItems() then
+            GPIV00101.SetFilter(ITEMTYPE, '<>%1&<>%2', GPIV00101.DiscontinuedItemTypeId(), GPIV00101.KitItemTypeId());
+
+        exit(GPIV00101.Count());
     end;
 
     procedure GetNumberOfCustomers(): Integer;
     var
         GPCustomer: Record "GP Customer";
+        GPCompanyAdditionalSettings: Record "GP Company Additional Settings";
     begin
+        if not GPCompanyAdditionalSettings.GetReceivablesModuleEnabled() then
+            exit(0);
+
         exit(GPCustomer.Count());
     end;
 
     procedure GetNumberOfVendors(): Integer;
     var
         GPVendor: Record "GP Vendor";
+        GPCompanyAdditionalSettings: Record "GP Company Additional Settings";
     begin
+        if not GPCompanyAdditionalSettings.GetPayablesModuleEnabled() then
+            exit(0);
+
         exit(GPVendor.Count());
     end;
 
@@ -1740,9 +1672,9 @@ Codeunit 4037 "Helper Functions"
 
     local procedure CreateOpenPOsImp()
     var
-        GPPOPPOHeader: Record "GP POPPOHeader";
+        GPPOMigrator: Codeunit "GP PO Migrator";
     begin
-        GPPOPPOHeader.MoveStagingData();
+        GPPOMigrator.MigratePOStagingData();
         Session.LogMessage('0000CQP', 'Created Open Purchase Orders', Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
         SetOpenPurchaseOrdersCreated();
     end;
@@ -1770,7 +1702,7 @@ Codeunit 4037 "Helper Functions"
         GPVendorMigrator: CodeUnit "GP Vendor Migrator";
     begin
         GPVendorMigrator.MigrateVendorClasses();
-        Session.LogMessage('', 'Created Vendor Classes', Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
+        Session.LogMessage('0000HWD', 'Created Vendor Classes', Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
         SetVendorClassesCreated();
     end;
 
@@ -1779,7 +1711,7 @@ Codeunit 4037 "Helper Functions"
         GPCustomerMigrator: CodeUnit "GP Customer Migrator";
     begin
         GPCustomerMigrator.MigrateCustomerClasses();
-        Session.LogMessage('', 'Created Customer Classes', Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
+        Session.LogMessage('0000HWE', 'Created Customer Classes', Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', GetTelemetryCategory());
         SetCustomerClassesCreated();
     end;
 
@@ -1934,6 +1866,8 @@ Codeunit 4037 "Helper Functions"
     end;
 
     procedure CreatePreMigrationData(): Boolean
+    var
+        GPCompanyAdditionalSettings: Record "GP Company Additional Settings";
     begin
         CreateDimensions();
         if not DimensionsCreated() then
@@ -1943,37 +1877,41 @@ Codeunit 4037 "Helper Functions"
         if not PaymentTermsCreated() then
             exit(false);
 
-        CreateItemTrackingCodes();
-        if not ItemTrackingCodesCreated() then
-            exit(false);
+        if GPCompanyAdditionalSettings.GetInventoryModuleEnabled() then begin
+            CreateItemTrackingCodes();
+            if not ItemTrackingCodesCreated() then
+                exit(false);
 
-        CreateLocations();
-        if not LocationsCreated() then
-            exit(false);
+            CreateLocations();
+            if not LocationsCreated() then
+                exit(false);
+        end;
 
         exit(true)
     end;
 
     procedure CreatePostMigrationData(): Boolean
+    var
+        GPCompanyAdditionalSettings: Record "GP Company Additional Settings";
     begin
         // this procedure might run multiple times depending upon migration errors.
 
         if not FiscalPeriodsCreated() then
             CreateFiscalPeriods();
 
-        if not CheckBooksCreated() then
+        if GPCompanyAdditionalSettings.GetBankModuleEnabled() and not CheckBooksCreated() then
             CreateCheckbooks();
 
-        if not OpenPurchaseOrdersCreated() then
+        if GPCompanyAdditionalSettings.GetMigrateOpenPOs() and not OpenPurchaseOrdersCreated() then
             CreateOpenPOs();
 
-        if not VendorEFTBankAccountsCreated() then
+        if GPCompanyAdditionalSettings.GetPayablesModuleEnabled() and not VendorEFTBankAccountsCreated() then
             CreateVendorEFTBankAccounts();
 
-        if not VendorClassesCreated() then
+        if GPCompanyAdditionalSettings.GetMigrateVendorClasses() and not VendorClassesCreated() then
             CreateVendorClasses();
 
-        if not CustomerClassesCreated() then
+        if GPCompanyAdditionalSettings.GetMigrateCustomerClasses() and not CustomerClassesCreated() then
             CreateCustomerClasses();
 
         exit(GPConfiguration.IsAllPostMigrationDataCreated());
@@ -2060,12 +1998,32 @@ Codeunit 4037 "Helper Functions"
     var
         GLAccount: Record "G/L Account";
     begin
-        if GLAccount.Get(AccountNumber) then begin
+        if GLAccount.Get(AccountNumber) then
             // Ensure the GLAccount has a Gen. Prod. Posting Group.
             if GLAccount."Gen. Prod. Posting Group" = '' then begin
                 GLAccount."Gen. Prod. Posting Group" := PostingGroupCodeTxt;
                 GLAccount.Modify(true);
             end;
-        end;
+    end;
+
+    procedure CreateCurrencyIfNeeded(CurrencyCode: Code[10])
+    var
+        Currency: Record Currency;
+        GPMC40200: Record "GP MC40200";
+    begin
+        if CurrencyCode = '' then
+            exit;
+
+        if not GPMC40200.Get(CurrencyCode) then
+            exit;
+
+        if Currency.Get(CurrencyCode) then
+            exit;
+
+        Currency.Validate("Symbol", GPMC40200.CRNCYSYM);
+        Currency.Validate("Code", CurrencyCode);
+        Currency.Validate("Description", CopyStr(GPMC40200.CRNCYDSC, 1, 30));
+        Currency.Validate("Invoice Rounding Type", Currency."Invoice Rounding Type"::Nearest);
+        Currency.Insert(true);
     end;
 }

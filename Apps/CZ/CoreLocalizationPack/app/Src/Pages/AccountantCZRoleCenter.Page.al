@@ -63,11 +63,16 @@ page 31210 "Accountant CZ Role Center CZL"
                 AccessByPermission = TableData "Report Inbox" = IMD;
                 ApplicationArea = Basic, Suite;
             }
+#if not CLEAN21
             part("Power BI Report Spinner Part"; "Power BI Report Spinner Part")
             {
                 ApplicationArea = Basic, Suite;
                 Visible = false;
+                ObsoleteState = Pending;
+                ObsoleteReason = 'This page has been replaced by page 6325 Power BI Embedded Report';
+                ObsoleteTag = '21.0';
             }
+#endif
             systempart(MyNotes; MyNotes)
             {
                 ApplicationArea = Basic, Suite;
@@ -678,10 +683,10 @@ page 31210 "Accountant CZ Role Center CZL"
                 action("Account Schedules")
                 {
                     ApplicationArea = Basic, Suite;
-                    Caption = 'Account Schedules';
+                    Caption = 'Financial Reporting';
                     Image = CalculateBalanceAccount;
-                    RunObject = Page "Account Schedule Names";
-                    ToolTip = 'Get insight into the financial data stored in your chart of accounts. Account schedules analyze figures in G/L accounts, and compare general ledger entries with general ledger budget entries. For example, you can view the general ledger entries as percentages of the budget entries. Account schedules provide the data for core financial statements and views, such as the Cash Flow chart.';
+                    RunObject = Page "Financial Reports";
+                    ToolTip = 'Get insight into the financial data stored in your chart of accounts. Financial reports analyze figures in G/L accounts, and compare general ledger entries with general ledger budget entries. For example, you can view the general ledger entries as percentages of the budget entries. Financial reports provide the data for core financial statements and views, such as the Cash Flow chart.';
                 }
             }
             group(Tasks)

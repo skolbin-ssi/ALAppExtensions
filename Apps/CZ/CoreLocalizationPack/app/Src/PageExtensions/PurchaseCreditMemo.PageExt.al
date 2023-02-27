@@ -9,6 +9,15 @@ pageextension 11740 "Purchase Credit Memo CZL" extends "Purchase Credit Memo"
         }
 #endif
         movelast(General; "Posting Description")
+        addlast(General)
+        {
+            field("Your Reference CZL"; Rec."Your Reference")
+            {
+                ApplicationArea = Basic, Suite;
+                Importance = Additional;
+                ToolTip = 'Specifies the customer''s reference. The contents will be printed on sales documents.';
+            }
+        }
         addafter("Posting Date")
         {
             field("VAT Date CZL"; Rec."VAT Date CZL")
@@ -45,6 +54,11 @@ pageextension 11740 "Purchase Credit Memo CZL" extends "Purchase Credit Memo"
         }
         addlast("Invoice Details")
         {
+            field("VAT Registration No. CZL"; Rec."VAT Registration No.")
+            {
+                ApplicationArea = Basic, Suite;
+                ToolTip = 'Specifies the VAT registration number. The field will be used when you do business with partners from EU countries/regions.';
+            }
             field("Registration No. CZL"; Rec."Registration No. CZL")
             {
                 ApplicationArea = Basic, Suite;

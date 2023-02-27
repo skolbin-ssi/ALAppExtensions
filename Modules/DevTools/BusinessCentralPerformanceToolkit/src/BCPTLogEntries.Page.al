@@ -16,6 +16,12 @@ page 149003 "BCPT Log Entries"
         {
             repeater(Control1)
             {
+                field(RunID; Rec.RunID)
+                {
+                    ToolTip = 'Specifies the BCPT RunID Guid';
+                    Visible = false;
+                    ApplicationArea = All;
+                }
                 field("Code"; Rec."BCPT Code")
                 {
                     ToolTip = 'Specifies the BCPT Code of the BCPT.';
@@ -100,6 +106,17 @@ page 149003 "BCPT Log Entries"
                     Caption = 'Status';
                     ToolTip = 'Specifies the status of the iteration.';
                     ApplicationArea = All;
+                }
+                field("Error Call Stack"; Rec."Error Call Stack")
+                {
+                    Caption = 'Call stack';
+                    Editable = false;
+                    Tooltip = 'Specifies the call stack for this error';
+                    ApplicationArea = All;
+                    trigger OnDrillDown()
+                    begin
+                        Message(Rec."Error Call Stack");
+                    end;
                 }
 
             }

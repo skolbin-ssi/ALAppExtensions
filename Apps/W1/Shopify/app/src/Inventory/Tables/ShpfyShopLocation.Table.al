@@ -44,6 +44,8 @@ table 30113 "Shpfy Shop Location"
         field(5; "Location Filter"; Text[250])
         {
             Caption = 'Location Filter';
+            TableRelation = Location.Code;
+            ValidateTableRelation = false;
             DataClassification = CustomerContent;
             Description = 'Filter on location for calculating the stock.';
 
@@ -65,13 +67,27 @@ table 30113 "Shpfy Shop Location"
             Caption = 'Default Location Code';
             DataClassification = CustomerContent;
             Description = 'The default location code for use on a sales document.';
-            TableRelation = Location;
+            TableRelation = Location.Code where("Use as In-Transit" = const(false));
+            trigger OnValidate()
+            begin
+                if Rec."Location Filter" = '' then
+                    Rec."Location Filter" := Rec."Default Location Code";
+            end;
         }
 
         field(7; Disabled; Boolean)
         {
             Caption = 'Disabled';
             DataClassification = CustomerContent;
+#if not CLEAN22
+            ObsoleteReason = 'Replaced by Stock Calculation field.';
+            ObsoleteTag = '22.0';
+            ObsoleteState = Pending;
+#else
+            ObsoleteReason = 'Replaced by Stock Calculation field.';
+            ObsoleteTag = '25.0';
+            ObsoleteState = Removed;
+#endif
             Description = 'This disabled the synchronisation of the stock to Shopify.';
             InitValue = true;
         }
@@ -82,6 +98,13 @@ table 30113 "Shpfy Shop Location"
             DataClassification = SystemMetadata;
             Description = 'Active in Shopfy';
             Editable = false;
+        }
+        field(10; "Stock Calculation"; Enum "Shpfy Stock Calculation")
+        {
+            Caption = 'Stock calculation';
+            DataClassification = SystemMetadata;
+            InitValue = Disabled;
+            Description = 'Select the stock calculation used for this location.';
         }
     }
 

@@ -4,7 +4,9 @@ page 1693 "Bank Deposit Subform"
     Caption = 'Lines';
     DelayedInsert = true;
     PageType = ListPart;
+#pragma warning disable AL0729
     PromotedActionCategories = 'New,Process,Report,Line,Functions';
+#pragma warning restore
     SourceTable = "Gen. Journal Line";
     Permissions = tabledata "Bank Deposit Header" = r;
 
@@ -28,6 +30,7 @@ page 1693 "Bank Deposit Subform"
                             CurType := Rec."Account Type";
                             OnValidateAccountTypeOnBeforeInit(Rec);
                             Rec.Init();
+                            Rec.SetUpNewLine(Rec, Rec.Amount, false);
                             CopyValuesFromHeader();
                             Rec."Account Type" := CurType;
                         end;
@@ -259,10 +262,12 @@ page 1693 "Bank Deposit Subform"
                     ApplicationArea = Basic, Suite;
                     Caption = 'Apply Entries';
                     Image = ApplyEntries;
+#pragma warning disable AL0729
                     Promoted = true;
                     PromotedOnly = true;
                     PromotedCategory = Category5;
                     PromotedIsBig = true;
+#pragma warning restore
                     ShortCutKey = 'Shift+F11';
                     ToolTip = 'Select one or more ledger entries that you want to apply this record to so that the related posted documents are closed as paid or refunded. ';
 
@@ -281,10 +286,12 @@ page 1693 "Bank Deposit Subform"
                     ApplicationArea = Basic, Suite;
                     Caption = 'Account &Card';
                     Image = Account;
+#pragma warning disable AL0729
                     Promoted = true;
                     PromotedOnly = true;
                     PromotedCategory = Category4;
                     PromotedIsBig = true;
+#pragma warning restore
                     ShortCutKey = 'Shift+F7';
                     ToolTip = 'View or change detailed information about the account on the bank deposit line.';
 
@@ -298,10 +305,12 @@ page 1693 "Bank Deposit Subform"
                     ApplicationArea = Basic, Suite;
                     Caption = 'Account Ledger E&ntries';
                     Image = LedgerEntries;
+#pragma warning disable AL0729
                     Promoted = true;
                     PromotedOnly = true;
                     PromotedCategory = Category4;
                     PromotedIsBig = true;
+#pragma warning restore
                     ShortCutKey = 'Ctrl+F7';
                     ToolTip = 'View ledger entries that are posted for the account on the bank deposit line.';
 
@@ -315,10 +324,12 @@ page 1693 "Bank Deposit Subform"
                     ApplicationArea = Suite;
                     Caption = 'Dimensions';
                     Image = Dimensions;
+#pragma warning disable AL0729
                     Promoted = true;
                     PromotedOnly = true;
                     PromotedCategory = Category4;
                     PromotedIsBig = true;
+#pragma warning restore
                     ShortCutKey = 'Alt+D';
                     ToolTip = 'View or edit dimensions, such as area, project, or department, that you can assign to sales and purchase documents to distribute costs and analyze transaction history.';
 
@@ -357,6 +368,7 @@ page 1693 "Bank Deposit Subform"
 
     trigger OnNewRecord(BelowxRec: Boolean)
     begin
+        Rec.SetUpNewLine(xRec, xRec.Amount, false);
         if Rec."Journal Template Name" <> '' then begin
             Rec."Account Type" := xRec."Account Type";
             Rec."Document Type" := xRec."Document Type";
