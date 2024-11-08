@@ -16,8 +16,6 @@ permissionset 27004 "BANKREC-POST"
                   tabledata "Bank Account" = m,
                   tabledata "Bank Account Ledger Entry" = rim,
                   tabledata "Bank Comment Line" = RIMD,
-                  tabledata "Bank Rec. Header" = RIMD,
-                  tabledata "Bank Rec. Line" = RIMD,
                   tabledata "Check Ledger Entry" = rim,
                   tabledata Currency = r,
                   tabledata "Currency Exchange Rate" = r,
@@ -38,8 +36,10 @@ permissionset 27004 "BANKREC-POST"
                   tabledata "Gen. Journal Template" = RI,
                   tabledata "General Ledger Setup" = r,
                   tabledata "General Posting Setup" = r,
+#if not CLEAN25
                   tabledata "IRS 1099 Adjustment" = RIMD,
                   tabledata "IRS 1099 Form-Box" = RIMD,
+#endif
                   tabledata "Reversal Entry" = RIMD,
                   tabledata "Tax Area" = R,
                   tabledata "Tax Area Line" = R,

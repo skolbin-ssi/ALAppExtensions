@@ -1,3 +1,5 @@
+namespace Microsoft.DataMigration.BC;
+
 codeunit 4027 "W1 Transformation"
 {
     ObsoleteState = Pending;
@@ -10,7 +12,6 @@ codeunit 4027 "W1 Transformation"
         if TargetVersion <> 15.0 then
             exit;
 
-        TransformIncomingDocument();
         OnAfterW1TransformationForVersion(CountryCode, TargetVersion);
     end;
 
@@ -130,18 +131,6 @@ codeunit 4027 "W1 Transformation"
             exit;
 
         OnAfterW1NonCompanyTransformationForVersion(CountryCode, TargetVersion);
-    end;
-
-    local procedure TransformIncomingDocument()
-    var
-        StgIncomingDocument: Record "Stg Incoming Document";
-    begin
-        with StgIncomingDocument do
-            if FindSet(true, false) then
-                repeat
-                    URL := URL1 + URL2 + URL3 + URL4;
-                    Modify();
-                until StgIncomingDocument.Next() = 0;
     end;
 
     [IntegrationEvent(false, false)]

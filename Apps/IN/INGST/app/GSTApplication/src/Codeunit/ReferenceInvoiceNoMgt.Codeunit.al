@@ -1,3 +1,31 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Application;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.FixedAssets.Journal;
+using Microsoft.Foundation.Company;
+using Microsoft.Purchases.Document;
+using Microsoft.Purchases.History;
+using Microsoft.Purchases.Payables;
+using Microsoft.Purchases.Posting;
+using Microsoft.Purchases.Setup;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Sales.Customer;
+using Microsoft.Sales.Document;
+using Microsoft.Sales.History;
+using Microsoft.Sales.Posting;
+using Microsoft.Sales.Receivables;
+using Microsoft.Service.Document;
+using Microsoft.Service.History;
+using Microsoft.Service.Posting;
+
 codeunit 18435 "Reference Invoice No. Mgt."
 {
     var
@@ -1049,9 +1077,6 @@ codeunit 18435 "Reference Invoice No. Mgt."
         IsHandled: Boolean;
     begin
         IsHandled := false;
-#if not CLEAN23
-        OnBeforeUpdateReferenceInvoiceNoPurchHeader(PurchaseHeader, IsHandled);
-#endif
         OnBeforeUpdateReferenceInvoiceNoPurchaseHeader(PurchaseHeader, IsHandled);
         if IsHandled then
             exit;
@@ -1086,9 +1111,6 @@ codeunit 18435 "Reference Invoice No. Mgt."
         ISHandled: Boolean;
     begin
         IsHandled := false;
-#if not CLEAN23
-        OnBeforeUpdateReferenceInvoiceNoSalesHeader(SalesHeader, IsHandled);
-#endif
         OnBeforeUpdateRefInvoiceNoSalesHeader(SalesHeader, IsHandled);
         if IsHandled then
             exit;
@@ -3220,6 +3242,8 @@ codeunit 18435 "Reference Invoice No. Mgt."
     var
         TaxTransactionValue: Record "Tax Transaction Value";
     begin
+        TaxTransactionValue.SetLoadFields("Tax Record ID", "Tax Type", Percent);
+        TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
         TaxTransactionValue.SetRange("Tax Type", TaxTypeSetupCode);
         TaxTransactionValue.SetRange("Tax Record ID", RecordId);
         TaxTransactionValue.SetFilter(Percent, '<>%1', 0);
@@ -3256,9 +3280,6 @@ codeunit 18435 "Reference Invoice No. Mgt."
         IsHandled: Boolean;
     begin
         IsHandled := false;
-#if not CLEAN23
-        OnBeforeCheckRefInvNoPurchHeader(PurchaseHeader, IsHandled);
-#endif
         OnBeforeCheckRefInvNoPurchaseHeader(PurchaseHeader, IsHandled);
         if IsHandled then
             exit;
@@ -3295,9 +3316,6 @@ codeunit 18435 "Reference Invoice No. Mgt."
         IsHandled: Boolean;
     begin
         IsHandled := false;
-#if not CLEAN23
-        OnBeforeCheckRefInvNoSalesHeader(SalesHeader, IsHandled);
-#endif
         OnBeforeCheckRefInvoiceNoSalesHeader(SalesHeader, IsHandled);
         if IsHandled then
             exit;
@@ -3353,7 +3371,7 @@ codeunit 18435 "Reference Invoice No. Mgt."
                     PostedRefInvCreated := true;
                 end;
 
-                if PurchCrMemoHdrNo <> '' then begin
+                if (PurchCrMemoHdrNo <> '') and (PurchCrMemoHdrNo <> PurchaseHeader."No.") then begin
                     PostedReferenceInvoiceNo.Init();
                     PostedReferenceInvoiceNo := ReferenceInvoiceNo;
                     PostedReferenceInvoiceNo."Document Type" := PostedReferenceInvoiceNo."Document Type"::"Credit Memo";
@@ -4214,6 +4232,9 @@ codeunit 18435 "Reference Invoice No. Mgt."
         if PurchInvLine.FindSet() then
             repeat
                 GSTSetup.TestField("GST Tax Type");
+
+                TaxTransactionValue.SetLoadFields("Tax Record ID", "Tax Type", Percent);
+                TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
                 TaxTransactionValue.SetRange("Tax Type", GSTSetup."GST Tax Type");
                 TaxTransactionValue.SetRange("Tax Record ID", PurchInvLine.RecordId);
                 TaxTransactionValue.SetFilter(Percent, '<>%1', 0);
@@ -4245,6 +4266,9 @@ codeunit 18435 "Reference Invoice No. Mgt."
         if PurchCrMemoLine.FindSet() then
             repeat
                 GSTSetup.TestField("GST Tax Type");
+
+                TaxTransactionValue.SetLoadFields("Tax Record ID", "Tax Type", Percent);
+                TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
                 TaxTransactionValue.SetRange("Tax Type", GSTSetup."GST Tax Type");
                 TaxTransactionValue.SetRange("Tax Record ID", PurchCrMemoLine.RecordId);
                 TaxTransactionValue.SetFilter(Percent, '<>%1', 0);
@@ -4276,6 +4300,9 @@ codeunit 18435 "Reference Invoice No. Mgt."
         if SalesInvoiceLine.FindSet() then
             repeat
                 GSTSetup.TestField("GST Tax Type");
+
+                TaxTransactionValue.SetLoadFields("Tax Record ID", "Tax Type", "Percent");
+                TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
                 TaxTransactionValue.SetRange("Tax Type", GSTSetup."GST Tax Type");
                 TaxTransactionValue.SetRange("Tax Record ID", SalesInvoiceLine.RecordId);
                 TaxTransactionValue.SetFilter(Percent, '<>%1', 0);
@@ -4307,6 +4334,7 @@ codeunit 18435 "Reference Invoice No. Mgt."
         if SalesCrMemoLine.FindSet() then
             repeat
                 GSTSetup.TestField("GST Tax Type");
+                TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
                 TaxTransactionValue.SetRange("Tax Type", GSTSetup."GST Tax Type");
                 TaxTransactionValue.SetRange("Tax Record ID", SalesCrMemoLine.RecordId);
                 TaxTransactionValue.SetFilter(Percent, '<>%1', 0);
@@ -4338,6 +4366,9 @@ codeunit 18435 "Reference Invoice No. Mgt."
         if ServiceInvoiceLine.FindSet() then
             repeat
                 GSTSetup.TestField("GST Tax Type");
+
+                TaxTransactionValue.SetLoadFields("Tax Record ID", "Tax Type", Percent);
+                TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
                 TaxTransactionValue.SetRange("Tax Type", GSTSetup."GST Tax Type");
                 TaxTransactionValue.SetRange("Tax Record ID", ServiceInvoiceLine.RecordId);
                 TaxTransactionValue.SetFilter(Percent, '<>%1', 0);
@@ -4369,11 +4400,15 @@ codeunit 18435 "Reference Invoice No. Mgt."
         if ServiceCrMemoLine.FindSet() then
             repeat
                 GSTSetup.TestField("GST Tax Type");
+
+                TaxTransactionValue.SetLoadFields("Tax Record ID", "Tax Type", Percent);
+                TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
                 TaxTransactionValue.SetRange("Tax Type", GSTSetup."GST Tax Type");
                 TaxTransactionValue.SetRange("Tax Record ID", ServiceCrMemoLine.RecordId);
                 TaxTransactionValue.SetFilter(Percent, '<>%1', 0);
                 if not TaxTransactionValue.IsEmpty() then
                     TaxTransactionFound := true;
+
             until ServiceCrMemoLine.Next() = 0;
 
         if not TaxTransactionFound then
@@ -4704,35 +4739,6 @@ codeunit 18435 "Reference Invoice No. Mgt."
     begin
         CreatePostedReferenceInvoiceNoService(ServiceHeader, ServInvoiceNo, ServCrMemoNo);
     end;
-
-#if not CLEAN23
-    [Obsolete('Replaced by new integration event', '23.0')]
-    [IntegrationEvent(false, false)]
-    local procedure OnBeforeCheckRefInvNoPurchHeader(var PurchaseHeader: Record "Purchase Header"; IsHandled: Boolean)
-    begin
-    end;
-#endif
-#if not CLEAN23
-    [Obsolete('Replaced by new integration event', '23.0')]
-    [IntegrationEvent(false, false)]
-    local procedure OnBeforeUpdateReferenceInvoiceNoPurchHeader(var PurchaseHeader: Record "Purchase Header"; IsHandled: Boolean)
-    begin
-    end;
-#endif
-#if not CLEAN23
-    [Obsolete('Replaced by new integration event', '23.0')]
-    [IntegrationEvent(false, false)]
-    local procedure OnBeforeCheckRefInvNoSalesHeader(var SalesHeader: Record "Sales Header"; IsHandled: Boolean)
-    begin
-    end;
-#endif
-#if not CLEAN23
-    [Obsolete('Replaced by new integration event', '23.0')]
-    [IntegrationEvent(false, false)]
-    local procedure OnBeforeUpdateReferenceInvoiceNoSalesHeader(var SalesHeader: Record "Sales Header"; IsHandled: Boolean)
-    begin
-    end;
-#endif
 
     [IntegrationEvent(false, false)]
     local procedure OnBeforeCheckRefInvNoPurchaseHeader(var PurchaseHeader: Record "Purchase Header"; var IsHandled: Boolean)

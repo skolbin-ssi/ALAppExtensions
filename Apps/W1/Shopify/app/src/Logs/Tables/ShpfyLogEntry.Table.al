@@ -1,3 +1,9 @@
+namespace Microsoft.Integration.Shopify;
+
+using System.Security.AccessControl;
+using System.Security.User;
+using System.Reflection;
+
 /// <summary>
 /// Table Shpfy Log Entry (ID 30115).
 /// </summary>
@@ -71,6 +77,51 @@ table 30115 "Shpfy Log Entry"
         field(11; Method; Text[30])
         {
             Caption = 'Method';
+            DataClassification = SystemMetadata;
+        }
+        field(12; "Has Error"; Boolean)
+        {
+            Caption = 'Has Error';
+            DataClassification = SystemMetadata;
+        }
+#if not CLEANSCHEMA28
+        field(13; "Request Id"; Guid)
+        {
+            Caption = 'Request Id';
+            DataClassification = SystemMetadata;
+            ObsoleteReason = 'Replaced with "Shpfy Request Id" field';
+#if not CLEAN25
+            ObsoleteState = Pending;
+            ObsoleteTag = '25.0';
+#else
+            ObsoleteState = Removed;
+            ObsoleteTag = '28.0';
+#endif
+        }
+#endif
+        field(14; "Request Preview"; Text[50])
+        {
+            Caption = 'Request Preview';
+            DataClassification = SystemMetadata;
+        }
+        field(15; "Response Preview"; Text[50])
+        {
+            Caption = 'Response Preview';
+            DataClassification = SystemMetadata;
+        }
+        field(16; "Retry Count"; Integer)
+        {
+            Caption = 'Retry Count';
+            DataClassification = SystemMetadata;
+        }
+        field(17; "Query Cost"; Integer)
+        {
+            Caption = 'Query Cost';
+            DataClassification = SystemMetadata;
+        }
+        field(18; "Shpfy Request Id"; Text[100])
+        {
+            Caption = 'Request Id';
             DataClassification = SystemMetadata;
         }
     }
@@ -152,6 +203,7 @@ table 30115 "Shpfy Log Entry"
         Clear(Request);
         Request.CreateOutStream(OutStream, TextEncoding::UTF8);
         OutStream.WriteText(Data);
+        "Request Preview" := CopyStr(Data, 1, 50);
         if Modify() then;
     end;
 
@@ -166,6 +218,7 @@ table 30115 "Shpfy Log Entry"
         Clear(Response);
         Response.CreateOutStream(OutStream, TextEncoding::UTF8);
         OutStream.WriteText(Data);
+        "Response Preview" := CopyStr(Data, 1, 50);
         if Modify() then;
     end;
 }

@@ -1,3 +1,13 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Subcontracting;
+
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Purchases.Setup;
+using Microsoft.Purchases.Vendor;
+
 table 18471 "Multiple Subcon. Order Details"
 {
     Caption = 'Multiple Subcon. Order Details';
@@ -11,10 +21,12 @@ table 18471 "Multiple Subcon. Order Details"
             DataClassification = EndUserIdentifiableInformation;
 
             trigger OnValidate()
+            var
+                NoSeries: Codeunit "No. Series";
             begin
                 if "No." <> xRec."No." then begin
                     PurchasePayablesSetup.Get();
-                    NoSeriesMgt.TestManual(PurchasePayablesSetup."Multiple Subcon. Order Det Nos");
+                    NoSeries.TestManual(PurchasePayablesSetup."Multiple Subcon. Order Det Nos");
                     "No. Series" := '';
                 end;
             end;
@@ -58,12 +70,15 @@ table 18471 "Multiple Subcon. Order Details"
     }
 
     trigger OnInsert()
+    var
+        NoSeriesRec: Record "No. Series";
+        NoSeries: Codeunit "No. Series";
     begin
         if "No." = '' then begin
             PurchasePayablesSetup.Get();
             PurchasePayablesSetup.TestField("Multiple Subcon. Order Det Nos");
-            NoSeries.Get(PurchasePayablesSetup."Multiple Subcon. Order Det Nos");
-            "No." := NoSeriesMgt.GetNextNo(NoSeries.Code, WorkDate(), true);
+            NoSeriesRec.Get(PurchasePayablesSetup."Multiple Subcon. Order Det Nos");
+            "No." := NoSeries.GetNextNo(NoSeriesRec.Code);
             "No. Series" := PurchasePayablesSetup."Multiple Subcon. Order Det Nos";
         end;
         "Posting Date" := WorkDate();
@@ -73,21 +88,18 @@ table 18471 "Multiple Subcon. Order Details"
     procedure AssistEdit(OldMultipleSubconOrdDet: Record "Multiple Subcon. Order Details"): Boolean
     var
         MultipleSubconOrdDet: Record "Multiple Subcon. Order Details";
+        NoSeries: Codeunit "No. Series";
     begin
-        Copy(Rec);
+        MultipleSubconOrdDet.Copy(Rec);
         PurchasePayablesSetup.Get();
         PurchasePayablesSetup.TestField("Multiple Subcon. Order Det Nos");
-        if NoSeriesMgt.SelectSeries
-           (PurchasePayablesSetup."Multiple Subcon. Order Det Nos", "No. Series", "No. Series")
-        then begin
-            NoSeriesMgt.SetSeries("No.");
+        if NoSeries.LookupRelatedNoSeries(PurchasePayablesSetup."Multiple Subcon. Order Det Nos", MultipleSubconOrdDet."No. Series", MultipleSubconOrdDet."No. Series") then begin
+            MultipleSubconOrdDet."No." := NoSeries.GetNextNo(MultipleSubconOrdDet."No. Series");
             Rec := MultipleSubconOrdDet;
             exit(true);
         end;
     end;
 
     var
-        NoSeries: Record "No. Series";
         PurchasePayablesSetup: Record "Purchases & Payables Setup";
-        NoSeriesMgt: Codeunit NoSeriesManagement;
 }

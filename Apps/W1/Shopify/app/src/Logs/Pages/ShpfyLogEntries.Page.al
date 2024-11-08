@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Page Shpfy Log Entries (ID 30119).
 /// </summary>
@@ -46,20 +48,20 @@ page 30119 "Shpfy Log Entries"
                     ApplicationArea = All;
                     ToolTip = 'Specifies the URL with the data requested from.';
                 }
-                field(Method; Rec.Method)
+                field(RequestPreview; Rec."Request Preview")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the used method.';
+                    ToolTip = 'Specifies the request preview.';
                 }
-                field(StatusCode; Rec."Status Code")
+                field(ResponsePreview; Rec."Response Preview")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the HTTP result status of the entry in the log.';
+                    ToolTip = 'Specifies the response preview.';
                 }
-                field(StatusDescription; Rec."Status Description")
+                field(HasError; Rec."Has Error")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the description of the HTTP result status of the entry in the log.';
+                    ToolTip = 'Specifies if the request has errors.';
                 }
             }
         }

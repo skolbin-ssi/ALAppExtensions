@@ -1,3 +1,22 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Bank.Payment;
+
+using Microsoft.Bank.BankAccount;
+using Microsoft.Bank.Setup;
+using Microsoft.Foundation.Company;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Utilities;
+using System.Azure.Identity;
+using System.DataAdministration;
+using System.Environment;
+using System.Environment.Configuration;
+using System.IO;
+using System.Reflection;
+using System.Utilities;
+
 codeunit 20105 "AMC Banking Mgt."
 {
     Permissions = TableData "AMC Banking Setup" = r;
@@ -40,8 +59,10 @@ codeunit 20105 "AMC Banking Mgt."
         AMCBankingPmtTypeDesc8Txt: Label 'Domestic account to account transfer (inter company)';
         AMCBankingPmtTypeCode9Tok: Label 'EurAcc2AccSepa', Locked = true;
         AMCBankingPmtTypeDesc9Txt: Label 'SEPA credit transfer';
+        AMCTenantIdTxt: label 'fb79e895-7de3-4468-8184-cd181eb8b131', Locked = true;
         NoDetailsMsg: Label 'The log does not contain any more details.';
         LicenserverNameTxt: Label 'https://license.amcbanking.com', Locked = true;
+        TestLicenserverNameTxt: Label 'https://licensetest.amcbanking.com', Locked = true;
         LicenseRegisterTagTxt: Label '/api/v1/register/customer', Locked = true;
 
         FileExtTxt: Label '.txt';
@@ -75,9 +96,28 @@ codeunit 20105 "AMC Banking Mgt."
         exit('http://' + ApiVersion() + '.soap.xml.link.amc.dk/');
     end;
 
+    internal procedure GetCleanLicenseServerName(AMCBankingSetup: Record "AMC Banking Setup"): Text
+    var
+        CleanLicenserverNameTxt: Text;
+        DelPos: Integer;
+    begin
+        CleanLicenserverNameTxt := GetLicenseServerName();
+
+        if (AMCBankingSetup."Sign-up URL" <> '') then begin
+            DelPos := StrPos(AMCBankingSetup."Sign-up URL", GetLicenseRegisterTag());
+            if (DelPos <> 0) then
+                CleanLicenserverNameTxt := DelStr(AMCBankingSetup."Sign-up URL", DelPos, StrLen(GetLicenseRegisterTag()));
+        end;
+
+        exit(CleanLicenserverNameTxt);
+    end;
+
     procedure GetLicenseServerName(): Text
     begin
-        exit(LicenserverNameTxt);
+        if (GetLicenseNumber() = CopyStr('BC' + AMCTenantId(), 1, 40)) then
+            exit(TestLicenserverNameTxt)
+        else
+            exit(LicenserverNameTxt);
     end;
 
     procedure GetLicenseRegisterTag(): Text
@@ -85,11 +125,18 @@ codeunit 20105 "AMC Banking Mgt."
         exit(LicenseRegisterTagTxt);
     end;
 
+    internal procedure IsLicenseEqualAMC(): Boolean
+    begin
+        if (GetLicenseNumber() = CopyStr('BC' + AMCTenantId(), 1, 40)) then
+            exit(true)
+        else
+            exit(false);
+    end;
+
     procedure IsSolutionSandbox(AMCBankingSetup: Record "AMC Banking Setup"): Boolean
-    var
     begin
         if ((UpperCase(AMCBankingSetup.Solution) <> UpperCase(GetEnterPriseSolutionCode())) and
-            (EnvironmentInformation.IsSandbox())) then
+            (EnvironmentInformation.IsSandbox()) and (not IsLicenseEqualAMC())) then
             exit(true)
         else
             exit(false)
@@ -142,12 +189,7 @@ codeunit 20105 "AMC Banking Mgt."
     end;
 
     [EventSubscriber(ObjectType::Table, Database::"Service Connection", 'OnRegisterServiceConnection', '', false, false)]
-#if not CLEAN20
-    [Obsolete('This method will change to local', '20.0')]
-    procedure HandleBankDataConvRegisterServiceConnection(var ServiceConnection: Record "Service Connection")
-#else
     local procedure HandleBankDataConvRegisterServiceConnection(var ServiceConnection: Record "Service Connection")
-#endif
     var
         AMCBankingSetup: Record "AMC Banking Setup";
         RecordRef: RecordRef;
@@ -187,6 +229,9 @@ codeunit 20105 "AMC Banking Mgt."
     var
         AMCBankingSetup: Record "AMC Banking Setup";
     begin
+        if CompanyName() <> CompanyName then
+            AMCBankingSetup.ChangeCompany(CompanyName);
+
         if (AMCBankingSetup.Get()) then
             if (IsSolutionSandbox(AMCBankingSetup)) then
                 SetURLsToDefault(AMCBankingSetup);
@@ -206,7 +251,6 @@ codeunit 20105 "AMC Banking Mgt."
     // To substitute code in Codeunit 2 "Company-Initialize"
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Company-Initialize", 'OnCompanyInitialize', '', false, false)]
     local procedure AMCBankOnCompanyInitialize();
-    var
     begin
         AMCBankInitializeBaseData();
         InitBankDataConvServiceSetup();
@@ -412,7 +456,7 @@ codeunit 20105 "AMC Banking Mgt."
         if (EnvironmentInformation.IsSaaS()) then begin
             LicenseNumber := CopyStr(AzureADTenant.GetAadTenantId(), 1, 40);
             if (LicenseNumber = '') then
-                LicenseNumber := 'common';
+                LicenseNumber := AMCTenantIdTxt;
         end
         else begin
             LicenseNumber := CopyStr(DELCHR(SerialNumber(), '<', ' '), 1, 40);
@@ -421,6 +465,16 @@ codeunit 20105 "AMC Banking Mgt."
 
         exit(CopyStr('BC' + LicenseNumber, 1, 40))
 
+    end;
+
+    internal procedure IsAMCFundamentalsEnabled(): Boolean
+    var
+        AMCBankingSetup: Record "AMC Banking Setup";
+    begin
+        if (not AMCBankingSetup.get()) then
+            exit(false);
+
+        exit(AMCBankingSetup."AMC Enabled");
     end;
 
     internal procedure IsAMCBusinessInstalled(): Boolean
@@ -568,7 +622,6 @@ codeunit 20105 "AMC Banking Mgt."
     end;
 
     internal procedure updateValue(var fieldref: FieldRef; ValueVariant: Variant; UseValidate: Boolean)
-    var
     begin
         if (UseValidate) then
             fieldref.Validate(ValueVariant)
@@ -610,8 +663,6 @@ codeunit 20105 "AMC Banking Mgt."
     end;
 
     internal procedure GetBankFileName(BankAccount: Record "Bank Account"): Text[250]
-    var
-
     begin
 
         if (BankAccount."AMC Bank File Name" <> '') then begin
@@ -622,6 +673,11 @@ codeunit 20105 "AMC Banking Mgt."
         end
         else
             exit(BankAccount."AMC Bank Name" + FileExtTxt);
+    end;
+
+    internal procedure AMCTenantId(): Text
+    begin
+        Exit(CopyStr('fb79e895-7de3-4468-8184-cd181eb8b131', 1, 40));
     end;
 }
 

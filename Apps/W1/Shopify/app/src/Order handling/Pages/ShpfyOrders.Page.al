@@ -1,3 +1,8 @@
+namespace Microsoft.Integration.Shopify;
+
+using Microsoft.Sales.Document;
+using Microsoft.Sales.Customer;
+
 /// <summary>
 /// Page Shpfy Orders (ID 30115).
 /// </summary>
@@ -31,15 +36,21 @@ page 30115 "Shpfy Orders"
                     ApplicationArea = All;
                     ToolTip = 'Specifies the Shopify Shop from which the order originated.';
                 }
+#if not CLEAN25
                 field(RiskLevel; Rec."Risk Level")
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the risk level from the Shopify order.';
+                    Visible = false;
+                    ObsoleteReason = 'This field is not imported.';
+                    ObsoleteState = Pending;
+                    ObsoleteTag = '25.0';
                 }
+#endif
                 field(Closed; Rec.Closed)
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specified if the Shopify order is archived by D365BC.';
+                    ToolTip = 'Specifies if the Shopify order is archived by D365BC.';
                 }
                 field(SellToCustomerNo; Rec."Sell-to Customer No.")
                 {
@@ -112,12 +123,18 @@ page 30115 "Shpfy Orders"
                 field(FinancialStatus; Rec."Financial Status")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the status of payments associated with the order. Valid values are: pending, authorized, partially_paid, paid, partially_refunded, refunded, voided.';
+                    ToolTip = 'Specifies the status of payments associated with the order. Valid values are: pending, authorized, partially paid, paid, partially refunded, refunded, voided.';
                 }
                 field(FulfillmentStatus; Rec."Fulfillment Status")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the order''s status in terms of fulfilled line items. Valid values are: Fulfilled, null, partial, restocked.';
+                    ToolTip = 'Specifies the order''s status in terms of fulfilled line items. Valid values are: fulfilled, in progress, open, pending fulfillment, restocked, unfulfilled, partially fulfilled, on hold.';
+                }
+                field(ReturnStatus; Rec."Return Status")
+                {
+                    ApplicationArea = All;
+                    Visible = false;
+                    ToolTip = 'Specifies the status or returns assocuated with the order. Valid values are: inspection complete, in progress, no return, returned, return failed, return requested.';
                 }
                 field(TotalAmount; Rec."Total Amount")
                 {
@@ -161,6 +178,12 @@ page 30115 "Shpfy Orders"
         }
         area(factboxes)
         {
+            part(LinkedBCDocuments; "Shpfy Linked To Documents")
+            {
+                ApplicationArea = All;
+                Caption = 'Linked Documents';
+                SubPageLink = "Shopify Document Type" = const("Shpfy Shop Document Type"::"Shopify Shop Order"), "Shopify Document Id" = field("Shopify Order Id");
+            }
             part(CustomerStatistics; "Customer Statistics FactBox")
             {
                 ApplicationArea = All;
@@ -198,7 +221,7 @@ page 30115 "Shpfy Orders"
     {
         area(processing)
         {
-            Action(DeleteSelected)
+            action(DeleteSelected)
             {
                 ApplicationArea = All;
                 Caption = 'Delete Selected Rows';
@@ -217,7 +240,7 @@ page 30115 "Shpfy Orders"
                     OrderHeader.DeleteAll(true);
                 end;
             }
-            Action(SyncOrdersFromShopify)
+            action(SyncOrdersFromShopify)
             {
                 ApplicationArea = All;
                 Caption = 'Sync Orders From Shopify';
@@ -240,7 +263,7 @@ page 30115 "Shpfy Orders"
                     BackgroundSyncs.OrderSync(Shop);
                 end;
             }
-            Action(CreateSalesDocuments)
+            action(CreateSalesDocuments)
             {
                 ApplicationArea = All;
                 Caption = 'Create Sales Documents';
@@ -277,6 +300,22 @@ page 30115 "Shpfy Orders"
                     Report.Run(Report::"Shpfy Sync Shipm. to Shopify");
                 end;
             }
+            action(MarkConflictAsResolved)
+            {
+                ApplicationArea = All;
+                Caption = 'Mark Conflict as Resolved';
+                Enabled = Rec."Has Order State Error";
+                Image = Approval;
+                ToolTip = 'Mark the conflict as resolved.';
+
+                trigger OnAction()
+                var
+                    ImportOrder: Codeunit "Shpfy Import Order";
+                begin
+                    ImportOrder.MarkOrderConflictAsResolved(Rec);
+                    Rec.Modify();
+                end;
+            }
         }
         area(navigation)
         {
@@ -297,7 +336,7 @@ page 30115 "Shpfy Orders"
                     RunPageMode = View;
                     ToolTip = 'View the level and message that indicates the results of the fraud check.';
                 }
-                Action(SalesOrder)
+                action(SalesOrder)
                 {
                     ApplicationArea = All;
                     Caption = 'Sales Order';
@@ -319,7 +358,7 @@ page 30115 "Shpfy Orders"
                         SalesOrder.Run();
                     end;
                 }
-                Action(SalesInvoice)
+                action(SalesInvoice)
                 {
                     ApplicationArea = All;
                     Caption = 'Sales Invoice';
@@ -341,7 +380,7 @@ page 30115 "Shpfy Orders"
                         SalesOrder.Run();
                     end;
                 }
-                Action(ShopifyStatusPage)
+                action(ShopifyStatusPage)
                 {
                     ApplicationArea = All;
                     Caption = 'Shopify Status Page';

@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Sales;
+
+using Microsoft.Finance.GST.Base;
+using System.Integration.Excel;
+
 page 18146 "E-Comm. Merchant Id"
 {
     PageType = List;
@@ -52,13 +61,9 @@ page 18146 "E-Comm. Merchant Id"
                 begin
                     EditinExcel.EditPageInExcel(
                         'e-Commerce Merchant Id',
-                        CurrPage.ObjectId(false),
-                        StrSubstNo(CustomerNumLbl, Rec."Customer No."));
+                        Page::"E-Comm. Merchant Id");
                 end;
             }
         }
     }
-
-    var
-        CustomerNumLbl: Label 'Code %1', Comment = '%1 = Customer No.';
 }

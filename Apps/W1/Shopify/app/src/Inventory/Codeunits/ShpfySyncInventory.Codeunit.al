@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Codeunit Shpfy Sync Inventory (ID 30197).
 /// </summary>
@@ -8,7 +10,6 @@ codeunit 30197 "Shpfy Sync Inventory"
 
     var
         InventoryApi: Codeunit "Shpfy Inventory API";
-
 
     trigger OnRun()
     var
@@ -21,25 +22,16 @@ codeunit 30197 "Shpfy Sync Inventory"
             ShopLocation.SetRange("Shop Code", ShopFilter);
             ShopInventory.SetRange("Shop Code", ShopFilter);
         end;
-        if ShopLocation.FindSet(false, false) then begin
+        ShopLocation.SetFilter("Stock Calculation", '<>%1', ShopLocation."Stock Calculation"::Disabled);
+        if ShopLocation.FindSet(false) then begin
             InventoryApi.SetShop(ShopLocation."Shop Code");
+            InventoryApi.SetInventoryIds();
             repeat
                 InventoryApi.ImportStock(ShopLocation);
             until ShopLocation.Next() = 0;
         end;
+        InventoryApi.RemoveUnusedInventoryIds();
 
-
-        if ShopInventory.FindSet() then
-            repeat
-                InventoryApi.ExportStock(ShopInventory);
-            until ShopInventory.Next() = 0;
-
-        if ShopLocation.FindSet(false, false) then begin
-            InventoryApi.SetShop(ShopLocation."Shop Code");
-            repeat
-                InventoryApi.ImportStock(ShopLocation);
-            until ShopLocation.Next() = 0;
-        end;
-
+        InventoryApi.ExportStock(ShopInventory);
     end;
 }

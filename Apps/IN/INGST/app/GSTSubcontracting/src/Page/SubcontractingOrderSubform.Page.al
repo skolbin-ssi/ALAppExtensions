@@ -1,3 +1,20 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Subcontracting;
+
+using Microsoft.Finance.GST.Purchase;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Foundation.ExtendedText;
+using Microsoft.Foundation.Navigate;
+using Microsoft.Inventory.Item.Catalog;
+using Microsoft.Purchases.Document;
+#if not CLEAN25
+using Microsoft.Purchases.Pricing;
+#endif
+using Microsoft.Sales.Document;
+
 page 18493 "Subcontracting Order Subform"
 {
 
@@ -853,14 +870,14 @@ page 18493 "Subcontracting Order Subform"
     end;
 
     var
-#if not CLEAN19
+#if not CLEAN25
         PurchHeader: Record "Purchase Header";
         PurchPriceCalcMgt: Codeunit "Purch. Price Calc. Mgt.";
 #endif
         TransferExtendedText: Codeunit "Transfer Extended Text";
         ShortcutDimCode: array[8] of Code[20];
         UpdateAllowedVar: Boolean;
-        LineAmount:Decimal;
+        LineAmount: Decimal;
         ViewModeMsg: Label 'Unable to run this function while in View mode.';
 
     procedure ApproveCalcInvDisc()
@@ -914,10 +931,10 @@ page 18493 "Subcontracting Order Subform"
 
     procedure ShowTracking()
     var
-        TrackingForm: Page "Order Tracking";
+        OrderTracking: Page "Order Tracking";
     begin
-        TrackingForm.SetPurchLine(Rec);
-        TrackingForm.RunModal();
+        OrderTracking.SetVariantRec(Rec, Rec."No.", Rec."Outstanding Qty. (Base)", Rec."Expected Receipt Date", Rec."Expected Receipt Date");
+        OrderTracking.RunModal();
     end;
 
     procedure ShowDimension()
@@ -967,7 +984,7 @@ page 18493 "Subcontracting Order Subform"
         exit(true);
     end;
 
-#if not CLEAN19
+#if not CLEAN25
 #pragma warning disable AS0072
     [Obsolete('Replaced by the new implementation (V16) of price calculation.', '19.0')]
 #pragma warning restore AS0072

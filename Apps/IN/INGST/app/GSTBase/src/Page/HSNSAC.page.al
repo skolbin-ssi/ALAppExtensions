@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Base;
+
+using System.Integration.Excel;
+
 page 18005 "HSN/SAC"
 {
     PageType = List;
@@ -57,8 +65,7 @@ page 18005 "HSN/SAC"
                 begin
                     EditinExcel.EditPageInExcel(
                         'HSNSAC',
-                        CurrPage.ObjectId(false),
-                        Rec.GetFilter(Code));
+                        Page::"HSN/SAC");
                 end;
             }
         }

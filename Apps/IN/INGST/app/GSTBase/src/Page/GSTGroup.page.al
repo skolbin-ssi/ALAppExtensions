@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Base;
+
+using System.Integration.Excel;
+
 page 18001 "GST Group"
 {
     PageType = List;
@@ -76,8 +84,7 @@ page 18001 "GST Group"
                     EditinExcel: Codeunit "Edit in Excel";
                 begin
                     EditinExcel.EditPageInExcel('GST Group',
-                    CurrPage.ObjectId(false),
-                    Rec.GetFilter(Code));
+                    Page::"GST Group");
                 end;
             }
         }

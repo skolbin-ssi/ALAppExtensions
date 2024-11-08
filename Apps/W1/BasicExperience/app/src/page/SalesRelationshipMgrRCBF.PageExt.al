@@ -1,3 +1,9 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.CRM.RoleCenters;
+
 pageextension 20654 "Sales Relation ship Mgr RC BF" extends "Sales & Relationship Mgr. RC"
 {
     actions
@@ -62,7 +68,7 @@ pageextension 20654 "Sales Relation ship Mgr RC BF" extends "Sales & Relationshi
         {
             ApplicationArea = RelationshipMgmt, BFBasic;
         }
-#if not CLEAN19
+#if not CLEAN25
         modify("Sales &Prices")
         {
             ApplicationArea = RelationshipMgmt, BFBasic;

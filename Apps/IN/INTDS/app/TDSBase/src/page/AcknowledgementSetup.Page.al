@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TDS.TDSBase;
+
+using System.Integration.Excel;
+
 page 18685 "Acknowledgement Setup"
 {
     PageType = List;
@@ -52,9 +60,8 @@ page 18685 "Acknowledgement Setup"
                 trigger OnAction()
                 var
                     EditinExcel: Codeunit "Edit in Excel";
-                    FinancialYearLbl: Label 'Code eq %1', Comment = '%1 = Financial Year';
                 begin
-                    EditinExcel.EditPageInExcel('Acknowledgement Setup', CurrPage.ObjectId(false), StrSubstNo(FinancialYearLbl, Rec."Financial Year"));
+                    EditinExcel.EditPageInExcel('Acknowledgement Setup', Page::"Acknowledgement Setup");
                 end;
             }
         }

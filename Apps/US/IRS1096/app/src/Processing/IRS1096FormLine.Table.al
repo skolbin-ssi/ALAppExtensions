@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.VAT.Reporting;
+
+using Microsoft.Purchases.Vendor;
+
 table 10019 "IRS 1096 Form Line"
 {
     Caption = 'IRS 1096 Form Line';
@@ -15,7 +23,9 @@ table 10019 "IRS 1096 Form Line"
         field(3; "IRS Code"; Code[20])
         {
             Caption = 'IRS Code';
+#if not CLEAN25
             TableRelation = "IRS 1099 Form-Box";
+#endif
         }
         field(4; "Vendor No."; Code[20])
         {
@@ -78,10 +88,13 @@ table 10019 "IRS 1096 Form Line"
 
     procedure ShowAdjustments()
     var
+#if not CLEAN25
         IRS1096FormHeader: Record "IRS 1096 Form Header";
         IRS1099Adjustment: Record "IRS 1099 Adjustment";
         IRS1099Adjustments: Page "IRS 1099 Adjustments";
+#endif
     begin
+#if not CLEAN25
         IRS1096FormHeader.Get("Form No.");
         IRS1099Adjustment.SetRange(Year, Date2DMY(IRS1096FormHeader."Starting Date", 3), Date2DMY(IRS1096FormHeader."Ending Date", 3));
         IRS1099Adjustment.SetRange("Vendor No.", "Vendor No.");
@@ -89,7 +102,9 @@ table 10019 "IRS 1096 Form Line"
         IRS1099Adjustments.Editable := false;
         IRS1099Adjustments.SetTableView(IRS1099Adjustment);
         IRS1099Adjustments.Run();
+#endif
     end;
+
 
     local procedure UpdateHeaderTotals()
     var

@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.AuditFileExport;
+
+using Microsoft.Finance.VAT.Setup;
+
 page 10678 "SAF-T VAT Posting Setup"
 {
     PageType = List;
@@ -44,15 +52,17 @@ page 10678 "SAF-T VAT Posting Setup"
                     ToolTip = 'Specifies a description of the VAT posting setup';
                     Editable = false;
                 }
-                field("Sales VAT Reporting Code"; "Sales VAT Reporting Code")
+                field("Sale VAT Reporting Code"; Rec."Sale VAT Reporting Code")
                 {
-                    ApplicationArea = VAT;
+                    ApplicationArea = Basic, Suite;
                     ToolTip = 'Specifies the VAT code to be used with this VAT posting setup for sales reporting.';
+                    ShowMandatory = SalesStandardTaxCodeMandatory;
                 }
-                field("Purchase VAT Reporting Code"; "Purchase VAT Reporting Code")
+                field("Purch. VAT Reporting Code"; Rec."Purch. VAT Reporting Code")
                 {
-                    ApplicationArea = VAT;
+                    ApplicationArea = Basic, Suite;
                     ToolTip = 'Specifies the VAT code to be used with this VAT posting setup for purchase reporting.';
+                    ShowMandatory = PurchStandardTaxCodeMandatory;
                 }
                 field("Sales SAF-T Tax Code"; "Sales SAF-T Tax Code")
                 {
@@ -66,45 +76,12 @@ page 10678 "SAF-T VAT Posting Setup"
                     ToolTip = 'Specifies the code of the VAT posting setup that will be used for the TaxCode XML node in the SAF-T file for the purchase VAT entries.';
                     Editable = false;
                 }
-                field("Sales SAF-T Standard Tax Code"; "Sales SAF-T Standard Tax Code")
-                {
-                    ApplicationArea = Basic, Suite;
-                    ToolTip = 'Specifies the code of the VAT posting setup that will be used for the StandardTaxCode XML node in the SAF-T file for the sales VAT entries.';
-                    ShowMandatory = SalesStandardTaxCodeMandatory;
-                }
-                field("Purch. SAF-T Standard Tax Code"; "Purch. SAF-T Standard Tax Code")
-                {
-                    ApplicationArea = Basic, Suite;
-                    ToolTip = 'Specifies the code of the VAT posting setup that will be used for the StandardTaxCode XML node in the SAF-T file for the purchase VAT entries.';
-                    ShowMandatory = PurchStandardTaxCodeMandatory;
-                }
             }
         }
     }
 
     actions
     {
-        area(Processing)
-        {
-            action(CopyReportingCodes)
-            {
-                ApplicationArea = Basic, Suite;
-                Caption = 'Copy Reporting Codes to SAF-T';
-                ToolTip = 'Copy sales and purchase reporting codes to sales/purchase SAF-T standard tax codes.';
-                Promoted = true;
-                PromotedCategory = Process;
-                PromotedIsBig = true;
-                PromotedOnly = true;
-                Image = Copy;
-
-                trigger OnAction()
-                var
-                    SAFTMappingHelper: Codeunit "SAF-T Mapping Helper";
-                begin
-                    SAFTMappingHelper.CopyReportingCodesToSAFTCodes();
-                end;
-            }
-        }
     }
 
     var
@@ -123,7 +100,7 @@ page 10678 "SAF-T VAT Posting Setup"
 
     local procedure CalcTaxCodeMandatoryStyle()
     begin
-        SalesStandardTaxCodeMandatory := ("Sales VAT Account" <> '') and ("Sales SAF-T Standard Tax Code" = '');
-        PurchStandardTaxCodeMandatory := ("Purchase VAT Account" <> '') and ("Purch. SAF-T Standard Tax Code" = '');
+        SalesStandardTaxCodeMandatory := (Rec."Sales VAT Account" <> '') and (Rec."Sale VAT Reporting Code" = '');
+        PurchStandardTaxCodeMandatory := (Rec."Purchase VAT Account" <> '') and (Rec."Purch. VAT Reporting Code" = '');
     end;
 }

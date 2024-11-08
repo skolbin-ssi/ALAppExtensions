@@ -15,10 +15,12 @@ table 11021 "Sales VAT Advance Notif."
             DataClassification = CustomerContent;
 
             trigger OnValidate()
+            var
+                NoSeries: Codeunit "No. Series";
             begin
                 if "No." <> xRec."No." then begin
                     ElecVATDeclSetup.Get();
-                    NoSeriesMgt.TestManual(ElecVATDeclSetup."Sales VAT Adv. Notif. Nos.");
+                    NoSeries.TestManual(ElecVATDeclSetup."Sales VAT Adv. Notif. Nos.");
                     "No. Series" := '';
                 end;
             end;
@@ -66,33 +68,22 @@ table 11021 "Sales VAT Advance Notif."
             Editable = false;
             TableRelation = "No. Series";
         }
+#if not CLEANSCHEMA23
         field(9; "XSL-Filename"; Text[250])
         {
             DataClassification = CustomerContent;
-#if not CLEAN20
-            ObsoleteTag = '20.0';
-            ObsoleteState = Pending;
-            ObsoleteReason = 'This functionality is not in use and not supported';
-#else
-            ObsoleteTag = '20.0';
+            ObsoleteTag = '23.0';
             ObsoleteState = Removed;
             ObsoleteReason = 'This functionality is not in use and not supported';
-#endif     
         }
         field(10; "XSD-Filename"; Text[250])
         {
             DataClassification = CustomerContent;
-#if not CLEAN20
-            ObsoleteTag = '20.0';
-            ObsoleteState = Pending;
-            ObsoleteReason = 'This functionality is not in use and not supported';
-#else
-            ObsoleteTag = '20.0';
+            ObsoleteTag = '23.0';
             ObsoleteState = Removed;
             ObsoleteReason = 'This functionality is not in use and not supported';
-#endif
         }
-
+#endif
         field(11; "Statement Template Name"; Code[10])
         {
             DataClassification = CustomerContent;
@@ -252,6 +243,11 @@ table 11021 "Sales VAT Advance Notif."
     trigger OnInsert()
     var
         CompanyInformation: Record "Company Information";
+        NoSeries: Codeunit "No. Series";
+#if not CLEAN24
+        NoSeriesManagement: Codeunit NoSeriesManagement;
+        IsHandled: Boolean;
+#endif
     begin
         FeatureTelemetry.LogUptake('0001Q0G', ElecVATAdvanceNotTok, Enum::"Feature Uptake Status"::"Used");
         if xRec.FindLast() then;
@@ -265,7 +261,19 @@ table 11021 "Sales VAT Advance Notif."
         if "No." = '' then begin
             ElecVATDeclSetup.Get();
             ElecVATDeclSetup.TestField("Sales VAT Adv. Notif. Nos.");
-            NoSeriesMgt.InitSeries(ElecVATDeclSetup."Sales VAT Adv. Notif. Nos.", xRec."No. Series", WorkDate(), "No.", "No. Series");
+#if not CLEAN24
+            IsHandled := false;
+            NoSeriesManagement.RaiseObsoleteOnBeforeInitSeries(ElecVATDeclSetup."Sales VAT Adv. Notif. Nos.", xRec."No. Series", WorkDate(), "No.", "No. Series", IsHandled);
+            if not IsHandled then begin
+#endif
+                "No. Series" := ElecVATDeclSetup."Sales VAT Adv. Notif. Nos.";
+                if NoSeries.AreRelated("No. Series", xRec."No. Series") then
+                    "No. Series" := xRec."No. Series";
+                "No." := NoSeries.GetNextNo("No. Series");
+#if not CLEAN24
+                NoSeriesManagement.RaiseObsoleteOnAfterInitSeries("No. Series", ElecVATDeclSetup."Sales VAT Adv. Notif. Nos.", WorkDate(), "No.");
+            end;
+#endif
         end;
         FeatureTelemetry.LogUsage('0001Q0H', ElecVATAdvanceNotTok, 'Elec. VAT advance notif generated');
     end;
@@ -282,7 +290,6 @@ table 11021 "Sales VAT Advance Notif."
 
     var
         ElecVATDeclSetup: Record "Elec. VAT Decl. Setup";
-        NoSeriesMgt: Codeunit NoSeriesManagement;
         FeatureTelemetry: Codeunit "Feature Telemetry";
         ElecVATAdvanceNotTok: Label 'DE Elec. VAT Advance Notifications', Locked = true;
         WrongPlaceErr: Label 'Places of %1 in area %2 must be %3.', Comment = '%1 = Registration No. Field Caption; %2 = Tax Office Area; %3 = VAT No.';
@@ -309,16 +316,15 @@ table 11021 "Sales VAT Advance Notif."
     procedure AssistEdit(OldSalesVATAdvNotif: Record "Sales VAT Advance Notif."): Boolean
     var
         SalesVATAdvNotif: Record "Sales VAT Advance Notif.";
+        NoSeries: Codeunit "No. Series";
     begin
-        with SalesVATAdvNotif do begin
-            SalesVATAdvNotif := Rec;
-            ElecVATDeclSetup.Get();
-            ElecVATDeclSetup.TestField("Sales VAT Adv. Notif. Nos.");
-            if NoSeriesMgt.SelectSeries(ElecVATDeclSetup."Sales VAT Adv. Notif. Nos.", OldSalesVATAdvNotif."No. Series", "No. Series") then begin
-                NoSeriesMgt.SetSeries("No.");
-                Rec := SalesVATAdvNotif;
-                exit(true);
-            end;
+        SalesVATAdvNotif := Rec;
+        ElecVATDeclSetup.Get();
+        ElecVATDeclSetup.TestField("Sales VAT Adv. Notif. Nos.");
+        if NoSeries.LookupRelatedNoSeries(ElecVATDeclSetup."Sales VAT Adv. Notif. Nos.", OldSalesVATAdvNotif."No. Series", SalesVATAdvNotif."No. Series") then begin
+            SalesVATAdvNotif."No." := NoSeries.GetNextNo(SalesVATAdvNotif."No. Series");
+            Rec := SalesVATAdvNotif;
+            exit(true);
         end;
     end;
 
@@ -536,19 +542,25 @@ table 11021 "Sales VAT Advance Notif."
         end;
     end;
 
-    local procedure CalcLineTotal(VATStmtLine2: Record "VAT Statement Line"; Level: Integer): Boolean
+    local procedure CalcLineTotal(VATStmtLine2: Record "VAT Statement Line"; Level: Integer) Result: Boolean
     var
         GLAcc: Record "G/L Account";
         VATEntry: Record "VAT Entry";
         i: Integer;
         ErrorText: Text[80];
         LineNo: array[6] of Code[10];
+        IsHandled: Boolean;
     begin
+        IsHandled := false;
+        OnBeforeCalcLineTotal(Rec, VATStmtLine2, Level, IsHandled, Result);
+        if IsHandled then
+            exit(Result);
+
         case VATStmtLine2.Type of
             VATStmtLine2.Type::"Account Totaling":
                 if VATStmtLine2."Account Totaling" <> '' then begin
                     GLAcc.SetFilter("No.", VATStmtLine2."Account Totaling");
-                    GLAcc.SetRange("Date Filter", StartDate, EndDate);
+                    GLAcc.SetRange("VAT Reporting Date Filter", StartDate, EndDate);
                     if GLAcc.FindSet() then begin
                         Amount := 0;
                         repeat
@@ -561,7 +573,7 @@ table 11021 "Sales VAT Advance Notif."
             VATStmtLine2.Type::"VAT Entry Totaling":
                 begin
                     VATEntry.SetCurrentKey(Type, Closed, "VAT Bus. Posting Group", "VAT Prod. Posting Group",
-                      "Tax Jurisdiction Code", "Use Tax", "Posting Date");
+                      "Tax Jurisdiction Code", "Use Tax", "VAT Reporting Date");
                     VATEntry.SetRange(Type, VATStmtLine2."Gen. Posting Type");
                     case Selection of
                         Selection::Open:
@@ -573,9 +585,9 @@ table 11021 "Sales VAT Advance Notif."
                     VATEntry.SetRange("VAT Prod. Posting Group", VATStmtLine2."VAT Prod. Posting Group");
 
                     if PeriodSelection = PeriodSelection::"Before and Within Period" then
-                        VATEntry.SetRange("Posting Date", 0D, EndDate)
+                        VATEntry.SetRange("VAT Reporting Date", 0D, EndDate)
                     else
-                        VATEntry.SetRange("Posting Date", StartDate, EndDate);
+                        VATEntry.SetRange("VAT Reporting Date", StartDate, EndDate);
 
                     Amount := 0;
                     case VATStmtLine2."Amount Type" of
@@ -674,6 +686,11 @@ table 11021 "Sales VAT Advance Notif."
         if "Starting Date" = 0D then
             exit('');
         exit(Format("Starting Date") + '..' + Format(CalcEndDate("Starting Date")));
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeCalcLineTotal(SalesVATAdvanceNotif: Record "Sales VAT Advance Notif."; VATStmtLine2: Record "VAT Statement Line"; Level: Integer; var IsHandled: Boolean; var Result: Boolean)
+    begin
     end;
 
     [IntegrationEvent(true, false)]

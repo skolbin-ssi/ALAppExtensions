@@ -1,3 +1,10 @@
+#if not CLEAN25
+namespace Microsoft.Utility.ImageAnalysis;
+
+using Microsoft.CRM.Contact;
+using System.AI;
+using Microsoft.CRM.Profiling;
+using System.Text;
 // ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved. 
 // Licensed under the MIT License. See License.txt in the project root for license information. 
@@ -7,6 +14,9 @@ codeunit 139593 "Contact Pic Analyzer Test"
 {
     Subtype = Test;
     TestPermissions = Disabled;
+    ObsoleteReason = 'Image analyzer for contacts is being removed.';
+    ObsoleteState = Pending;
+    ObsoleteTag = '25.0';
 
     var
         Assert: Codeunit Assert;
@@ -20,7 +30,6 @@ codeunit 139593 "Contact Pic Analyzer Test"
         ContactPictureAnalyze: Codeunit "Contact Picture Analyze";
         JsonManagement: Codeunit "JSON Management";
         Gender: Option " ",Male,Female;
-        AnalysisType: Option Tags,Faces,Color;
     begin
         // [Scenario] Check the contact is populated correctly in a success case
         // [Given] A contact and an analysis result with age and gender
@@ -30,7 +39,7 @@ codeunit 139593 "Contact Pic Analyzer Test"
         JsonManagement.InitializeObject('{"requestId":"2c15a4c1-9271-4584-a30e-342d7fdf206b"' +
         ',"metadata":{"width":500,"height":600,"format":"Jpeg"},"faces":[ { "age": 37, "gender": "Female",' +
         '"faceRectangle": { "left": 1379, "top": 320, "width": 310, "height": 310 } } ] }');
-        ImageAnalysisResult.SetJson(JsonManagement, AnalysisType::Faces);
+        ImageAnalysisResult.SetResult(JsonManagement, Enum::"Image Analysis Type"::Faces);
 
         // [When] We try to populate the contact
         ContactPictureAnalyze.PopulateContact(Contact, ImageAnalysisResult);
@@ -50,7 +59,6 @@ codeunit 139593 "Contact Pic Analyzer Test"
         ImageAnalysisResult: Codeunit "Image Analysis Result";
         ContactPictureAnalyze: Codeunit "Contact Picture Analyze";
         JsonManagement: Codeunit "JSON Management";
-        AnalysisType: Option Tags,Faces,Color;
     begin
         // [Scenario] Check the contact is not populated in a case where 2 faces are on a picture
         // [Given] A contact and an analysis result with age and gender for 2 faces
@@ -61,7 +69,7 @@ codeunit 139593 "Contact Pic Analyzer Test"
         ',"metadata":{"width":500,"height":600,"format":"Jpeg"},"faces":[ { "age": 37, "gender": "Female",' +
         '"faceRectangle": { "left": 1379, "top": 320, "width": 310, "height": 310 } }, { "age": 45, "gender": "Male",' +
         '"faceRectangle": { "left": 1379, "top": 320, "width": 310, "height": 310 } } ] }');
-        ImageAnalysisResult.SetJson(JsonManagement, AnalysisType::Faces);
+        ImageAnalysisResult.SetResult(JsonManagement, Enum::"Image Analysis Type"::Faces);
 
         // [When] We try to populate the contact
         ContactPictureAnalyze.PopulateContact(Contact, ImageAnalysisResult);
@@ -175,3 +183,4 @@ codeunit 139593 "Contact Pic Analyzer Test"
         exit(true);
     end;
 }
+#endif

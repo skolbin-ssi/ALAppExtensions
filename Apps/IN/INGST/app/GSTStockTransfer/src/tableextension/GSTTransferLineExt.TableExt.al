@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.StockTransfer;
+
+using Microsoft.Finance.GST.Base;
+using Microsoft.Inventory.Transfer;
+
 tableextension 18392 "GST Transfer Line Ext" extends "Transfer Line"
 {
     fields
@@ -29,7 +38,6 @@ tableextension 18392 "GST Transfer Line Ext" extends "Transfer Line"
             DataClassification = CustomerContent;
             Caption = 'GST Group Code';
             TableRelation = "GST Group";
-
             trigger OnValidate()
             begin
                 Rec."HSN/SAC Code" := '';

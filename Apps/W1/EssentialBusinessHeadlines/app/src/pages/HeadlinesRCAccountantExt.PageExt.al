@@ -3,6 +3,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information. 
 // ------------------------------------------------------------------------------------------------
 
+namespace System.Visualization;
+
 pageextension 1442 "Headlines RC Accountant Ext." extends "Headline RC Accountant"
 {
 
@@ -20,6 +22,7 @@ pageextension 1442 "Headlines RC Accountant Ext." extends "Headline RC Accountan
                 {
                     ApplicationArea = Basic, Suite;
                     DrillDown = true;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -40,6 +43,7 @@ pageextension 1442 "Headlines RC Accountant Ext." extends "Headline RC Accountan
                 {
                     ApplicationArea = Basic, Suite;
                     DrillDown = true;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -59,6 +63,7 @@ pageextension 1442 "Headlines RC Accountant Ext." extends "Headline RC Accountan
                 field(SalesIncreaseText; SalesIncreaseText)
                 {
                     ApplicationArea = Basic, Suite;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -86,17 +91,11 @@ pageextension 1442 "Headlines RC Accountant Ext." extends "Headline RC Accountan
     end;
 
     var
-        [InDataSet]
         LargestOrderVisible: Boolean;
-        [InDataSet]
         LargestOrderText: Text[250];
-        [InDataSet]
         LargestSaleVisible: Boolean;
-        [InDataSet]
         LargestSaleText: Text[250];
-        [InDataSet]
         SalesIncreaseVisible: Boolean;
-        [InDataSet]
         SalesIncreaseText: Text[250];
 
 }

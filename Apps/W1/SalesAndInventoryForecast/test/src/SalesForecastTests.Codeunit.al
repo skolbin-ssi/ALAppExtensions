@@ -1,3 +1,16 @@
+namespace Microsoft.Inventory.InventoryForecast;
+
+using System.TestLibraries.Utilities;
+using System.AI;
+using Microsoft.Foundation.Period;
+using Microsoft.Purchases.Document;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Inventory.Item;
+using Microsoft.Sales.Setup;
+using System.Environment.Configuration;
+using System.Threading;
+using System.Privacy;
+
 // ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -194,6 +207,7 @@ codeunit 139540 "Sales Forecast Tests"
     end;
 
     [Test]
+    [HandlerFunctions('CustomerConsentPageHandler')]
     procedure TestNotEnoughHistoricalData();
     var
         Item: Record Item;
@@ -259,6 +273,7 @@ codeunit 139540 "Sales Forecast Tests"
     end;
 
     [Test]
+    [HandlerFunctions('CustomerConsentPageHandler')]
     procedure TestMissingApiUriOpenSetup();
     var
         Item: Record Item;
@@ -289,6 +304,7 @@ codeunit 139540 "Sales Forecast Tests"
     procedure TestTimeout();
     var
         Item: Record Item;
+        ApiKey: Text;
     begin
         // [Scenario] Call to AzureML times out if no response from service
         Initialize();
@@ -301,7 +317,8 @@ codeunit 139540 "Sales Forecast Tests"
         // [Given] The Api Uri key is set to an invalid destination and timeout = 1 second
         MSSalesForecastSetup.GetSingleInstance();
         MSSalesForecastSetup.Validate("API URI", 'https://localhost:1234/services.azureml.net/workspaces/');
-        MSSalesForecastSetup.SetUserDefinedAPIKey(MockServiceKeyTxt);
+        ApiKey := MockServiceKeyTxt;
+        MSSalesForecastSetup.SetUserDefinedAPIKey(ApiKey);
         MSSalesForecastSetup.Validate("Timeout (seconds)", 1);
         MSSalesForecastSetup.Modify(true);
 
@@ -401,6 +418,7 @@ codeunit 139540 "Sales Forecast Tests"
     end;
 
     [Test]
+    [HandlerFunctions('CustomerConsentPageHandler')]
     procedure TestKeyNeededBeforeScheduledExecution();
     var
         LibraryPermissions: Codeunit "Library - Permissions";
@@ -423,7 +441,7 @@ codeunit 139540 "Sales Forecast Tests"
     end;
 
     [Test]
-    [HandlerFunctions('JobQueueEntryCardPageHandler')]
+    [HandlerFunctions('JobQueueEntryCardPageHandler,CustomerConsentPageHandler')]
     procedure TestSetupScheduledExecution();
     var
         JobQueueEntry: Record "Job Queue Entry";
@@ -447,6 +465,7 @@ codeunit 139540 "Sales Forecast Tests"
     end;
 
     [Test]
+    [HandlerFunctions('CustomerConsentPageHandler')]
     procedure TestUpdateForecastActionThrowsErrorIfForecastingNotSetup();
     var
         LibraryPermissions: Codeunit "Library - Permissions";
@@ -647,15 +666,12 @@ codeunit 139540 "Sales Forecast Tests"
     begin
         // [Scenario] When Job Queue creation in Process, Sales Item Forecast Setup record is locked
         // and the appropriate message is presented
-
         // [Given] A Job Queue Entry in creation
-        with JobQueueEntry do begin
-            Init();
-            Validate("Object Type to Run", "Object Type to Run"::Codeunit);
-            Validate("Object ID to Run", Codeunit::"Sales Forecast Update");
-            Validate(Status, Status::"In Process");
-            Insert(true);
-        end;
+        JobQueueEntry.Init();
+        JobQueueEntry.Validate("Object Type to Run", JobQueueEntry."Object Type to Run"::Codeunit);
+        JobQueueEntry.Validate("Object ID to Run", Codeunit::"Sales Forecast Update");
+        JobQueueEntry.Validate(Status, JobQueueEntry.Status::"In Process");
+        JobQueueEntry.Insert(true);
 
         // [When] Item Sales Forecast Setup is invoked from Item List
         // [Then] Message is displayed (JobCreationInProgressMsgHandler)
@@ -742,10 +758,12 @@ codeunit 139540 "Sales Forecast Tests"
     end;
 
     [Test]
+    [HandlerFunctions('CustomerConsentPageHandler')]
     procedure TestSaaSUserDefinedAPI();
     var
         Item: Record Item;
         LibraryPermissions: Codeunit "Library - Permissions";
+        ApiKey: Text;
     begin
         // [Scenario] Prediction doesn't throw Limit exceeded error, if user defined API is used in SaaS
         Initialize();
@@ -759,7 +777,8 @@ codeunit 139540 "Sales Forecast Tests"
         MSSalesForecastSetup.GetSingleInstance();
         MSSalesForecastSetup.Validate("Timeout (seconds)", 1);
         MSSalesForecastSetup.Validate("API URI", 'https://localhost:1234/services.azureml.net/workspaces/');
-        MSSalesForecastSetup.SetUserDefinedAPIKey(MockServiceKeyTxt);
+        ApiKey := MockServiceKeyTxt;
+        MSSalesForecastSetup.SetUserDefinedAPIKey(ApiKey);
         MSSalesForecastSetup.Modify(true);
 
         // [When] Item sales is being forecasted for the given item
@@ -904,11 +923,13 @@ codeunit 139540 "Sales Forecast Tests"
         MSSalesForecast: Record "MS - Sales Forecast";
         MSSalesForecastParameter: Record "MS - Sales Forecast Parameter";
         JobQueueEntry: Record "Job Queue Entry";
+        LibraryERM: Codeunit "Library - ERM";
         LibraryPermissions: Codeunit "Library - Permissions";
         LibraryNotificationMgt: Codeunit "Library - Notification Mgt.";
     begin
         LibraryPermissions.SetTestabilitySoftwareAsAService(true);
         LibraryNotificationMgt.DisableAllNotifications(); // do not get polluted by Image analysis notifications
+        LibraryERM.SetEnableDataCheck(false);
 
         MSSalesForecastSetup.DeleteAll();
         MSSalesForecast.DeleteAll();
@@ -1107,6 +1128,12 @@ codeunit 139540 "Sales Forecast Tests"
     procedure ConfirmHandler(Question: Text[1024]; var Reply: Boolean);
     begin
         Reply := true;
+    end;
+
+    [ModalPageHandler]
+    procedure CustomerConsentPageHandler(var ConsentMicrosoftConfirm: TestPage "Consent Microsoft AI")
+    begin
+        ConsentMicrosoftConfirm.Accept.Invoke();
     end;
 }
 

@@ -1,10 +1,15 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace System.Environment.Configuration;
+
 codeunit 20602 "Experience Tier BF"
 {
     Access = Internal;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Application Area Mgmt. Facade", 'OnValidateApplicationAreas', '', true, true)]
     local procedure OnValidateApplicationAreas(ExperienceTierSetup: Record "Experience Tier Setup"; TempApplicationAreaSetup: Record "Application Area Setup" temporary)
-    var
     begin
         if not ExperienceTierSetup."BF Basic" then
             exit;
@@ -29,7 +34,6 @@ codeunit 20602 "Experience Tier BF"
     end;
 
     local procedure SetExperienceAppAreas(var TempApplicationAreaSetup: Record "Application Area Setup" temporary)
-    var
     begin
         TempApplicationAreaSetup."BF Basic" := true; // Application Area belonging to this extension
         TempApplicationAreaSetup.Basic := true;
@@ -42,7 +46,6 @@ codeunit 20602 "Experience Tier BF"
         TempApplicationAreaSetup.Planning := true;
         TempApplicationAreaSetup.Dimensions := true;
         TempApplicationAreaSetup.Prepayments := true;
-        TempApplicationAreaSetup.XBRL := true;
         TempApplicationAreaSetup.Comments := true;
         TempApplicationAreaSetup."Record Links" := true;
         TempApplicationAreaSetup.Notes := true;

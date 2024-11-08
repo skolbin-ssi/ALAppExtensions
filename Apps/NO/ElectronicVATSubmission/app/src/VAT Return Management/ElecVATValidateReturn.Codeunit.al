@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.VAT.Reporting;
+
+using Microsoft.Foundation.Company;
+using System.Utilities;
+
 codeunit 10686 "Elec. VAT Validate Return"
 {
     TableNo = "VAT Report Header";
@@ -17,8 +26,8 @@ codeunit 10686 "Elec. VAT Validate Return"
         VATStatementReportLine: Record "VAT Statement Report Line";
         ErrorMessage: Record "Error Message";
         CompanyInformation: Record "Company Information";
-        VATCode: Record "VAT Code";
-        VATCodeValue: Code[10];
+        VATReportingCode: Record "VAT Reporting Code";
+        VATCodeValue: Code[20];
         ExpectedVATAmount: Decimal;
     begin
         ElecVATSetup.Get();
@@ -34,11 +43,11 @@ codeunit 10686 "Elec. VAT Validate Return"
         VATStatementReportLine.FindSet();
         repeat
             VATCodeValue := CopyStr(VATStatementReportLine."Box No.", 1, MaxStrLen(VATCodeValue));
-            VATCode.Get(VATCodeValue);
-            if VATCode."Report VAT Rate" and (VATStatementReportLine.Base <> 0) then begin
-                ExpectedVATAmount := Round(VATStatementReportLine.Base * VATCode."VAT Rate For Reporting" / 100);
-                if abs(ExpectedVATAmount - VATStatementReportLine.Amount) > 1 then
-                    error(VATAmountCalcErr, VATStatementReportLine."Box No.");
+            VATReportingCode.Get(VATCodeValue);
+            if VATReportingCode."Report VAT Rate" and (VATStatementReportLine.Base <> 0) then begin
+                ExpectedVATAmount := Round(VATStatementReportLine.Base * VATReportingCode."VAT Rate For Reporting" / 100);
+                if Abs(ExpectedVATAmount - VATStatementReportLine.Amount) > 1 then
+                    Error(VATAmountCalcErr, VATStatementReportLine."Box No.");
             end;
         until VATStatementReportLine.Next() = 0;
     end;

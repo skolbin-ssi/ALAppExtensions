@@ -1,3 +1,13 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Application;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Purchases.Payables;
+
 codeunit 18432 "GST Purchase Application Mgt."
 {
     var
@@ -15,7 +25,12 @@ codeunit 18432 "GST Purchase Application Mgt."
     var
         GSTApplicationLibrary: Codeunit "GST Application Library";
         TransactionType: Enum "Detail Ledger Transaction Type";
+        IsHandled: Boolean;
     begin
+        OnBeforeGetPurchaseInvoiceAmountOffline(VendorLedgerEntry, ApplyingVendorLedgerEntry, GenJournalLine, TDSTCSAmount, IsHandled);
+        if IsHandled then
+            exit;
+
         ApplyingVendorLedgerEntry.TestField("Document Type", ApplyingVendorLedgerEntry."Document Type"::Invoice);
         if not ApplyingVendorLedgerEntry."GST Reverse Charge" then
             Error(GSTVendorTypeErr, ApplyingVendorLedgerEntry."Document No.", ApplyingVendorLedgerEntry."Entry No.");
@@ -181,5 +196,10 @@ codeunit 18432 "GST Purchase Application Mgt."
             until DetailedGSTLedgerEntry.Next() = 0
         else
             Error(NoGSTEntryErr, VendorLedgerEntry."Entry No.");
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeGetPurchaseInvoiceAmountOffline(var VendorLedgerEntry: Record "Vendor Ledger Entry"; var ApplyingVendorLedgerEntry: Record "Vendor Ledger Entry"; GenJournalLine: Record "Gen. Journal Line"; TDSTCSAmount: Decimal; var IsHandled: Boolean)
+    begin
     end;
 }

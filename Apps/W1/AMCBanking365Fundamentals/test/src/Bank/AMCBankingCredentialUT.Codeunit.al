@@ -16,6 +16,7 @@ codeunit 132558 "AMC Banking Credential UT"
         EnvironmentInfoTestLibrary: Codeunit "Environment Info Test Library";
         AMCBankingMgt: Codeunit "AMC Banking Mgt.";
         LocalhostURLTxt: Label 'https://localhost:8080/', Locked = true;
+        //LocalhostURLTxt: Label 'https://host.docker.internal:8088/', Locked = true; //AMC - Internal host at AMC for testing
         MissingCredentialsQst: Label 'The %1 is missing the user name or password. Do you want to open the %1 page?', Comment = '%1 = page name';
         MissingCredentialsErr: Label 'The user name and password must be filled in %1 page.', Comment = '%1 = page name';
         NoConnectionErr: Label 'Valid versions is: NAV01 NAV02 NAV03 API02 API04 ';
@@ -43,9 +44,10 @@ codeunit 132558 "AMC Banking Credential UT"
         if (not AMCBankingSetup.Get()) then begin
             AMCBankingSetup.Init();
             AMCBankingSetup.Insert(true);
-            AMCBankingSetup."AMC Enabled" := true;
-            AMCBankingSetup.Modify();
         end;
+        AMCBankingSetup."AMC Enabled" := true;
+        AMCBankingSetup.Modify();
+
 
         // Exercise test
         BasisSetupRunOK := AMCBankAssistedMgt.RunBasisSetupV162(true, true, '', LocalhostURLTxt, '', true, false, '', '',
@@ -83,9 +85,9 @@ codeunit 132558 "AMC Banking Credential UT"
             AMCBankingSetup.Init();
             AMCBankingSetup.Insert(true);
             AMCBankingSetup."User Name" := AMCBankingMgt.GetLicenseNumber();
-            AMCBankingSetup."AMC Enabled" := true;
-            AMCBankingSetup.Modify();
         end;
+        AMCBankingSetup."AMC Enabled" := true;
+        AMCBankingSetup.Modify();
 
         // Exercise test
         BasisSetupRunOK := AMCBankAssistedMgt.RunBasisSetupV162(true, true, '', LocalhostURLTxt, '', true, false, '', '',
@@ -123,9 +125,9 @@ codeunit 132558 "AMC Banking Credential UT"
             AMCBankingSetup.Insert(true);
             AMCBankingSetup."User Name" := AMCBankingMgt.GetLicenseNumber();
             AMCBankingSetup.Solution := 'Standard';
-            AMCBankingSetup."AMC Enabled" := true;
-            AMCBankingSetup.Modify();
         end;
+        AMCBankingSetup."AMC Enabled" := true;
+        AMCBankingSetup.Modify();
 
         // Exercise test
         BasisSetupRunOK := AMCBankAssistedMgt.RunBasisSetupV162(true, true, '', LocalhostURLTxt, '', true, false, '', '',
@@ -146,6 +148,7 @@ codeunit 132558 "AMC Banking Credential UT"
     procedure DemoUserNamePasswordShouldNotBeSetOnInsertWithFilledUser()
     var
         AMCBankingSetup: Record "AMC Banking Setup";
+        NewPassword: Text;
     begin
         // [FEATURE] [Password] [Demo Company]
         // [SCENARIO] Setup URLS will always be set to default on insert NO matter what
@@ -157,7 +160,8 @@ codeunit 132558 "AMC Banking Credential UT"
             // [GIVEN] New "AMC Bank Service Setup", where "User Name" is 'X'
             "User Name" := 'X';
             // [GIVEN] The Password and URLs are filled
-            SavePassword('P');
+            NewPassword := 'P';
+            SavePassword(NewPassword);
             "Sign-up URL" := CopyStr(FieldName("Sign-up URL"), 1, 250);
             "Service URL" := CopyStr(FieldName("Service URL"), 1, 250);
             "Support URL" := CopyStr(FieldName("Support URL"), 1, 250);
@@ -168,7 +172,7 @@ codeunit 132558 "AMC Banking Credential UT"
 
             // [THEN] Setup is not set to default values
             Assert.AreEqual('X', "User Name", FieldCaption("User Name"));
-            Assert.AreEqual('P', GetPassword(), FieldCaption("Password Key"));
+            AssertPassword('P', FieldCaption("Password Key"), true);
             Assert.ExpectedMessage(AMCBankingMgt.GetLicenseServerName() + AMCBankingMgt.GetLicenseRegisterTag(), AMCBankingSetup."Sign-up URL");
             Assert.ExpectedMessage('https://amcbanking.com/landing365bc/help/', AMCBankingSetup."Support URL");
             if ((Solution = AMCBankingMgt.GetDemoSolutionCode()) or
@@ -197,7 +201,7 @@ codeunit 132558 "AMC Banking Credential UT"
         // [THEN] "User Name" is 'DemoUser', Password is 'Demo Password'
         AMCBankingSetup.Get();
         Assert.AreEqual(AMCBankingSetup.GetDemoUserName(), AMCBankingSetup."User Name", AMCBankingSetup.FieldCaption("User Name"));
-        Assert.AreEqual('Demo Password', AMCBankingSetup.GetPassword(), AMCBankingSetup.FieldCaption("Password Key"));
+        AssertPassword('Demo Password', AMCBankingSetup.FieldCaption("Password Key"), true);
 
     end;
 
@@ -477,6 +481,8 @@ codeunit 132558 "AMC Banking Credential UT"
     var
         AMCBankingSetup: Record "AMC Banking Setup";
     begin
+        LibraryAmcWebService.SetHttpClientRequestallowed();
+
         AMCBankingSetup.DeleteAll();
         EnvironmentInfoTestLibrary.SetTestabilitySoftwareAsAService(false);
     end;
@@ -491,9 +497,10 @@ codeunit 132558 "AMC Banking Credential UT"
             WasNotPresent := true;
             AMCBankingSetup.Init();
             AMCBankingSetup.Insert(true);
-            AMCBankingSetup."AMC Enabled" := true;
-            AMCBankingSetup.Modify();
         end;
+        AMCBankingSetup."AMC Enabled" := true;
+        AMCBankingSetup.Modify();
+
         LibraryAmcWebService.SetupAMCBankingDataExch(DataExchDef);
 
         if (WasNotPresent) then
@@ -568,6 +575,18 @@ codeunit 132558 "AMC Banking Credential UT"
         CompanyInformation.Modify();
     end;
 
+    [NonDebuggable]
+    local procedure AssertPassword(Expected: Text; Message: Text; AreEqual: Boolean)
+    var
+        AMCBankingSetup: Record "AMC Banking Setup";
+    begin
+        AMCBankingSetup.Get();
+        if AreEqual then
+            Assert.AreEqual(Expected, AMCBankingSetup.GetPassword().Unwrap(), Message)
+        else
+            Assert.AreNotEqual(Expected, AMCBankingSetup.GetPassword().Unwrap(), Message);
+    end;
+
     [ConfirmHandler]
     [Scope('OnPrem')]
     procedure ConfirmHandlerTrue(Question: Text[1024]; var Reply: Boolean)
@@ -593,7 +612,6 @@ codeunit 132558 "AMC Banking Credential UT"
     [ModalPageHandler]
     [Scope('OnPrem')]
     procedure AMCBankingSetupModalPageHandler(var AMCBankingSetupPage: TestPage "AMC Banking Setup")
-    var
     begin
         AMCBankingSetupPage."User Name".SetValue('demouser');
         AMCBankingSetupPage.Password.SetValue('Demo Password');

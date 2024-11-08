@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Bank.Payment;
+
+using Microsoft.Bank.Reconciliation;
+using System.IO;
+
 codeunit 20126 "AMC Bank Process Statement"
 {
     Permissions = TableData "Data Exch." = rimd;
@@ -40,6 +49,8 @@ codeunit 20126 "AMC Bank Process Statement"
         stateTxt: Label 'state', Locked = true;
         countryisocodeTxt: Label 'countryisocode', Locked = true;
         referenceTxt: Label 'reference', Locked = true;
+        uniqueustecrefTxt: Label 'uniqueustecref', Locked = true;
+        uniquethemtecrefTxt: Label 'uniquethemtecref', locked = true;
         typeTxt: Label 'type', Locked = true;
         DOCTxt: Label 'DOC', Locked = true;
         PIDTxt: Label 'PID', Locked = true;
@@ -92,6 +103,9 @@ codeunit 20126 "AMC Bank Process Statement"
 
                     MakeDataExchFieldRecords(TempFinstaUSLevelXmlBuffer);
 
+                    //get Uniquetecref tags
+                    getUniqueTecRef(TempTopLevelXmlBuffer, FinstaRecordRef, TempFinstaUSLevelXmlBuffer."Entry No.");
+
                     //Get Amountposting tags
                     ChildsParentEntryNo := getChildsParentEntryNo(TempTopLevelXmlBuffer, amountpostingTxt, TempFinstaUSLevelXmlBuffer."Entry No.");
                     getAmountPosting(TempTopLevelXmlBuffer, FinstaRecordRef, ChildsParentEntryNo);
@@ -124,6 +138,9 @@ codeunit 20126 "AMC Bank Process Statement"
                     getNextLevels(TempFinstaTHLevelXmlBuffer, finstatransthemTxt, TempFinstaUSLevelXmlBuffer."Entry No.");
                     if (not TempFinstaTHLevelXmlBuffer.IsEmpty) then
                         repeat
+                            //get Uniquetecref tags
+                            getUniqueTecRef(TempTopLevelXmlBuffer, FinstaRecordRef, TempFinstaTHLevelXmlBuffer."Entry No.");
+
                             //Get message th level
                             getNextLevels(TempChildLevelXmlBuffer, messageTxt, TempFinstaTHLevelXmlBuffer."Entry No.");
                             if (not TempChildLevelXmlBuffer.IsEmpty) then
@@ -171,7 +188,6 @@ codeunit 20126 "AMC Bank Process Statement"
     end;
 
     local procedure getNextLevels(var ElementXMLBuffer: Record "XML Buffer"; NextLevelName: Text; ParentEntryNo: Integer)
-    var
     begin
         ElementXMLBuffer.Reset();
         ElementXMLBuffer.SetRange("Parent Entry No.", ParentEntryNo);
@@ -281,6 +297,24 @@ codeunit 20126 "AMC Bank Process Statement"
 
     end;
 
+    Local procedure getUniqueTecRef(var ElementXMLBuffer: Record "XML Buffer"; RecordRef: RecordRef; ChildsParentEntryNo: Integer)
+    var
+        BankAccReconciliationLine: record "Bank Acc. Reconciliation Line";
+        uniqueustecrefValue: Text;
+    begin
+        uniqueustecrefValue := getChildsValue(ElementXMLBuffer, uniqueustecrefTxt, ChildsParentEntryNo);
+        if (uniqueustecrefValue <> '') then begin
+            AMCBankingMgt.SetFieldValue(RecordRef, BankAccReconciliationLine.FieldNo("Transaction Text"), uniqueustecrefValue, true, false);
+            AMCBankingMgt.SetFieldValue(RecordRef, BankAccReconciliationLine.FieldNo(Description), AMCBankingMgt.GetFieldValue(RecordRef, BankAccReconciliationLine.FieldNo("Transaction Text")), false, false);
+        end;
+
+        uniqueustecrefValue := getChildsValue(ElementXMLBuffer, uniquethemtecrefTxt, ChildsParentEntryNo);
+        if (uniqueustecrefValue <> '') then begin
+            AMCBankingMgt.SetFieldValue(RecordRef, BankAccReconciliationLine.FieldNo("Transaction Text"), uniqueustecrefValue, true, false);
+            AMCBankingMgt.SetFieldValue(RecordRef, BankAccReconciliationLine.FieldNo(Description), AMCBankingMgt.GetFieldValue(RecordRef, BankAccReconciliationLine.FieldNo("Transaction Text")), false, false);
+        end;
+    end;
+
     local procedure getMessage(var ElementXMLBuffer: Record "XML Buffer"; RecordRef: RecordRef; ChildsParentEntryNo: Integer)
     var
         BankAccReconciliationLine: record "Bank Acc. Reconciliation Line";
@@ -306,7 +340,6 @@ codeunit 20126 "AMC Bank Process Statement"
     end;
 
     local procedure getChildsParentEntryNo(var ElementXMLBuffer: Record "XML Buffer"; ElementName: Text; ParentEntryNo: Integer): Integer
-    var
     begin
         ElementXMLBuffer.Reset();
         ElementXMLBuffer.SetRange("Parent Entry No.", ParentEntryNo);
@@ -320,7 +353,6 @@ codeunit 20126 "AMC Bank Process Statement"
     end;
 
     local procedure getChildsValue(var ElementXMLBuffer: Record "XML Buffer"; ElementName: Text; ParentEntryNo: Integer): Text
-    var
     begin
         ElementXMLBuffer.Reset();
         ElementXMLBuffer.SetRange("Parent Entry No.", ParentEntryNo);

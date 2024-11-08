@@ -1,3 +1,8 @@
+namespace Microsoft.Integration.Shopify;
+
+using Microsoft.Inventory.Item.Catalog;
+using Microsoft.Inventory.Item;
+
 /// <summary>
 /// Codeunit Shpfy Item Reference Mgt. (ID 30175).
 /// </summary>
@@ -48,6 +53,8 @@ codeunit 30175 "Shpfy Item Reference Mgt."
     var
         ItemReference: Record "Item Reference";
     begin
+        if ReferenceNo = '' then
+            exit(false);
         ItemReference.SetRange("Reference Type", ReferenceType);
         ItemReference.SetRange("Reference No.", ReferenceNo);
         if UnitOfMeasure <> '' then
@@ -64,10 +71,9 @@ codeunit 30175 "Shpfy Item Reference Mgt."
         IsHandled: Boolean;
     begin
         ProductEvents.OnBeforGetBarcode(ItemNo, VariantCode, UnitOfMeasure, Barcode, IsHandled);
-        if not IsHandled then begin
+        if not IsHandled then
             Barcode := GetItemReference(ItemNo, VariantCode, UnitOfMeasure, "Item Reference Type"::"Bar Code", '');
-            ProductEvents.OnAfterGetBarcode(ItemNo, VariantCode, UnitOfMeasure, Barcode);
-        end;
+        ProductEvents.OnAfterGetBarcode(ItemNo, VariantCode, UnitOfMeasure, Barcode);
     end;
 
     internal procedure GetItemReference(ItemNo: Code[20]; VariantCode: Code[10]; UnitOfMeasure: Code[10]; ReferenceType: Enum "Item Reference Type"; ReferenceTypeNo: Code[20]): Code[50]

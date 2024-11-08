@@ -28,7 +28,6 @@ codeunit 139654 "HybridBC Management Test"
         HybridReplicationSummary: Record "Hybrid Replication Summary";
         HybridBCWizard: Codeunit "Hybrid BC Wizard";
         RunId: Text;
-        StartTime: DateTime;
         TriggerType: Text;
     begin
         // [GIVEN] A Webhook Subscription exists for DynamicsBC
@@ -36,17 +35,14 @@ codeunit 139654 "HybridBC Management Test"
 
         // [WHEN] A notification record is inserted
         TriggerType := 'Scheduled';
-        InsertNotification(SubscriptionId, RunId, StartTime, TriggerType, HybridReplicationSummary.ReplicationType::Diagnostic, '');
+        InsertNotification(SubscriptionId, RunId, TriggerType, HybridReplicationSummary.ReplicationType::Diagnostic, '');
 
         // [THEN] A Hybrid Replication Summary record is created
         HybridReplicationSummary.Get(RunId);
-        with HybridReplicationSummary do begin
-            Assert.AreEqual(Source, HybridBCWizard.ProductName(), 'Unexpected value in summary for source.');
-            Assert.AreEqual("Run ID", RunId, 'Unexpected value in summary for Run ID.');
-            Assert.AreEqual("Start Time", StartTime, 'Unexpected value in summary for Start Time.');
-            Assert.AreEqual("Trigger Type", "Trigger Type"::Scheduled, 'Unexpected value in summary for Trigger Type.');
-            Assert.AreEqual(ReplicationType, ReplicationType::Diagnostic, 'Unexpected value in summary for Replication Type.');
-        end;
+        Assert.AreEqual(HybridReplicationSummary.Source, HybridBCWizard.ProductName(), 'Unexpected value in summary for source.');
+        Assert.AreEqual(HybridReplicationSummary."Run ID", RunId, 'Unexpected value in summary for Run ID.');
+        Assert.AreEqual(HybridReplicationSummary."Trigger Type", HybridReplicationSummary."Trigger Type"::Scheduled, 'Unexpected value in summary for Trigger Type.');
+        Assert.AreEqual(HybridReplicationSummary.ReplicationType, HybridReplicationSummary.ReplicationType::Diagnostic, 'Unexpected value in summary for Replication Type.');
     end;
 
     [Test]
@@ -62,29 +58,10 @@ codeunit 139654 "HybridBC Management Test"
     end;
 
     [Test]
-    procedure CreateDiagnosticRunActionIsAvailable()
-    var
-        IntelligentCloudManagement: TestPage "Intelligent Cloud Management";
-    begin
-        // [SCENARIO] The option to create a diagnostic run from the management page is available
-
-        // [GIVEN] Intelligent cloud is set up for Business Central
-        Initialize();
-
-        // [WHEN] The Intelligent Cloud Management page is launched
-        IntelligentCloudManagement.Trap();
-        Page.Run(Page::"Intelligent Cloud Management");
-
-        // [THEN] The action to create a diagnostic run is available
-        Assert.IsTrue(IntelligentCloudManagement.RunDiagnostic.Visible(), 'Diagnostic run action is not visible');
-        Assert.IsTrue(IntelligentcloudManagement.RunDiagnostic.Enabled(), 'Diagnostic run action is not enabled');
-    end;
-
-    [Test]
     procedure MapUsersActionIsAvailable()
     var
         HybridCompany: Record "Hybrid Company";
-        IntelligentCloudManagement: TestPage "Intelligent Cloud Management";
+        CloudMigrationManagement: TestPage "Cloud Migration Management";
     begin
         // [SCENARIO] The option to map users from the management page is available
 
@@ -95,25 +72,24 @@ codeunit 139654 "HybridBC Management Test"
         if HybridCompany.Get(CompanyName()) then
             HybridCompany.Delete();
 
-        HybridCompany.Init();
         HybridCompany.Name := CopyStr(CompanyName(), 1, 50);
         HybridCompany.Replicate := true;
         HybridCompany.Insert();
 
         // [WHEN] The Intelligent Cloud Management page is launched
-        IntelligentCloudManagement.Trap();
-        Page.Run(Page::"Intelligent Cloud Management");
+        CloudMigrationManagement.Trap();
+        Page.Run(Page::"Cloud Migration Management");
 
         // [THEN] The action to map users is available
-        Assert.IsTrue(IntelligentCloudManagement.MapUsers.Visible(), 'Map users action is not visible');
-        Assert.IsTrue(IntelligentcloudManagement.MapUsers.Enabled(), 'Map users action is not enabled');
+        Assert.IsTrue(CloudMigrationManagement.MapUsers.Visible(), 'Map users action is not visible');
+        Assert.IsTrue(CloudMigrationManagement.MapUsers.Enabled(), 'Map users action is not enabled');
     end;
 
     [Test]
     procedure SetupChecklistActionIsAvailable()
     var
         HybridCompany: Record "Hybrid Company";
-        IntelligentCloudManagement: TestPage "Intelligent Cloud Management";
+        CloudMigrationManagement: TestPage "Cloud Migration Management";
     begin
         // [SCENARIO] The option to run the setup checklist from the management page is available
 
@@ -130,18 +106,18 @@ codeunit 139654 "HybridBC Management Test"
         HybridCompany.Insert();
 
         // [WHEN] The Intelligent Cloud Management page is launched
-        IntelligentCloudManagement.Trap();
-        Page.Run(Page::"Intelligent Cloud Management");
+        CloudMigrationManagement.Trap();
+        Page.Run(Page::"Cloud Migration Management");
 
         // [THEN] The action to run the setup checklist is available
-        Assert.IsTrue(IntelligentCloudManagement.SetupChecklist.Visible(), 'Setup checklist action is not visible');
-        Assert.IsTrue(IntelligentcloudManagement.SetupChecklist.Enabled(), 'Setup checklist action is not enabled');
+        Assert.IsTrue(CloudMigrationManagement.SetupChecklist.Visible(), 'Setup checklist action is not visible');
+        Assert.IsTrue(CloudMigrationManagement.SetupChecklist.Enabled(), 'Setup checklist action is not enabled');
     end;
 
     [Test]
     procedure TableMappingActionIsAvailable()
     var
-        IntelligentCloudManagement: TestPage "Intelligent Cloud Management";
+        CloudMigrationManagement: TestPage "Cloud Migration Management";
     begin
         // [SCENARIO] The "Manage Custom Tables" action is visible and enabled for BC migrations.
 
@@ -149,12 +125,12 @@ codeunit 139654 "HybridBC Management Test"
         Initialize();
 
         // [WHEN] The Intelligent Cloud Management page is launched
-        IntelligentCloudManagement.Trap();
-        Page.Run(Page::"Intelligent Cloud Management");
+        CloudMigrationManagement.Trap();
+        Page.Run(Page::"Cloud Migration Management");
 
         // [THEN] The action to manage mapped tables is enabled and visible
-        Assert.IsTrue(IntelligentCloudManagement.ManageCustomTables.Visible(), 'Map tables action is not visible');
-        Assert.IsTrue(IntelligentcloudManagement.ManageCustomTables.Enabled(), 'Map tables action is not enabled');
+        Assert.IsTrue(CloudMigrationManagement.ManageCustomTables.Visible(), 'Map tables action is not visible');
+        Assert.IsTrue(CloudMigrationManagement.ManageCustomTables.Enabled(), 'Map tables action is not enabled');
     end;
 
     [Test]
@@ -187,7 +163,6 @@ codeunit 139654 "HybridBC Management Test"
         HybridReplicationSummary: Record "Hybrid Replication Summary";
         HybridBCWizard: Codeunit "Hybrid BC Wizard";
         RunId: Text;
-        StartTime: DateTime;
         TriggerType: Text;
     begin
         // [GIVEN] A Webhook Subscription exists for DynamicsBC
@@ -195,18 +170,15 @@ codeunit 139654 "HybridBC Management Test"
 
         // [WHEN] A notification record is inserted
         TriggerType := 'Scheduled';
-        InsertNotification(SubscriptionId, RunId, StartTime, TriggerType, HybridReplicationSummary.ReplicationType::Diagnostic, 'INIT');
+        InsertNotification(SubscriptionId, RunId, TriggerType, HybridReplicationSummary.ReplicationType::Diagnostic, 'INIT');
 
         // [THEN] A Hybrid Replication Summary record is created
         HybridReplicationSummary.Get(RunId);
-        with HybridReplicationSummary do begin
-            Assert.AreEqual(Source, HybridBCWizard.ProductName(), 'Unexpected value in summary for source.');
-            Assert.AreEqual("Run ID", RunId, 'Unexpected value in summary for Run ID.');
-            Assert.AreEqual("Start Time", StartTime, 'Unexpected value in summary for Start Time.');
-            Assert.AreEqual("Trigger Type", "Trigger Type"::Scheduled, 'Unexpected value in summary for Trigger Type.');
-            Assert.AreEqual(ReplicationType, ReplicationType::Diagnostic, 'Unexpected value in summary for Replication Type.');
-            Assert.IsTrue(Details.HasValue(), 'Details should contain text.');
-        end;
+        Assert.AreEqual(HybridReplicationSummary.Source, HybridBCWizard.ProductName(), 'Unexpected value in summary for source.');
+        Assert.AreEqual(HybridReplicationSummary."Run ID", RunId, 'Unexpected value in summary for Run ID.');
+        Assert.AreEqual(HybridReplicationSummary."Trigger Type", HybridReplicationSummary."Trigger Type"::Scheduled, 'Unexpected value in summary for Trigger Type.');
+        Assert.AreEqual(HybridReplicationSummary.ReplicationType, HybridReplicationSummary.ReplicationType::Diagnostic, 'Unexpected value in summary for Replication Type.');
+        Assert.IsTrue(HybridReplicationSummary.Details.HasValue(), 'Details should contain text.');
     end;
 
     [Test]
@@ -234,6 +206,8 @@ codeunit 139654 "HybridBC Management Test"
         InnerMessage: Text;
         i: Integer;
     begin
+        Initialize();
+
         for i := 50001 to 50007 do begin
             Message := HybridMessageManagement.ResolveMessageCode(CopyStr(Format(i), 1, 10), '');
             Assert.AreNotEqual('', Message, StrSubstNo('No message provided for code %1', i));
@@ -290,7 +264,7 @@ codeunit 139654 "HybridBC Management Test"
         LibraryHybridManagement.SetDiagnosticRunsEnabled(true);
 
         IntelligentCloudSetup."Product ID" := HybridBCWizard.ProductId();
-        IF NOT IntelligentCloudSetup.Insert() then
+        if not IntelligentCloudSetup.Insert() then
             IntelligentCloudSetup.Modify();
 
         BindSubscription(LibraryHybridManagement);
@@ -303,11 +277,12 @@ codeunit 139654 "HybridBC Management Test"
             Json := ', "Code": "' + MessageCode + '"';
     end;
 
-    local procedure InsertNotification(SubscriptionId: Text; var RunId: Text; var StartTime: DateTime; var TriggerType: Text; ReplicationType: Integer; MessageCode: Code[10])
+    local procedure InsertNotification(SubscriptionId: Text; var RunId: Text; var TriggerType: Text; ReplicationType: Integer; MessageCode: Code[10])
     var
         WebhookNotification: Record "Webhook Notification";
         NotificationOutStream: OutStream;
         NotificationText: Text;
+        StartTime: DateTime;
     begin
         NotificationText := LibraryHybridManagement.GetNotificationPayload(SubscriptionId, RunId, StartTime, TriggerType, ReplicationType, AdditionalNotificationText(MessageCode));
         WebhookNotification.Init();

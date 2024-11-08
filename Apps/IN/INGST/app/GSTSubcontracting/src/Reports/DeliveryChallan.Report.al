@@ -1,3 +1,16 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Subcontracting;
+
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Foundation.Address;
+using Microsoft.Foundation.Company;
+using Microsoft.Inventory.Location;
+using Microsoft.Purchases.Vendor;
+
 report 18467 "Delivery Challan"
 {
     UsageCategory = Administration;
@@ -394,6 +407,7 @@ report 18467 "Delivery Challan"
         if DeliveryChallanLine.FindSet() then
             repeat
                 TaxTransactionValue.Reset();
+                TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
                 TaxTransactionValue.SetRange("Tax Record ID", DeliveryChallanLine.RecordId);
                 TaxTransactionValue.SetRange("Tax Type", GSTSetup."GST Tax Type");
                 TaxTransactionValue.SetRange("Value Type", TaxTransactionValue."Value Type"::COMPONENT);

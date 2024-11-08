@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Page Shpfy Payment Transactions (ID 30124).
 /// </summary>
@@ -98,6 +100,21 @@ page 30124 "Shpfy Payment Transactions"
                     DataCapture.SetRange("Linked To Table", Database::"Shpfy Payment Transaction");
                     DataCapture.SetRange("Linked To Id", Rec.SystemId);
                     Page.Run(Page::"Shpfy Data Capture List", DataCapture);
+                end;
+            }
+            action(Disputes)
+            {
+                ApplicationArea = All;
+                Caption = 'Disputes';
+                Image = OrderList;
+                ToolTip = 'View the disputes related to order of the selected transaction.';
+
+                trigger OnAction();
+                var
+                    Dispute: Record "Shpfy Dispute";
+                begin
+                    Dispute.SetRange("Source Order Id", Rec."Source Order Id");
+                    Page.Run(Page::"Shpfy Disputes", Dispute);
                 end;
             }
         }

@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Sales.Document;
+
+using Microsoft.Finance.GST.Sales;
+
 pageextension 18155 "GST Sales Return Order Ext" extends "Sales Return Order"
 {
     layout
@@ -103,18 +111,6 @@ pageextension 18155 "GST Sales Return Order Ext" extends "Sales Return Order"
                 ApplicationArea = Basic, Suite;
                 ToolTip = 'Specifies the customer number for which merchant id has to be recorded.';
             }
-            field("e-Commerce Merchant Id"; Rec."e-Commerce Merchant Id")
-            {
-                ApplicationArea = Basic, Suite;
-                ToolTip = 'Specifies the merchant ID provided to customers by their payment processor.';
-                ObsoleteState = Pending;
-                ObsoleteReason = 'New field introduced as E-Comm. Merchant Id';
-                ObsoleteTag = '23.0';
-                trigger OnValidate()
-                begin
-                    Error(UnusedFieldLbl);
-                end;
-            }
             field("E-Comm. Merchant Id"; Rec."E-Comm. Merchant Id")
             {
                 ApplicationArea = Basic, Suite;
@@ -212,6 +208,6 @@ pageextension 18155 "GST Sales Return Order Ext" extends "Sales Return Order"
 
 
     }
+
     var
-        UnusedFieldLbl: Label 'This field has been marked as obsolete and will be removed from version 23.0. Instead of this field use ‘E-Comm. Merchant Id’';
 }

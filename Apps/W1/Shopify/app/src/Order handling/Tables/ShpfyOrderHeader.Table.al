@@ -1,9 +1,17 @@
+namespace Microsoft.Integration.Shopify;
+
+using System.IO;
+using Microsoft.Sales.Customer;
+using Microsoft.Sales.Document;
+using Microsoft.Bank.BankAccount;
+using Microsoft.Foundation.Shipping;
+using System.Reflection;
+
 /// <summary>
 /// Table Shpfy Order Header (ID 30118).
 /// </summary>
 table 30118 "Shpfy Order Header"
 {
-    Access = Internal;
     Caption = 'Shopify Order Header';
     DataCaptionFields = "Shopify Order No.", "Sell-to Customer Name";
     DataClassification = SystemMetadata;
@@ -16,7 +24,7 @@ table 30118 "Shpfy Order Header"
         {
             DataClassification = SystemMetadata;
         }
-        field(2; Email; Text[50])
+        field(2; Email; Text[80])
         {
             Caption = 'Email';
             DataClassification = CustomerContent;
@@ -58,12 +66,17 @@ table 30118 "Shpfy Order Header"
             DataClassification = CustomerContent;
             ExtendedDatatype = PhoneNo;
         }
+#if not CLEANSCHEMA25
         field(12; Token; Text[50])
         {
             Caption = 'Token';
             DataClassification = CustomerContent;
             Editable = false;
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
+            ObsoleteReason = 'Not available in GraphQL data.';
         }
+#endif
         field(13; Gateway; Text[50])
         {
             Caption = 'Gateway';
@@ -80,36 +93,60 @@ table 30118 "Shpfy Order Header"
             Caption = 'Sell-to Last Name';
             DataClassification = CustomerContent;
         }
+#if not CLEANSCHEMA25
         field(16; Currency; Code[10])
         {
             Caption = 'Currency';
             DataClassification = Customercontent;
             Editable = false;
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
+            ObsoleteReason = 'Replaced with the fields "Currency Code" and "Presentment Currency Code".';
         }
         field(17; "Cart Token"; Text[50])
         {
             Caption = 'Cart Token';
             DataClassification = CustomerContent;
             Editable = false;
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
+            ObsoleteReason = 'Not available in GraphQL data.';
         }
         field(18; "Checkout Token"; Text[50])
         {
             Caption = 'Checkout Token';
             DataClassification = CustomerContent;
             Editable = false;
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
+            ObsoleteReason = 'Not available in GraphQL data.';
         }
         field(19; Reference; Text[50])
         {
             Caption = 'Reference';
             DataClassification = CustomerContent;
             Editable = false;
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
+            ObsoleteReason = 'Not available in GraphQL data.';
         }
+#endif
+#if not CLEANSCHEMA28
         field(21; "Risk Level"; Enum "Shpfy Risk Level")
         {
             Caption = 'Risk Level';
             DataClassification = SystemMetadata;
             Editable = false;
+            ObsoleteReason = 'This field is not imported.';
+#if not CLEAN25
+            ObsoleteState = Pending;
+            ObsoleteTag = '25.0';
+#else
+            ObsoleteState = Removed;
+            ObsoleteTag = '28.0';
+#endif
         }
+#endif
         field(22; "Fully Paid"; Boolean)
         {
             Caption = 'Fully Paid';
@@ -128,24 +165,34 @@ table 30118 "Shpfy Order Header"
             DataClassification = SystemMetadata;
             Editable = false;
         }
+#if not CLEANSCHEMA25
         field(25; "Contact Email"; Text[100])
         {
             Caption = 'Contact Email';
             DataClassification = CustomerContent;
             Editable = false;
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
+            ObsoleteReason = 'Not available in GraphQL data.';
         }
+#endif
         field(26; "Total Tip Received"; Decimal)
         {
             Caption = 'Total Tip Received';
             DataClassification = SystemMetadata;
             Editable = false;
         }
+#if not CLEANSCHEMA25
         field(27; "Session Hash"; Text[50])
         {
             Caption = 'Session Hash';
             DataClassification = SystemMetadata;
             Editable = false;
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
+            ObsoleteReason = 'Not available in GraphQL data.';
         }
+#endif
         field(48; "Ship-to First Name"; Text[50])
         {
             Caption = 'Ship-to First Name';
@@ -300,11 +347,16 @@ table 30118 "Shpfy Order Header"
             DataClassification = SystemMetadata;
             Editable = false;
         }
+#if not CLEANSCHEMA25
         field(79; "Buyer Accepts Marketing"; Boolean)
         {
             Caption = 'Buyer Accepts Marketing';
             DataClassification = SystemMetadata;
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
+            ObsoleteReason = 'Not available in GraphQL data.';
         }
+#endif
         field(80; "Cancelled At"; DateTime)
         {
             Caption = 'Cancelled At';
@@ -406,11 +458,152 @@ table 30118 "Shpfy Order Header"
             DataClassification = SystemMetadata;
             Editable = false;
         }
+#if not CLEANSCHEMA28
         field(101; "Location Id"; BigInteger)
         {
             Caption = 'Location Id';
             DataClassification = CustomerContent;
             Editable = false;
+            ObsoleteReason = 'Location Id on Order Header is not used. Instead use Location Id on Order Lines.';
+#if not CLEAN25
+            ObsoleteState = Pending;
+            ObsoleteTag = '25.0';
+#else
+            ObsoleteState = Removed;
+            ObsoleteTag = '28.0';
+#endif
+        }
+#endif
+        field(102; "Channel Name"; Text[100])
+        {
+            Caption = 'Channel Name';
+            Editable = false;
+        }
+        field(103; "App Name"; Text[100])
+        {
+            Caption = 'App Name';
+            Editable = false;
+        }
+        field(104; "Presentment Currency Code"; Code[10])
+        {
+            Caption = 'Presentment Currency Code';
+            Editable = false;
+        }
+        field(105; Unpaid; Boolean)
+        {
+            Caption = 'Unpaid';
+            Editable = false;
+        }
+        field(106; "Discount Code"; Code[20])
+        {
+            Caption = 'Discount Code';
+            Editable = false;
+        }
+        field(107; "Discount Codes"; Text[250])
+        {
+            Caption = 'Discount Codes';
+            Editable = false;
+        }
+        field(108; Refundable; Boolean)
+        {
+            Caption = 'Refundable';
+            Editable = false;
+        }
+        field(109; "Presentment Total Amount"; Decimal)
+        {
+            Caption = 'Presentment Total Amount';
+            DataClassification = SystemMetadata;
+        }
+        field(110; "Presentment Subtotal Amount"; Decimal)
+        {
+            Caption = 'Presentment Subtotal Amount';
+            DataClassification = SystemMetadata;
+        }
+        field(111; "Presentment VAT Amount"; Decimal)
+        {
+            Caption = 'Presentment VAT Amount';
+            DataClassification = SystemMetadata;
+        }
+        field(112; "Presentment Discount Amount"; Decimal)
+        {
+            Caption = 'Discount Amount';
+            DataClassification = SystemMetadata;
+        }
+        field(113; "Presentment Total Tip Received"; Decimal)
+        {
+            Caption = 'Presentment Total Tip Received';
+            DataClassification = SystemMetadata;
+        }
+        field(114; "Pres. Shipping Charges Amount"; Decimal)
+        {
+            Caption = 'Presentment Shipping Charges Amount';
+            DataClassification = SystemMetadata;
+        }
+        field(115; Edited; Boolean)
+        {
+            Caption = 'Edited';
+            DataClassification = SystemMetadata;
+        }
+        field(116; "Return Status"; Enum "Shpfy Order Return Status")
+        {
+            Caption = 'Return Status';
+            DataClassification = SystemMetadata;
+        }
+        field(117; "Company Id"; BigInteger)
+        {
+            Caption = 'Company Id';
+            DataClassification = SystemMetadata;
+        }
+        field(118; "Company Main Contact Id"; BigInteger)
+        {
+            Caption = 'Company Main Contact Id';
+            DataClassification = SystemMetadata;
+        }
+        field(119; "Company Main Contact Email"; Text[100])
+        {
+            Caption = 'Company Main Contact Email';
+            DataClassification = SystemMetadata;
+        }
+        field(120; "Company Main Contact Phone No."; Text[50])
+        {
+            Caption = 'Company Main Contact Phone No.';
+            DataClassification = SystemMetadata;
+            ExtendedDatatype = PhoneNo;
+        }
+        field(121; "Company Main Contact Cust. Id"; BigInteger)
+        {
+            Caption = 'Company Main Contact Customer Id';
+            DataClassification = SystemMetadata;
+        }
+        field(122; B2B; Boolean)
+        {
+            Caption = 'B2B';
+            DataClassification = SystemMetadata;
+        }
+        field(123; "Current Total Amount"; Decimal)
+        {
+            Caption = 'Current Total Amount';
+            DataClassification = SystemMetadata;
+        }
+        field(124; "Current Total Items Quantity"; Integer)
+        {
+            Caption = 'Current Total Items Quantity';
+            DataClassification = SystemMetadata;
+        }
+        field(125; "Line Items Redundancy Code"; Integer)
+        {
+            Caption = 'Line Items Redundancy Code';
+            DataClassification = SystemMetadata;
+        }
+        field(126; "PO Number"; Text[512])
+        {
+            Caption = 'PO Number';
+            DataClassification = SystemMetadata;
+        }
+        field(127; "Company Location Id"; BigInteger)
+        {
+            Caption = 'Company Location Id';
+            DataClassification = SystemMetadata;
         }
         field(500; "Shop Code"; Code[20])
         {
@@ -418,11 +611,22 @@ table 30118 "Shpfy Order Header"
             DataClassification = SystemMetadata;
             TableRelation = "Shpfy Shop";
         }
+#if not CLEANSCHEMA25
         field(501; "Customer Template Code"; Code[10])
         {
             Caption = 'Customer Template Code';
             DataClassification = SystemMetadata;
             TableRelation = "Config. Template Header".Code where("Table Id" = const(18));
+            ObsoleteReason = 'Replaced by Customer Templ. Code';
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
+        }
+#endif
+        field(502; "Customer Templ. Code"; Code[20])
+        {
+            Caption = 'Customer Template Code';
+            DataClassification = SystemMetadata;
+            TableRelation = "Customer Templ.".Code;
         }
         field(601; "Total Quantity of Items"; Decimal)
         {
@@ -470,7 +674,7 @@ table 30118 "Shpfy Order Header"
 
             trigger OnValidate();
             var
-                Customer: Record 18;
+                Customer: Record Customer;
             begin
                 Validate("Sell-to Customer No.", Customer.GetCustNo("Sell-to Customer Name"));
             end;
@@ -486,7 +690,6 @@ table 30118 "Shpfy Order Header"
         {
             Caption = 'Work Description';
             DataClassification = SystemMetadata;
-
         }
         field(1008; "Sell-to Customer Name 2"; Text[50])
         {
@@ -521,6 +724,67 @@ table 30118 "Shpfy Order Header"
             DataClassification = CustomerContent;
             TableRelation = "Payment Method";
         }
+        field(1014; "Sell-to Contact Name"; Text[100])
+        {
+            Caption = 'Sell-to Contact Name';
+            DataClassification = CustomerContent;
+        }
+        field(1015; "Bill-to Contact Name"; Text[100])
+        {
+            Caption = 'Bill-to Contact Name';
+            DataClassification = CustomerContent;
+        }
+        field(1016; "Ship-to Contact Name"; Text[100])
+        {
+            Caption = 'Ship-to Contact Name';
+            DataClassification = CustomerContent;
+        }
+        field(1017; "Sell-to Contact No."; Code[20])
+        {
+            Caption = 'Sell-to Contact No.';
+            DataClassification = CustomerContent;
+        }
+        field(1018; "Bill-to Contact No."; Code[20])
+        {
+            Caption = 'Bill-to Contact No.';
+            DataClassification = CustomerContent;
+        }
+        field(1019; "Ship-to Contact No."; Code[20])
+        {
+            Caption = 'Ship-to Contact No.';
+            DataClassification = CustomerContent;
+        }
+        field(1020; "Has Order State Error"; Boolean)
+        {
+            Caption = 'Has Order State Error';
+            DataClassification = SystemMetadata;
+        }
+        field(1021; "Shipping Agent Code"; Code[10])
+        {
+            Caption = 'Shipping Agent Code';
+            TableRelation = "Shipping Agent";
+
+            trigger OnValidate()
+            begin
+                if "Shipping Agent Code" <> xRec."Shipping Agent Code" then
+                    Clear("Shipping Agent Service Code");
+            end;
+        }
+        field(1022; "Shipping Agent Service Code"; Code[10])
+        {
+            Caption = 'Shipping Agent Service Code';
+            TableRelation = "Shipping Agent Services".Code where("Shipping Agent Code" = field("Shipping Agent Code"));
+        }
+        field(1030; "Payment Terms Type"; Code[20])
+        {
+            DataClassification = CustomerContent;
+            Caption = 'Payment Terms Type';
+        }
+        field(1040; "Payment Terms Name"; Text[50])
+        {
+            DataClassification = CustomerContent;
+            Caption = 'Payment Terms Name';
+        }
     }
     keys
     {
@@ -528,21 +792,44 @@ table 30118 "Shpfy Order Header"
         {
             Clustered = true;
         }
+        key(Key2; "Shop Code", Processed)
+        {
+
+        }
     }
     var
         ShopifyOrderLine: Record "Shpfy Order Line";
 
     trigger OnDelete()
     var
+        ShopifyReturnHeader: Record "Shpfy Return Header";
+        ShopifyRefundHeader: Record "Shpfy Refund Header";
         DataCapture: Record "Shpfy Data Capture";
+        FulfillmentOrderHeader: Record "Shpfy FulFillment Order Header";
+        OrderFulfillment: Record "Shpfy Order Fulfillment";
     begin
         ShopifyOrderLine.SetRange("Shopify Order Id", "Shopify Order Id");
-        ShopifyOrderLine.DeleteAll(true);
+        if not ShopifyOrderLine.IsEmpty then
+            ShopifyOrderLine.DeleteAll(true);
+        ShopifyReturnHeader.SetRange("Order Id", "Shopify Order Id");
+        if not ShopifyReturnHeader.IsEmpty then
+            ShopifyReturnHeader.DeleteAll(true);
+        ShopifyRefundHeader.SetRange("Order Id", "Shopify Order Id");
+        if not ShopifyRefundHeader.IsEmpty then
+            ShopifyRefundHeader.DeleteAll(true);
         DataCapture.SetCurrentKey("Linked To Table", "Linked To Id");
         DataCapture.SetRange("Linked To Table", Database::"Shpfy Order Header");
         DataCapture.SetRange("Linked To Id", Rec.SystemId);
         if not DataCapture.IsEmpty then
             DataCapture.DeleteAll(false);
+
+        FulfillmentOrderHeader.SetRange("Shopify Order Id", Rec."Shopify Order Id");
+        if not FulfillmentOrderHeader.IsEmpty then
+            FulfillmentOrderHeader.DeleteAll(true);
+
+        OrderFulfillment.SetRange("Shopify Order Id", Rec."Shopify Order Id");
+        if not OrderFulfillment.IsEmpty then
+            OrderFulfillment.DeleteAll(true);
     end;
 
     /// <summary> 
@@ -584,5 +871,14 @@ table 30118 "Shpfy Order Header"
         ShopifyTag.UpdateTags(Database::"Shpfy Order Header", "Shopify Order Id", CommaSeperatedTags);
     end;
 
-}
+    internal procedure IsProcessed(): Boolean
+    var
+        DocLinkToBCDoc: Record "Shpfy Doc. Link To Doc.";
+    begin
+        DocLinkToBCDoc.SetRange("Shopify Document Type", "Shpfy Shop Document Type"::"Shopify Shop Order");
+        DocLinkToBCDoc.SetRange("Shopify Document Id", Rec."Shopify Order Id");
+        DocLinkToBCDoc.SetCurrentKey("Shopify Document Type", "Shopify Document Id");
+        exit(Rec.Processed or not DocLinkToBCDoc.IsEmpty);
+    end;
 
+}

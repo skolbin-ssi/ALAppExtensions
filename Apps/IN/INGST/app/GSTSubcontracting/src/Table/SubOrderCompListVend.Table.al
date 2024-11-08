@@ -1,3 +1,18 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Subcontracting;
+
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Foundation.UOM;
+using Microsoft.Inventory.Item;
+using Microsoft.Inventory.Ledger;
+using Microsoft.Inventory.Location;
+using Microsoft.Manufacturing.Document;
+using Microsoft.Purchases.Document;
+using Microsoft.Warehouse.Structure;
+
 table 18478 "Sub Order Comp. List Vend"
 {
     Caption = 'Sub Order Comp. List Vend';
@@ -334,6 +349,12 @@ table 18478 "Sub Order Comp. List Vend"
             Caption = 'SSI';
             DataClassification = EndUserIdentifiableInformation;
         }
+        field(71; "Bin Code"; Code[20])
+        {
+            Caption = 'Bin Code';
+            TableRelation = if ("Qty. To Receive" = filter(> 0)) "Bin Content"."Bin Code" where("Location Code" = field("Company Location"), "Item No." = field("Item No."), "Variant Code" = field("Variant Code"));
+            DataClassification = EndUserIdentifiableInformation;
+        }
         field(89; "Qty. per Unit of Measure"; Decimal)
         {
             Caption = 'Qty. per Unit of Measure';
@@ -449,7 +470,7 @@ table 18478 "Sub Order Comp. List Vend"
         SubOrderCompListVend.SetRange("Document Line No.", PurchLine."Line No.");
         SubOrderCompListVend.FindSet();
         repeat
-            SubOrderCompListVend.Validate("Qty. to Consume", (PurchLine."Qty. to Receive" * SubOrderCompListVend."Quantity per"));
+            SubOrderCompListVend.Validate("Qty. to Consume", PurchLine.GetQtytoConsumeForSubOrderCompListVend(SubOrderCompListVend, PurchLine."Qty. to Receive"));
             SubOrderCompListVend.Validate("Qty. to Return (C.E.)", (PurchLine."Qty. to Reject (C.E.)" * SubOrderCompListVend."Quantity per"));
             SubOrderCompListVend.Validate("Qty. To Return (V.E.)", (SubOrderCompListVend."Quantity per" * PurchLine."Qty. to Reject (V.E.)"));
 

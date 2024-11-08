@@ -1,15 +1,14 @@
+#if not CLEANSCHEMA24
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Table Shpfy Registered Store (ID 30136).
 /// </summary>
 table 30136 "Shpfy Registered Store"
 {
-#if not CLEAN21
-    ObsoleteState = Pending;
-#else
-    ObsoleteState = removed;
-#endif
+    ObsoleteState = Removed;
+    ObsoleteTag = '24.0';
     ObsoleteReason = 'Use table 30138 "Shpfy Registered Store New" instead';
-    ObsoleteTag = '21.0';
 
     Access = Internal;
     Caption = 'Shopify Registered Store';
@@ -56,3 +55,4 @@ table 30136 "Shpfy Registered Store"
             exit('');
     end;
 }
+#endif

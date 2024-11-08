@@ -1,3 +1,14 @@
+namespace Microsoft.Bank.Deposit;
+
+using Microsoft.Bank.BankAccount;
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.Dimension;
+using System.Globalization;
+using Microsoft.Foundation.AuditCodes;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Finance.GeneralLedger.Reversal;
+using Microsoft.Finance.GeneralLedger.Ledger;
+
 table 1691 "Posted Bank Deposit Header"
 {
     Caption = 'Posted Bank Deposit Header';
@@ -5,6 +16,7 @@ table 1691 "Posted Bank Deposit Header"
     LookupPageID = "Posted Bank Deposit List";
     Permissions = tabledata "Bank Acc. Comment Line" = rd,
                   tabledata "Posted Bank Deposit Line" = r;
+    DataClassification = CustomerContent;
 
     fields
     {
@@ -48,13 +60,13 @@ table 1691 "Posted Bank Deposit Header"
         {
             CaptionClass = '1,2,1';
             Caption = 'Shortcut Dimension 1 Code';
-            TableRelation = "Dimension Value".Code WHERE("Global Dimension No." = CONST(1));
+            TableRelation = "Dimension Value".Code where("Global Dimension No." = const(1));
         }
         field(9; "Shortcut Dimension 2 Code"; Code[20])
         {
             CaptionClass = '1,2,2';
             Caption = 'Shortcut Dimension 2 Code';
-            TableRelation = "Dimension Value".Code WHERE("Global Dimension No." = CONST(2));
+            TableRelation = "Dimension Value".Code where("Global Dimension No." = const(2));
         }
         field(10; "Bank Acc. Posting Group"; Code[20])
         {
@@ -92,9 +104,9 @@ table 1691 "Posted Bank Deposit Header"
         }
         field(21; Comment; Boolean)
         {
-            CalcFormula = Exist("Bank Acc. Comment Line" WHERE("Table Name" = CONST("Posted Bank Deposit Header"),
-                                                           "Bank Account No." = FIELD("Bank Account No."),
-                                                           "No." = FIELD("No.")));
+            CalcFormula = exist("Bank Acc. Comment Line" where("Table Name" = const("Posted Bank Deposit Header"),
+                                                           "Bank Account No." = field("Bank Account No."),
+                                                           "No." = field("No.")));
             Caption = 'Comment';
             Editable = false;
             FieldClass = FlowField;
@@ -105,10 +117,15 @@ table 1691 "Posted Bank Deposit Header"
         {
             AutoFormatExpression = "Currency Code";
             AutoFormatType = 1;
-            CalcFormula = Sum("Posted Bank Deposit Line".Amount WHERE("Bank Deposit No." = FIELD("No.")));
+            CalcFormula = sum("Posted Bank Deposit Line".Amount where("Bank Deposit No." = field("No.")));
             Caption = 'Total Deposit Lines';
             Editable = false;
             FieldClass = FlowField;
+        }
+        field(24; "Format Region"; Text[80])
+        {
+            Caption = 'Format Region';
+            TableRelation = "Language Selection"."Language Tag";
         }
         field(480; "Dimension Set ID"; Integer)
         {
@@ -159,31 +176,6 @@ table 1691 "Posted Bank Deposit Header"
         UnableToFindGLRegisterErr: Label 'Cannot find a G/L Register for the selected posted bank deposit.';
         UnableToFindGLRegisterTelemetryErr: Label 'Cannot find a G/L Register for the selected posted bank deposit %1.', Locked = true;
 
-#if not CLEAN21
-    [Scope('OnPrem')]
-    [Obsolete('Finding related entries is done through the `Navigate` page.', '21.0')]
-    procedure FindEntries()
-    var
-        TempBankAccountLedgerEntry: Record "Bank Account Ledger Entry" temporary;
-        BankAccountLedgerEntry: Record "Bank Account Ledger Entry";
-        PostedBankDepositLine: Record "Posted Bank Deposit Line";
-    begin
-        PostedBankDepositLine.SetRange("Bank Deposit No.", "No.");
-        if not PostedBankDepositLine.FindSet() then
-            exit;
-
-        repeat
-            if BankAccountLedgerEntry.Get(PostedBankDepositLine."Bank Account Ledger Entry No.") then
-                if not TempBankAccountLedgerEntry.Get(BankAccountLedgerEntry."Entry No.") then begin
-                    TempBankAccountLedgerEntry.TransferFields(BankAccountLedgerEntry);
-                    TempBankAccountLedgerEntry.Insert()
-                end;
-        until PostedBankDepositLine.Next() = 0;
-
-        Page.Run(Page::"Bank Account Ledger Entries", TempBankAccountLedgerEntry);
-    end;
-#endif
-
     // no commits during the method execution. if one line fails to reverse, reversal of lines before it must not be committed
     [CommitBehavior(CommitBehavior::Ignore)]
     internal procedure ReverseTransactions(): Boolean
@@ -224,10 +216,21 @@ table 1691 "Posted Bank Deposit Header"
         exit(true);
     end;
 
-    [Scope('OnPrem')]
-    procedure ShowDocDim()
+    internal procedure ShowDocDim()
     begin
         DimensionManagement.ShowDimensionSet("Dimension Set ID", TableCaption() + ' ' + "No.");
+    end;
+
+    internal procedure IsReversed(): Boolean
+    var
+        GLRegister: Record "G/L Register";
+        GLRegNo: Integer;
+    begin
+        if not Rec.FindGLRegisterNo(GLRegNo) then
+            exit(false);
+
+        GLRegister.Get(GLRegNo);
+        exit(GLRegister.Reversed);
     end;
 
     [IntegrationEvent(false, false)]

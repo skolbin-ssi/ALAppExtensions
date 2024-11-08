@@ -1,10 +1,17 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Bank.Payment;
+
+using System.Utilities;
+
 codeunit 20115 "AMC Bank Imp.BankList Hndl"
 {
     Permissions = TableData "AMC Bank Banks" = rimd,
                   TableData "AMC Banking Setup" = r;
 
     trigger OnRun()
-    var
     begin
         GetBankListFromWebService(true, '', 5000, AMCBankingMgt.GetAppCaller());
     end;
@@ -70,6 +77,7 @@ codeunit 20115 "AMC Bank Imp.BankList Hndl"
         OperationXmlNode: XMLElement;
         ChildXmlElement: XmlElement;
         TempXmlDocText: Text;
+        SecretContent: SecretText;
     begin
         BodyContentXmlDoc := XmlDocument.Create();
         BodyDeclaration := XmlDeclaration.Create('1.0', 'UTF-8', 'No');
@@ -86,7 +94,8 @@ codeunit 20115 "AMC Bank Imp.BankList Hndl"
 
         BodyContentXmlDoc.WriteTo(TempXmlDocText);
         AMCBankServiceRequestMgt.RemoveUTF16(TempXmlDocText);
-        contentHttpContent.WriteFrom(TempXmlDocText);
+        SecretContent := TempXmlDocText;
+        contentHttpContent.WriteFrom(SecretContent);
         BankListExchHttpRequestMessage.Content(contentHttpContent);
     end;
 
@@ -168,7 +177,6 @@ codeunit 20115 "AMC Bank Imp.BankList Hndl"
     end;
 
     local procedure GetOwnRefOnBankNameList(var TempAMCBankBanks: record "AMC Bank Banks" temporary; AMCBankBanks: record "AMC Bank Banks"): Enum AMCBankOwnreference
-    var
     begin
         TempAMCBankBanks.Reset();
         TempAMCBankBanks.SetFilter(TempAMCBankBanks.Bank, AMCBankBanks.Bank);

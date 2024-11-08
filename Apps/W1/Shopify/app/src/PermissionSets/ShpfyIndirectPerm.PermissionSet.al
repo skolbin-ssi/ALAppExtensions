@@ -1,11 +1,26 @@
+namespace Microsoft.Integration.Shopify;
+
+using Microsoft.Foundation.Address;
+using Microsoft.Foundation.ExtendedText;
+using Microsoft.Foundation.Shipping;
+using Microsoft.Foundation.UOM;
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.VAT.Setup;
+using Microsoft.Inventory.Item;
+using Microsoft.Inventory.Item.Attribute;
+using Microsoft.Inventory.Item.Catalog;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Sales.Customer;
+using Microsoft.Sales.Document;
+using Microsoft.Sales.History;
+
 permissionset 30101 "Shpfy Indirect Perm"
 {
     Assignable = false;
     Caption = 'Shopify Indirect Permissions', MaxLength = 30;
 
     Permissions =
-        tabledata "Config. Template Header" = r,
-        tabledata "Config. Template Line" = r,
         tabledata "Country/Region" = r,
         tabledata Customer = rimd,
         tabledata "Dimensions Template" = r,

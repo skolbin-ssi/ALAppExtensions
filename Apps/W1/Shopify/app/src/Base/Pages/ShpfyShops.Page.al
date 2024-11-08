@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Page Shpfy Shops (ID 30102).
 /// </summary>
@@ -9,6 +11,7 @@ page 30102 "Shpfy Shops"
     PageType = List;
     SourceTable = "Shpfy Shop";
     UsageCategory = Administration;
+    AdditionalSearchTerms = 'Shopify Setup';
     Editable = false;
     DeleteAllowed = true;
     InsertAllowed = true;

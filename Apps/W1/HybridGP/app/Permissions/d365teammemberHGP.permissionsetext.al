@@ -1,14 +1,16 @@
+namespace Microsoft.DataMigration.GP;
+
+using System.Security.AccessControl;
+
 permissionsetextension 4027 "D365 TEAM MEMBER - HGP" extends "D365 TEAM MEMBER"
 {
     Permissions = tabledata "GP Account" = RIMD,
                   tabledata GPPOPTaxHist = RIMD,
                   tabledata GPSOPTrxHist = RIMD,
                   tabledata GPSOPProcessHoldWorkHist = RIMD,
-#if not CLEAN21
+#if not CLEAN26
 #pragma warning disable AL0432
-#endif
                   tabledata GPForecastTemp = RIMD,
-#if not CLEAN21
 #pragma warning restore AL0432
 #endif
                   tabledata GPIVTrxAmountsHist = RIMD,
@@ -103,5 +105,15 @@ permissionsetextension 4027 "D365 TEAM MEMBER - HGP" extends "D365 TEAM MEMBER"
                   tabledata "GP Hist. Source Progress" = RIMD,
                   tabledata "GP Hist. Source Error" = RIMD,
                   tabledata "GP POP10100" = RIMD,
-                  tabledata "GP POP10110" = RIMD;
+                  tabledata "GP POP10110" = RIMD,
+                  tabledata "GP PM00204" = RIMD,
+                  tabledata "GP Upgrade Settings" = RIMD,
+                  tabledata "GP Migration Error Overview" = RIMD,
+                  tabledata "GP Known Countries" = RIMD,
+                  tabledata "GP PM10200" = RIMD,
+                  tabledata "GP PM30300" = RIMD,
+                  tabledata "GP RM20201" = RIMD,
+                  tabledata "GP RM30201" = RIMD,
+                  tabledata "GP Migration Warnings" = RIMD,
+                  tabledata "GP IV00104" = RIMD;
 }

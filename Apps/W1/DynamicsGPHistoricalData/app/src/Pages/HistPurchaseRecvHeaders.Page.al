@@ -1,3 +1,5 @@
+namespace Microsoft.DataMigration.GP.HistoricalData;
+
 page 41014 "Hist. Purchase Recv. Headers"
 {
     ApplicationArea = All;
@@ -170,7 +172,7 @@ page 41014 "Hist. Purchase Recv. Headers"
     trigger OnOpenPage()
     begin
         if FilterVendorNo <> '' then
-            Rec.SetFilter("Vendor No.", FilterVendorNo);
+            Rec.SetRange("Vendor No.", FilterVendorNo);
     end;
 
     procedure SetFilterVendorNo(VendorNo: Code[35])

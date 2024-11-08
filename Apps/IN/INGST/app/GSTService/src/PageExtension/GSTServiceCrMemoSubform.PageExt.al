@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Service.Document;
+
+using Microsoft.Finance.GST.Services;
+using Microsoft.Finance.TaxBase;
+
 pageextension 18445 "GST Service Cr. Memo Subform" extends "Service Credit Memo Subform"
 {
     layout
@@ -56,6 +65,11 @@ pageextension 18445 "GST Service Cr. Memo Subform" extends "Service Credit Memo 
                 ApplicationArea = Basic, Suite;
                 Editable = true;
                 ToolTip = 'Specifies on which location state code system should consider for GST calculation in case of sale of product or service.';
+                trigger OnValidate()
+                begin
+                    CurrPage.SaveRecord();
+                    CalculateTax.CallTaxEngineOnServiceLine(Rec, xRec);
+                end;
             }
             field("GST Group Type"; Rec."GST Group Type")
             {

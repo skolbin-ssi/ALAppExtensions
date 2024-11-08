@@ -1,3 +1,25 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.Reports;
+
+using Microsoft.CRM.Team;
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.ReceivablesPayables;
+using Microsoft.Finance.VAT.Calculation;
+using Microsoft.Foundation.Address;
+using Microsoft.Foundation.Company;
+using Microsoft.Foundation.PaymentTerms;
+using Microsoft.Foundation.Shipping;
+using Microsoft.Inventory.Location;
+using Microsoft.Purchases.Archive;
+using Microsoft.Purchases.Vendor;
+using System.Globalization;
+using System.Utilities;
+
 report 18004 "Arch.Purch. Return Order GST"
 {
     DefaultLayout = RDLC;
@@ -1207,7 +1229,8 @@ report 18004 "Arch.Purch. Return Order GST"
 
             trigger OnAfterGetRecord()
             begin
-                CurrReport.LANGUAGE := Language.GetLanguageID("Language Code");
+                CurrReport.LANGUAGE := GlobalLanguage.GetLanguageID("Language Code");
+                CurrReport.FormatRegion := GlobalLanguage.GetFormatRegionOrDefault("Format Region");
                 Vendor.Get("Buy-from Vendor No.");
                 CompanyInformation.Get();
 
@@ -1342,7 +1365,7 @@ report 18004 "Arch.Purch. Return Order GST"
         CurrExchRate: Record "Currency Exchange Rate";
         FormatAddr: Codeunit "Format Address";
         PurchCountPrintedArch: Codeunit "Purch.HeaderArch-Printed";
-        Language: Codeunit "Language";
+        GlobalLanguage: Codeunit "Language";
         VendAddr: array[8] of Text[50];
         ShipToAddr: array[8] of Text[50];
         CompanyAddr: array[8] of Text[50];

@@ -1,7 +1,26 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Sales.Document;
+
+using Microsoft.Finance.GST.Sales;
+
 pageextension 18159 "GST Blanket Sales Order" extends "Blanket Sales Order"
 {
     layout
     {
+        modify("Ship-to Code")
+        {
+            trigger OnAfterValidate()
+            var
+                GSTSalesValidation: Codeunit "GST Sales Validation";
+            begin
+                CurrPage.SaveRecord();
+                GSTSalesValidation.UpdateGSTJurisdictionTypeFromPlaceOfSupply(Rec);
+                GSTSalesValidation.CallTaxEngineOnSalesHeader(Rec);
+            end;
+        }
         addafter("Foreign Trade")
         {
             group("Tax Information")

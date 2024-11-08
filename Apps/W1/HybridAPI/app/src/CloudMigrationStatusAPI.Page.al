@@ -1,3 +1,8 @@
+namespace Microsoft.DataMigration.API;
+
+using Microsoft.DataMigration;
+using System.Telemetry;
+
 page 40021 "Cloud Migration Status API"
 {
     PageType = API;
@@ -90,7 +95,7 @@ page 40021 "Cloud Migration Status API"
                     Caption = 'Additional Details';
                     EntityName = 'cloudMigrationStatusDetail';
                     EntitySetName = 'cloudMigrationStatusDetails';
-                    SubPageLink = "Run ID" = Field("Run ID");
+                    SubPageLink = "Run ID" = field("Run ID");
                 }
             }
         }
@@ -122,7 +127,7 @@ page 40021 "Cloud Migration Status API"
         FeatureTelemetry: Codeunit "Feature Telemetry";
     begin
         FeatureTelemetry.LogUsage('0000JMO', HybridCloudManagement.GetFeatureTelemetryName(), 'Cloud migration API Upgrade');
-        HybridCloudManagement.RunDataUpgrade(Rec);
+        HybridCloudManagement.RunDataUpgradeAPI(Rec);
         SetActionResponseToThisPage(ActionContext, Rec);
     end;
 
@@ -136,7 +141,6 @@ page 40021 "Cloud Migration Status API"
         SetActionResponseToThisPage(ActionContext, Rec);
     end;
 
-
     [ServiceEnabled]
     [Scope('Cloud')]
     procedure ResetCloudData(var ActionContext: WebServiceActionContext)
@@ -145,6 +149,17 @@ page 40021 "Cloud Migration Status API"
     begin
         HybridCloudManagement.ResetCloudData();
         ActionContext.SetResultCode(WebServiceActionResultCode::Deleted);
+    end;
+
+    [ServiceEnabled]
+    [Scope('Cloud')]
+    procedure CompleteCloudMigration(var ActionContext: WebServiceActionContext)
+    var
+        FeatureTelemetry: Codeunit "Feature Telemetry";
+        HybridCloudManagement: Codeunit "Hybrid Cloud Management";
+    begin
+        HybridCloudManagement.CompleteCloudMigration();
+        FeatureTelemetry.LogUsage('0000JV6', HybridCloudManagement.GetFeatureTelemetryName(), 'Cloud migration API Completed');
     end;
 
     [ServiceEnabled]
@@ -167,12 +182,11 @@ page 40021 "Cloud Migration Status API"
         SetActionResponse(ActionContext, Page::"Cloud Mig Product Type API", HybridReplicationSummary.SystemId, HybridReplicationSummary.FieldNo(SystemId));
     end;
 
-    local procedure SetActionResponse(var ActionContext: WebServiceActionContext; PageId: Integer; RunId: Guid; KeyFieldNo: Integer)
-    var
+    local procedure SetActionResponse(var ActionContext: WebServiceActionContext; PageId: Integer; ActionRunId: Guid; KeyFieldNo: Integer)
     begin
         ActionContext.SetObjectType(ObjectType::Page);
         ActionContext.SetObjectId(PageId);
-        ActionContext.AddEntityKey(KeyFieldNo, RunId);
+        ActionContext.AddEntityKey(KeyFieldNo, ActionRunId);
         ActionContext.SetResultCode(WebServiceActionResultCode::Deleted);
     end;
 

@@ -1,3 +1,16 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Subcontracting;
+
+using Microsoft.Finance.Dimension;
+using Microsoft.Inventory.Item;
+using Microsoft.Inventory.Location;
+using Microsoft.Manufacturing.Document;
+using Microsoft.Purchases.History;
+using Microsoft.Purchases.Vendor;
+
 table 18475 "Sub. Comp. Rcpt. Line"
 {
     Caption = 'Sub. Comp. Rcpt. Line';
@@ -153,7 +166,7 @@ table 18475 "Sub. Comp. Rcpt. Line"
             Caption = 'Sub Order Component';
             DataClassification = EndUserIdentifiableInformation;
         }
-#pragma warning disable AS0013 - The ID should have been within the range [1..49999]
+#pragma warning disable AS0013 // The ID should have been within the range [1..49999]
         field(99000754; "Prod. Order Line No."; Integer)
         {
             Caption = 'Prod. Order Line No.';
@@ -161,7 +174,7 @@ table 18475 "Sub. Comp. Rcpt. Line"
             TableRelation = "Prod. Order Line"."Line No." where(Status = filter(Released ..), "Prod. Order No." = field("Prod. Order No."));
             DataClassification = EndUserIdentifiableInformation;
         }
-#pragma warning restore AS0013 - The ID should have been within the range [1..49999]
+#pragma warning restore AS0013 // The ID should have been within the range [1..49999]
     }
 
     keys

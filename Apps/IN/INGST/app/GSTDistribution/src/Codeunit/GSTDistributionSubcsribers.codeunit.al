@@ -1,3 +1,17 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Distribution;
+
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Inventory.Location;
+using System.Reflection;
+
 codeunit 18201 "GST Distribution Subcsribers"
 {
     var
@@ -76,14 +90,14 @@ codeunit 18201 "GST Distribution Subcsribers"
     var
         GeneralLedgerSetup: Record "General Ledger Setup";
         NoSeries: Record "No. Series";
-        NoSeriesManagement: Codeunit NoSeriesManagement;
+        NoSeriesCodeunit: Codeunit "No. Series";
     begin
         if GSTDistributionHeader."No." = '' then begin
             GeneralLedgerSetup.Get();
             if GeneralLedgerSetup."GST Distribution Nos." <> '' then begin
                 GeneralLedgerSetup.TestField("GST Distribution Nos.");
                 NoSeries.Get(GeneralLedgerSetup."GST Distribution Nos.");
-                GSTDistributionHeader."No." := NoSeriesManagement.GetNextNo(NoSeries.Code, WorkDate(), true);
+                GSTDistributionHeader."No." := NoSeriesCodeunit.GetNextNo(NoSeries.Code);
                 GSTDistributionHeader."No. Series" := GeneralLedgerSetup."GST Distribution Nos.";
             end;
         end;
@@ -398,12 +412,12 @@ codeunit 18201 "GST Distribution Subcsribers"
     local procedure ValidateNoField(var Rec: Record "GST Distribution Header"; var xRec: Record "GST Distribution Header")
     var
         GeneralLedgerSetup: Record "General Ledger Setup";
-        NoSeriesManagement: Codeunit NoSeriesManagement;
+        NoSeries: Codeunit "No. Series";
     begin
         GeneralLedgerSetup.Get();
         if Rec."No." <> xRec."No." then begin
             GeneralLedgerSetup.Get();
-            NoSeriesManagement.TestManual(GeneralLedgerSetup."GST Distribution Nos.");
+            NoSeries.TestManual(GeneralLedgerSetup."GST Distribution Nos.");
             Rec."No. Series" := '';
         end;
     end;

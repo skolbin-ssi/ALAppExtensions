@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 // https://shopify.dev/docs/admin-api/rest/reference/shipping-and-fulfillment/fulfillment
 
 
@@ -6,9 +8,8 @@
 /// </summary>
 enum 30122 "Shpfy Tracking Companies"
 {
-    Access = Internal;
     Caption = 'Shopify Tracking Companies';
-    Extensible = true;
+    Extensible = false;
 
     value(0; " ")
     {

@@ -1,3 +1,8 @@
+namespace Microsoft.Bank.Deposit;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Foundation.Reporting;
+
 page 1690 "Bank Deposit"
 {
     Caption = 'Bank Deposit';
@@ -5,7 +10,7 @@ page 1690 "Bank Deposit"
     PageType = Document;
     PromotedActionCategories = 'New,Process,Report,Posting,Bank Deposit';
     SourceTable = "Bank Deposit Header";
-    SourceTableView = SORTING("Journal Template Name", "Journal Batch Name");
+    SourceTableView = sorting("Journal Template Name", "Journal Batch Name");
     Permissions = tabledata "Bank Deposit Header" = rimd;
 
     layout
@@ -62,7 +67,18 @@ page 1690 "Bank Deposit"
                 {
                     ApplicationArea = Basic, Suite;
                     Importance = Promoted;
-                    ToolTip = 'Specifies if the bank deposit should be posted as a single bank account ledger entry with the total amount.';
+                    ToolTip = 'Specifies if the bank deposit should be posted as a single bank account ledger entry with the total amount. When posting as lump sum, all entries wil be posted in the same transaction with the document number of the bank deposit.';
+
+                    trigger OnValidate()
+                    var
+                        GenJournalTemplate: Record "Gen. Journal Template";
+                    begin
+                        GenJournalTemplate.Get(Rec."Journal Template Name");
+                        if GenJournalTemplate."Force Doc. Balance" then begin
+                            CurrPage.Subform.Page.SetDepositIsLumpSum(Rec."Post as Lump Sum");
+                            CurrPage.Subform.Page.Update();
+                        end;
+                    end;
                 }
                 field("Document Date"; Rec."Document Date")
                 {
@@ -98,8 +114,8 @@ page 1690 "Bank Deposit"
             part(Subform; "Bank Deposit Subform")
             {
                 ApplicationArea = Basic, Suite;
-                SubPageLink = "Journal Template Name" = FIELD("Journal Template Name"),
-                              "Journal Batch Name" = FIELD("Journal Batch Name");
+                SubPageLink = "Journal Template Name" = field("Journal Template Name"),
+                              "Journal Batch Name" = field("Journal Batch Name");
                 UpdatePropagation = Both;
             }
         }
@@ -130,9 +146,9 @@ page 1690 "Bank Deposit"
                     PromotedCategory = Category5;
                     PromotedIsBig = true;
                     RunObject = Page "Bank Acc. Comment Sheet";
-                    RunPageLink = "Bank Account No." = FIELD("Bank Account No."),
-                                  "No." = FIELD("No.");
-                    RunPageView = WHERE("Table Name" = CONST("Bank Deposit Header"));
+                    RunPageLink = "Bank Account No." = field("Bank Account No."),
+                                  "No." = field("No.");
+                    RunPageView = where("Table Name" = const("Bank Deposit Header"));
                     ToolTip = 'View deposit comments that apply.';
                 }
                 action(Dimensions)
@@ -148,7 +164,7 @@ page 1690 "Bank Deposit"
 
                     trigger OnAction()
                     begin
-                        ShowDocDim();
+                        Rec.ShowDocDim();
                         CurrPage.SaveRecord();
                     end;
                 }
@@ -321,8 +337,8 @@ page 1690 "Bank Deposit"
     begin
         GenJournalLine.FilterGroup(2);
         Rec.FilterGroup(2);
-        GenJournalLine.CopyFilter("Journal Template Name", "Journal Template Name");
-        GenJournalLine.CopyFilter("Journal Batch Name", "Journal Batch Name");
+        GenJournalLine.CopyFilter("Journal Template Name", Rec."Journal Template Name");
+        GenJournalLine.CopyFilter("Journal Batch Name", Rec."Journal Batch Name");
         Rec."Journal Template Name" := Rec.GetRangeMax("Journal Template Name");
         Rec."Journal Batch Name" := Rec.GetRangeMax("Journal Batch Name");
         Rec.FilterGroup(0);
@@ -348,4 +364,6 @@ page 1690 "Bank Deposit"
     begin
     end;
 }
+
+
 

@@ -98,6 +98,7 @@ codeunit 135081 "Base64 Decoding / Encoding"
         if IsInitialized then
             exit;
 
+        LibraryAMCWebService.SetHttpClientRequestallowed();
         LibraryAMCWebService.SetupDefaultService();
         LibraryAMCWebService.SetServiceUrlToTest();
         LibraryAMCWebService.SetServiceCredentialsToTest();
@@ -293,7 +294,6 @@ codeunit 135081 "Base64 Decoding / Encoding"
     [ConfirmHandler]
     [Scope('OnPrem')]
     procedure ConfirmHandlerTrue(Question: Text[1024]; var Reply: Boolean)
-    var
     begin
         if StrPos(Question, BankAccMismatchQst) > 0 then
             Reply := true

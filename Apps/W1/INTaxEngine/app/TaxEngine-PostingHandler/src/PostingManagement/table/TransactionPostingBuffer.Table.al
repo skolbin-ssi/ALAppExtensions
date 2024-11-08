@@ -1,9 +1,18 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TaxEngine.PostingHandler;
+
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.TaxEngine.Core;
+
 table 20336 "Transaction Posting Buffer"
 {
     Caption = 'Transaction Posting Buffer';
     DataClassification = EndUserIdentifiableInformation;
     TableType = Temporary;
-    Access = Internal;
     Extensible = false;
     fields
     {

@@ -1,3 +1,7 @@
+namespace System.Security.AccessControl;
+
+using Microsoft.Finance.Latepayment;
+
 permissionsetextension 3503 "D365 FULL ACCESS - Late Payment Prediction" extends "D365 FULL ACCESS"
 {
     Permissions = tabledata "LP Machine Learning Setup" = RIMD,

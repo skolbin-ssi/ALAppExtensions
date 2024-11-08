@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.Reports;
+
+using Microsoft.Finance.GST.Base;
+
 query 18017 GSTR1CDNRPerQuery
 {
     QueryType = Normal;
@@ -11,6 +19,9 @@ query 18017 GSTR1CDNRPerQuery
             {
             }
             column(Document_Type; "Document Type")
+            {
+            }
+            column(Document_Line_No_; "Document Line No.")
             {
             }
             filter(Entry_Type; "Entry Type")

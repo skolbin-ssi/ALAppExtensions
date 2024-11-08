@@ -1,8 +1,9 @@
+#if not CLEANSCHEMA23
 table 4034 "Stg Report Selections"
 {
-    ObsoleteState = Pending;
+    ObsoleteState = Removed;
     ObsoleteReason = 'This functionality will be replaced by invoking the actual upgrade from each of the apps';
-    ObsoleteTag = '17.0';
+    ObsoleteTag = '23.0';
     ReplicateData = false;
 
     fields
@@ -26,3 +27,4 @@ table 4034 "Stg Report Selections"
         }
     }
 }
+#endif

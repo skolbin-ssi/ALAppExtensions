@@ -1,3 +1,7 @@
+namespace Microsoft.Integration.Shopify;
+
+using System.Utilities;
+
 /// <summary>
 /// Codeunit Shpfy GraphQL Rate Limit (ID 30153).
 /// </summary>
@@ -7,7 +11,7 @@ codeunit 30153 "Shpfy GraphQL Rate Limit"
     SingleInstance = true;
 
     var
-        ShpfyJsonHelper: Codeunit "Shpfy Json Helper";
+        JsonHelper: Codeunit "Shpfy Json Helper";
         NextRequestAfter: DateTime;
         LastRequestedOn: DateTime;
         RestoreRate: Decimal;
@@ -23,8 +27,8 @@ codeunit 30153 "Shpfy GraphQL Rate Limit"
         WaitTime: Duration;
     begin
         if JThrottleStatus.IsObject then begin
-            RestoreRate := ShpfyJsonHelper.GetValueAsDecimal(JThrottleStatus, 'restoreRate');
-            LastAvailable := ShpfyJsonHelper.GetValueAsDecimal(JThrottleStatus, 'currentlyAvailable');
+            RestoreRate := JsonHelper.GetValueAsDecimal(JThrottleStatus, 'restoreRate');
+            LastAvailable := JsonHelper.GetValueAsDecimal(JThrottleStatus, 'currentlyAvailable');
             LastRequestedOn := CurrentDateTime;
         end;
         NextRequestAfter := CurrentDateTime + WaitTime;

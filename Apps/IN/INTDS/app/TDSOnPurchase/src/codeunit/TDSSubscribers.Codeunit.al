@@ -1,3 +1,21 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TDS.TDSOnPurchase;
+
+using Microsoft.Purchases.Document;
+using Microsoft.Purchases.Posting;
+using Microsoft.Purchases.Payables;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Utilities;
+using Microsoft.Finance.TDS.TDSBase;
+using Microsoft.Inventory.Location;
+using Microsoft.Foundation.Company;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Sales.Customer;
+
 codeunit 18716 "TDS Subscribers"
 {
     var
@@ -24,32 +42,6 @@ codeunit 18716 "TDS Subscribers"
             end;
         end;
     end;
-
-#if not CLEAN20
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnBeforePostVendorEntry', '', false, false)]
-    local procedure InsertTDSSectionCodeGenJnlLine(
-        var GenJnlLine: Record "Gen. Journal Line";
-        var PurchHeader: Record "Purchase Header")
-    var
-        PurchaseLine: Record "Purchase Line";
-        Location: Record Location;
-        CompanyInformation: Record "Company Information";
-    begin
-        PurchaseLine.SetRange("Document Type", PurchHeader."Document Type");
-        PurchaseLine.SetRange("Document No.", PurchHeader."No.");
-        if PurchaseLine.FindFirst() then
-            GenJnlLine."TDS Section Code" := PurchaseLine."TDS Section Code";
-
-        if GenJnlLine."Location Code" <> '' then begin
-            Location.Get(GenJnlLine."Location Code");
-            if Location."T.A.N. No." <> '' then
-                GenJnlLine."T.A.N. No." := Location."T.A.N. No."
-        end else begin
-            CompanyInformation.Get();
-            GenJnlLine."T.A.N. No." := CompanyInformation."T.A.N. No.";
-        end
-    end;
-#endif
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch. Post Invoice Events", 'OnPostLedgerEntryOnBeforeGenJnlPostLine', '', false, false)]
     local procedure InsertTDSSectionCodeGenJnlLineOnPostLedgerEntryOnBeforeGenJnlPostLine(

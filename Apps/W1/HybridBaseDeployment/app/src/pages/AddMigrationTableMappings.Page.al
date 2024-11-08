@@ -1,3 +1,8 @@
+namespace Microsoft.DataMigration;
+
+using System.Reflection;
+using System.Apps;
+
 // ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved. 
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -108,6 +113,7 @@ page 40010 "Add Migration Table Mappings"
                             ExtensionManagement: Page "Extension Management";
                         begin
                             MigrationTableMapping.FilterOutBlacklistedPublishers(PublishedApplication);
+                            PublishedApplication.SetRange(Installed, true);
 
                             ExtensionManagement.SetTableView(PublishedApplication);
                             ExtensionManagement.LookupMode(true);
@@ -164,12 +170,14 @@ page 40010 "Add Migration Table Mappings"
                 {
                     ApplicationArea = All;
                     Caption = 'Table ID';
+                    ToolTip = 'Specifies the ID of the destination table.';
                 }
 
                 field(ObjectName; Rec."Object Name")
                 {
                     ApplicationArea = All;
                     Caption = 'Name';
+                    ToolTip = 'Specifies the name of the destination table.';
                 }
             }
         }
@@ -185,6 +193,7 @@ page 40010 "Add Migration Table Mappings"
 
     local procedure UpdateObjectsFilter(var PublishedApplication: Record "Published Application")
     begin
+        PublishedApplication.SetRange(Installed, true);
         if not PublishedApplication.FindSet() then begin
             ClearExtensionsFilter();
             exit;
@@ -301,7 +310,6 @@ page 40010 "Add Migration Table Mappings"
         SourceTableAppID: Text;
         DataPerCompany: Boolean;
         ExtensionsFilter: Text;
-        [InDataSet]
         AppFilter: Text;
         ClearExtensionsFilterLbl: Label 'Clear filter';
         ProvideSourceTableNameErr: Label 'You need to provide source table name.';

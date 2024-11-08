@@ -3,6 +3,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
 
+namespace System.Email;
+
+using System;
+
 codeunit 4619 "NTLM SMTP Auth" implements "SMTP Auth"
 {
     Access = Internal;
@@ -13,7 +17,7 @@ codeunit 4619 "NTLM SMTP Auth" implements "SMTP Auth"
         CancellationToken: DotNet CancellationToken;
         SaslMechanismNtlm: DotNet SaslMechanismNtlm;
     begin
-        SaslMechanismNtlm := SaslMechanismNtlm.SaslMechanismNtlm(SMTPAuthentication.GetUserName(), SMTPAuthentication.GetPassword());
+        SaslMechanismNtlm := SaslMechanismNtlm.SaslMechanismNtlm(SMTPAuthentication.GetUserName(), SMTPAuthentication.GetPassword().Unwrap());
         SmtpClient.Authenticate(SaslMechanismNtlm, CancellationToken);
     end;
 }

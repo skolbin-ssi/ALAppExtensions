@@ -1,3 +1,7 @@
+namespace Microsoft.Integration.Shopify;
+
+using Microsoft.Inventory.Item;
+
 /// <summary>
 /// Codeunit Shpfy Inventory API (ID 30195).
 /// </summary>
@@ -11,8 +15,9 @@ codeunit 30195 "Shpfy Inventory API"
     var
         ShopifyShop: Record "Shpfy Shop";
         ShopifyCommunicationMgt: Codeunit "Shpfy Communication Mgt.";
-        Events: Codeunit "Shpfy Inventory Events";
+        InventoryEvents: Codeunit "Shpfy Inventory Events";
         JsonHelper: Codeunit "Shpfy Json Helper";
+        InventoryIds: List of [Guid];
 
     /// <summary> 
     /// Get Stock.
@@ -22,12 +27,13 @@ codeunit 30195 "Shpfy Inventory API"
     internal procedure GetStock(ShopInventory: Record "Shpfy Shop Inventory") Stock: Decimal
     var
         Item: Record Item;
-        ItemUOM: Record "Item Unit of Measure";
+        ItemUnitofMeasure: Record "Item Unit of Measure";
         ShopLocation: Record "Shpfy Shop Location";
         ShopifyProduct: Record "Shpfy Product";
         ShopifyVariant: Record "Shpfy Variant";
         StockCalculation: Interface "Shpfy Stock Calculation";
         UOM: Code[10];
+        SalesUOM: Code[10];
     begin
         SetShop(ShopInventory."Shop Code");
         if ShopifyProduct.Get(ShopInventory."Product Id") and ShopifyVariant.Get(ShopInventory."Variant Id") then begin
@@ -43,78 +49,27 @@ codeunit 30195 "Shpfy Inventory API"
             end;
 
             StockCalculationFactory(StockCalculation, ShopLocation."Stock Calculation");
-            Stock := StockCalculation.GetStock(Item);
+            SalesUOM := Item."Sales Unit of Measure";
+
+            if StockCalculation is "Shpfy Extended Stock Calculation" then
+                Stock := (StockCalculation as "Shpfy Extended Stock Calculation").GetStock(Item, ShopLocation)
+            else
+                Stock := StockCalculation.GetStock(Item);
 
             case ShopifyVariant."UoM Option Id" of
                 1:
                     UOM := CopyStr(ShopifyVariant."Option 1 Value", 1, MaxStrLen(UOM));
                 2:
-                    UOM := CopyStr(ShopifyVariant."Option 1 Value", 2, MaxStrLen(UOM));
+                    UOM := CopyStr(ShopifyVariant."Option 2 Value", 1, MaxStrLen(UOM));
                 3:
-                    UOM := CopyStr(ShopifyVariant."Option 1 Value", 3, MaxStrLen(UOM));
+                    UOM := CopyStr(ShopifyVariant."Option 3 Value", 1, MaxStrLen(UOM));
                 else
-                    UOM := Item."Sales Unit of Measure";
+                    UOM := SalesUOM;
             end;
             if (UOM <> '') and (UOM <> Item."Base Unit of Measure") then
-                if ItemUOM.Get(Item."No.", UOM) then
-                    Stock := Stock / ItemUOM."Qty. per Unit of Measure";
-            Events.OnAfterCalculationStock(Item, ShopifyShop, ShopLocation."Location Filter", Stock);
-        end;
-    end;
-
-    /// <summary> 
-    /// Create Stock As Json.
-    /// </summary>
-    /// <param name="ShopInventory">Parameter of type Record "Shopify Shop Inventory".</param>
-    /// <param name="ShopLocation">Parameter of type Record "Shopify Shop Location".</param>
-    /// <returns>Return variable "JInventoryItem" of type JsonObject.</returns>
-    local procedure CreateStockAsJson(var ShopInventory: Record "Shpfy Shop Inventory"; ShopLocation: Record "Shpfy Shop Location") JInventoryItem: JsonObject
-    var
-        Item: Record Item;
-        ShopifyVariant: Record "Shpfy Variant";
-        Ishandled: Boolean;
-    begin
-        if ShopifyVariant.Get(ShopInventory."Variant Id") then
-            if Item.GetBySystemId(ShopifyVariant."Item SystemId") then begin
-                Events.OnBeforeExportStock(Item, ShopifyShop, ShopInventory, ShopLocation, Ishandled);
-
-                if not Ishandled then begin
-                    JInventoryItem.Add('location_id', ShopInventory."Location Id");
-                    JInventoryItem.Add('inventory_item_id', ShopInventory."Inventory Item Id");
-                    ShopInventory.Validate(Stock, Round(GetStock(ShopInventory), 1, '<'));
-                    ShopInventory.Modify();
-                    JInventoryItem.Add('available', ShopInventory.Stock);
-                end;
-            end;
-
-    end;
-
-
-    /// <summary> 
-    /// Export Stock.
-    /// </summary>
-    /// <param name="ShopInventory">Parameter of type Record "Shopify Shop Inventory".</param>
-    internal procedure ExportStock(var ShopInventory: Record "Shpfy Shop Inventory")
-    var
-        DelShopInventory: Record "Shpfy Shop Inventory";
-        ShopLocation: Record "Shpfy Shop Location";
-        ShopVariant: Record "Shpfy Variant";
-        JRequest: JsonToken;
-        JResponse: JsonToken;
-        Url: Text;
-    begin
-        ShopVariant.SetRange(Id, ShopInventory."Variant Id");
-        if ShopVariant.IsEmpty then begin
-            if DelShopInventory.GetBySystemId(ShopInventory.SystemId) then
-                DelShopInventory.Delete();
-            exit;
-        end;
-
-        if ShopLocation.Get(ShopInventory."Shop Code", ShopInventory."Location Id") and (ShopLocation."Stock Calculation" <> ShopLocation."Stock Calculation"::Disabled) then begin
-            Url := ShopifyCommunicationMgt.CreateWebRequestURL('inventory_levels/set.json');
-            JRequest := CreateStockAsJson(ShopInventory, ShopLocation).AsToken();
-            if ShopInventory."Shopify Stock" <> ShopInventory.Stock then
-                JResponse := ShopifyCommunicationMgt.ExecuteWebRequest(Url, 'POST', JRequest);
+                if ItemUnitofMeasure.Get(Item."No.", UOM) then
+                    Stock := Stock / ItemUnitofMeasure."Qty. per Unit of Measure";
+            InventoryEvents.OnAfterCalculationStock(Item, ShopifyShop, ShopLocation."Location Filter", Stock);
         end;
     end;
 
@@ -153,6 +108,100 @@ codeunit 30195 "Shpfy Inventory API"
                 exit(JsonHelper.GetJsonObject(JLocation, JResult, 'inventoryLevels'));
     end;
 
+    internal procedure SetInventoryIds()
+    var
+        ShopInventory: Record "Shpfy Shop Inventory";
+    begin
+        Clear(InventoryIds);
+        ShopInventory.SetRange("Shop Code", ShopifyShop.Code);
+        ShopInventory.LoadFields(SystemId);
+        if ShopInventory.FindSet() then
+            repeat
+                InventoryIds.Add(ShopInventory.SystemId);
+            until ShopInventory.Next() = 0;
+    end;
+
+    internal procedure RemoveUnusedInventoryIds()
+    var
+        ShopInventory: Record "Shpfy Shop Inventory";
+        Id: Guid;
+    begin
+        ShopInventory.LoadFields(SystemId);
+        foreach Id in InventoryIds do
+            if ShopInventory.GetBySystemId(Id) then
+                ShopInventory.Delete();
+    end;
+
+    internal procedure ExportStock(var ShopInventory: Record "Shpfy Shop Inventory")
+    var
+        IGraphQL: Interface "Shpfy IGraphQL";
+        JGraphQL: JsonObject;
+        JSetQuantities: JsonArray;
+        JSetQuantity: JsonObject;
+        InputSize: Integer;
+    begin
+        if ShopInventory.FindSet() then begin
+            IGraphQL := Enum::"Shpfy GraphQL Type"::ModifyInventory;
+            JGraphQL.ReadFrom(IGraphQL.GetGraphQL());
+            JSetQuantities := JsonHelper.GetJsonArray(JGraphQL, 'variables.input.setQuantities');
+
+            repeat
+                JSetQuantity := CalcStock(ShopInventory);
+                if JSetQuantity.Keys.Count = 3 then begin
+                    JSetQuantities.Add(JSetQuantity);
+                    InputSize += 1;
+                    if InputSize = 250 then begin
+                        ShopifyCommunicationMgt.ExecuteGraphQL(Format(JGraphQL), IGraphQL.GetExpectedCost());
+                        Clear(JGraphQL);
+                        JGraphQL.ReadFrom(IGraphQL.GetGraphQL());
+                        JSetQuantities := JsonHelper.GetJsonArray(JGraphQL, 'variables.input.setQuantities');
+                        InputSize := 0;
+                    end;
+                end;
+            until ShopInventory.Next() = 0;
+
+            ShopifyCommunicationMgt.ExecuteGraphQL(Format(JGraphQL), IGraphQL.GetExpectedCost());
+        end;
+    end;
+
+    local procedure CalcStock(var ShopInventory: Record "Shpfy Shop Inventory") JSetQuantity: JsonObject
+    var
+        Item: Record Item;
+        DelShopInventory: Record "Shpfy Shop Inventory";
+        ShopLocation: Record "Shpfy Shop Location";
+        ShopifyVariant: Record "Shpfy Variant";
+        IStockAvailable: Interface "Shpfy IStock Available";
+        InventoryItemIdTxt: Label 'gid://shopify/InventoryItem/%1', Locked = true, Comment = '%1 = The inventory Item Id';
+        LocationIdTxt: Label 'gid://shopify/Location/%1', Locked = true, Comment = '%1 = The Location Id';
+
+    begin
+        ShopifyVariant.SetRange(Id, ShopInventory."Variant Id");
+        if ShopifyVariant.IsEmpty then begin
+            if DelShopInventory.GetBySystemId(ShopInventory.SystemId) then
+                DelShopInventory.Delete();
+            exit;
+        end;
+
+        if ShopifyVariant.Get(ShopInventory."Variant Id") then
+            if Item.GetBySystemId(ShopifyVariant."Item SystemId") then
+                if not (Item.Type in [Item.Type::"Non-Inventory", Item.Type::Service]) then begin
+                    ShopInventory.Validate(Stock, Round(GetStock(ShopInventory), 1, '<'));
+                    ShopInventory.Modify();
+                    if ShopInventory.Stock <> ShopInventory."Shopify Stock" then
+                        if ShopLocation.Get(ShopInventory."Shop Code", ShopInventory."Location Id") then begin
+                            IStockAvailable := ShopLocation."Stock Calculation";
+                            if IStockAvailable.CanHaveStock() then begin
+                                JSetQuantity.Add('inventoryItemId', StrSubstNo(InventoryItemIdTxt, ShopInventory."Inventory Item Id"));
+                                JSetQuantity.Add('locationId', StrSubstNo(LocationIdTxt, ShopLocation.Id));
+                                if ShopInventory.Stock < 0 then
+                                    JSetQuantity.Add('quantity', 0)
+                                else
+                                    JSetQuantity.Add('quantity', ShopInventory.Stock);
+                            end;
+                        end;
+                end;
+    end;
+
     /// <summary> 
     /// Has Next Results.
     /// </summary>
@@ -177,10 +226,12 @@ codeunit 30195 "Shpfy Inventory API"
         VariantId: BigInteger;
         Stock: Decimal;
         JArray: JsonArray;
+        JQuantities: JsonArray;
         JInventoryItem: JsonObject;
         JNode: JsonObject;
         JProduct: JsonObject;
         JVariant: JsonObject;
+        JQuantity: JsonToken;
         JItem: JsonToken;
         JValue: JsonValue;
         Cursor: Text;
@@ -192,10 +243,12 @@ codeunit 30195 "Shpfy Inventory API"
                 else
                     Clear(Cursor);
                 if JsonHelper.GetJsonObject(JItem.AsObject(), JNode, 'node') then begin
-                    if JsonHelper.GetJsonValue(JNode, JValue, 'available') then
-                        Stock := JValue.AsInteger()
-                    else
-                        Stock := 0;
+                    if JsonHelper.GetJsonArray(JNode, JQuantities, 'quantities') then
+                        if JQuantities.Get(0, JQuantity) then
+                            if JsonHelper.GetJsonValue(JQuantity, JValue, 'quantity') then
+                                Stock := JValue.AsInteger()
+                            else
+                                Stock := 0;
                     InventoryItemId := 0;
                     VariantId := 0;
                     ProductId := 0;
@@ -211,6 +264,7 @@ codeunit 30195 "Shpfy Inventory API"
                                         ShopInventory.Validate("Shopify Stock", Stock);
                                         ShopInventory."Inventory Item Id" := InventoryItemId;
                                         ShopInventory.Modify();
+                                        InventoryIds.Remove(ShopInventory.SystemId);
                                     end else begin
                                         Clear(ShopInventory);
                                         ShopInventory."Shop Code" := ShopLocation."Shop Code";

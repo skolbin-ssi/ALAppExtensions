@@ -1,3 +1,25 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Bank.VoucherInterface;
+
+using Microsoft.Bank.BankAccount;
+using Microsoft.Bank.Ledger;
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.GeneralLedger.Account;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Ledger;
+using Microsoft.FixedAssets.FixedAsset;
+using Microsoft.FixedAssets.Ledger;
+using Microsoft.Foundation.AuditCodes;
+using Microsoft.Foundation.Company;
+using Microsoft.Purchases.Payables;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Sales.Customer;
+using Microsoft.Sales.Receivables;
+using System.Utilities;
+
 report 18933 "Voucher Register"
 {
     DefaultLayout = RDLC;
@@ -18,7 +40,7 @@ report 18933 "Voucher Register"
             }
             dataitem("G/L Entry"; "G/L Entry")
             {
-                DataItemTableView = sorting("Document No.", "Posting Date")
+                DataItemTableView = sorting("Document No.", "Posting Date", Amount)
                                     order(descending);
 
                 column(VoucherSourceDesc; SourceDesc + VoucherLbl)
@@ -104,7 +126,7 @@ report 18933 "Voucher Register"
                 }
                 dataitem(PostedNarration; "Posted Narration")
                 {
-                    DataItemLink = "Entry No." = field("Entry No.");
+                    DataItemLink = "Transaction No." = field("Transaction No."), "Entry No." = field("Entry No.");
                     DataItemTableView = sorting("Entry No.", "Transaction No.", "Line No.")
                                          order(ascending);
 
@@ -129,7 +151,8 @@ report 18933 "Voucher Register"
 
                     trigger OnPreDataItem()
                     begin
-                        GLEntry.SetCurrentKey("Document No.", "Posting Date");
+                        GLEntry.SetCurrentKey("Document No.", "Posting Date", Amount);
+                        GLEntry.Ascending(false);
                         GLEntry.SetRange(GLEntry."Posting Date", "G/L Entry"."Posting Date");
                         GLEntry.SetRange(GLEntry."Document No.", "G/L Entry"."Document No.");
                         GLEntry.SetRange(GLEntry."Entry No.", "G/L Register"."From Entry No.", "G/L Register"."To Entry No.");
@@ -153,9 +176,11 @@ report 18933 "Voucher Register"
                     }
                     trigger OnPreDataItem()
                     begin
-                        GLEntry.SetCurrentKey("Document No.", "Posting Date");
+                        GLEntry.SetCurrentKey("Document No.", "Posting Date", Amount);
+                        GLEntry.Ascending(false);
                         GLEntry.SetRange(GLEntry."Posting Date", "G/L Entry"."Posting Date");
                         GLEntry.SetRange(GLEntry."Document No.", "G/L Entry"."Document No.");
+                        GLEntry.SetRange(GLEntry."Entry No.", "G/L Register"."From Entry No.", "G/L Register"."To Entry No.");
                         GLEntry.FindLast();
                         if not (GLEntry."Entry No." = "G/L Entry"."Entry No.") then
                             CurrReport.Break();
@@ -404,9 +429,9 @@ report 18933 "Voucher Register"
                         AccName := CopyStr(GLAccount.Name, 1, MaxStrLen(AccName));
                     end;
                 end else begin
-                            GLAccount.Get("G/L Account No.");
-                            AccName := CopyStr(GLAccount.Name, 1, MaxStrLen(AccName));
-                        end;
+                GLAccount.Get("G/L Account No.");
+                AccName := CopyStr(GLAccount.Name, 1, MaxStrLen(AccName));
+            end;
                         GLAccount.Get("G/L Account No.");
                         AccName := CopyStr(GLAccount.Name, 1, MaxStrLen(AccName));
         end;

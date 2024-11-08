@@ -1,3 +1,24 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.ReturnSettlement;
+
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Account;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.GST.StockTransfer;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Inventory.Item;
+using Microsoft.Inventory.Journal;
+using Microsoft.Inventory.Ledger;
+using Microsoft.Inventory.Posting;
+using Microsoft.Inventory.Tracking;
+using Microsoft.Purchases.Vendor;
+
 codeunit 18320 "GST Journal Post"
 {
 
@@ -5,20 +26,15 @@ codeunit 18320 "GST Journal Post"
         GenJournalLine: Record "Gen. Journal Line";
         GSTAdjustmentBuffer: Record "GST Adjustment Buffer";
         TempGSTPostingBuffer: array[2] of Record "GST Posting Buffer" temporary;
-        TempNoSeries: Record "No. Series" temporary;
         ReservationEngineMgt: Codeunit "Reservation Engine Mgt.";
         CreateReservEntry: Codeunit "Create Reserv. Entry";
         GenJnlPostLine: Codeunit "Gen. Jnl.-Post Line";
-        NoSeriesMgt: Codeunit "NoSeriesManagement";
-        NoSeriesMgt2: array[10] of Codeunit "NoSeriesManagement";
+        NoSeriesBatch: Codeunit "No. Series - Batch";
         GSTHelpers: Codeunit "GST Helpers";
         DiffAmt: Decimal;
         DocNo: Code[20];
         LastDocNo: Code[20];
         LastPostedDocNo: Code[20];
-        PostingNoSeriesNo: Integer;
-        NoOfPostingNoSeries: Integer;
-        NoSeriesErr: Label 'A maximum of %1 posting number series can be used in each journal.', Comment = '%1 =Integer';
         RemQtyErr: Label 'Quantity Adjusted %1 must not be greater than remaining quantity %2 for Detailed GST Ledger Entry No %3.', Comment = '%1 = Adjusted Quantity, %2 = Remaining Quantity, %3 = Entry No.';
         GSTAdjustMsg: Label 'GST Adjustment Entry', Locked = true;
         LotNoErr: Label 'The Lot/Serial No %1  selected in item tracking does not belongs to posted document %2 selected in adjustment journal.', Comment = '%1 = Lot/Serial No, %2 = Document No.';
@@ -59,6 +75,7 @@ codeunit 18320 "GST Journal Post"
                     Window.Update(2, LineCount);
                     Window.Update(3, Round(LineCount / GSTJournalLine.Count * 10000, 1));
                 until GSTJournalLine.Next() = 0;
+            NoSeriesBatch.SaveState();
             Clear(GenJnlPostLine);
 
             GSTAdjustmentBuffer.Reset();
@@ -100,22 +117,13 @@ codeunit 18320 "GST Journal Post"
         GSTJournalBatch.Get(GSTJnlLine."Journal Template Name", GSTJnlLine."Journal Batch Name");
         if GSTJnlLine."Posting No. Series" = '' then begin
             GSTJnlLine."Posting No. Series" := GSTJournalBatch."No. Series";
-            GSTJnlLine."Document No." := NoSeriesMgt.GetNextNo(GSTJnlLine."Posting No. Series", GSTJnlLine."Posting Date", true);
+            GSTJnlLine."Document No." := NoSeriesBatch.GetNextNo(GSTJnlLine."Posting No. Series", GSTJnlLine."Posting Date");
         end else
             if GSTJnlLine."Document No." = LastDocNo then
                 GSTJnlLine."Document No." := LastPostedDocNo
             else begin
-                if not TempNoSeries.Get(GSTJnlLine."Posting No. Series") then begin
-                    NoOfPostingNoSeries := NoOfPostingNoSeries + 1;
-                    if NoOfPostingNoSeries > ArrayLen(NoSeriesMgt2) then
-                        Error(NoSeriesErr, ArrayLen(NoSeriesMgt2));
-                    TempNoSeries.Code := GSTJnlLine."Posting No. Series";
-                    TempNoSeries.Description := Format(NoOfPostingNoSeries);
-                    TempNoSeries.Insert();
-                end;
                 LastDocNo := GSTJnlLine."Document No.";
-                Evaluate(PostingNoSeriesNo, TempNoSeries.Description);
-                GSTJnlLine."Document No." := NoSeriesMgt2[PostingNoSeriesNo].GetNextNo(GSTJnlLine."Posting No. Series", GSTJnlLine."Posting Date", true);
+                GSTJnlLine."Document No." := NoSeriesBatch.GetNextNo(GSTJnlLine."Posting No. Series", GSTJnlLine."Posting Date");
                 LastPostedDocNo := GSTJnlLine."Document No.";
             end;
         exit(GSTJnlLine."Document No.");

@@ -1,11 +1,12 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Enum Shpfy Processing Method (ID 30118).
 /// </summary>
 enum 30118 "Shpfy Processing Method"
 {
-    Access = Internal;
     Caption = 'Shopify Processing Method';
-    Extensible = true;
+    Extensible = false;
 
     value(0; Checkout)
     {

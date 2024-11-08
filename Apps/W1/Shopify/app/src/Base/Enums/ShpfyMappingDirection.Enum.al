@@ -1,11 +1,12 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Enum Shpfy Mapping Direction (ID 30101).
 /// </summary>
 enum 30101 "Shpfy Mapping Direction"
 {
-    Access = Internal;
     Caption = 'Shopify Mapping Direction';
-    Extensible = true;
+    Extensible = false;
 
     value(0; ShopifyToBC)
     {

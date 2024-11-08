@@ -1,3 +1,13 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Subcontracting;
+
+using Microsoft.Inventory.Item;
+using Microsoft.Inventory.Ledger;
+using Microsoft.Inventory.Tracking;
+
 table 18466 "Applied Delivery Challan"
 {
     Caption = 'Applied Delivery Challan';
@@ -405,6 +415,7 @@ table 18466 "Applied Delivery Challan"
     procedure OpenItemTrackingLinesSubcon(Type_: Option Consume,RejectVE,RejectCE,Receive,Rework)
     var
         TrackingSpecification: Record "Tracking Specification";
+        ApplyDeliveryChallanMgt: Codeunit "Apply Delivery Challan Mgt.";
         ItemTrackingForm: Page "Item Tracking Lines";
     begin
         TestField("Item No.");
@@ -436,8 +447,10 @@ table 18466 "Applied Delivery Challan"
         end;
 
         Clear(ItemTrackingForm);
+        ApplyDeliveryChallanMgt.SetAppDelChallan(true, "Applied Delivery Challan No.");
         ItemTrackingForm.SetSourceSpec(TrackingSpecification, WorkDate());
         ItemTrackingForm.RunModal();
+        ApplyDeliveryChallanMgt.SetAppDelChallan(false, '');
     end;
 
     procedure InsertAppDelChLnEntry(Quantity_: Decimal; Type_: Option Consume,RejectVE,RejectCE,Receive,Rework)

@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Payments;
+
+using System.Integration.Excel;
+
 page 18244 "Bank Charges"
 {
     PageType = List;
@@ -77,12 +85,9 @@ page 18244 "Bank Charges"
                 begin
                     EditinExcel.EditPageInExcel(
                         'Bank Charges',
-                        CurrPage.ObjectId(false),
-                        StrSubstNo(BankChargeMsg, Rec."Code"));
+                        Page::"Bank Charges");
                 end;
             }
         }
     }
-    var
-        BankChargeMsg: Label '%1', Comment = '%1=Bank Charge Code';
 }

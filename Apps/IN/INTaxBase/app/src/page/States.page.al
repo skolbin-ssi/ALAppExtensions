@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TaxBase;
+
+using System.Integration.Excel;
+
 page 18547 "States"
 {
     PageType = List;
@@ -48,12 +56,14 @@ page 18547 "States"
                 trigger OnAction()
                 var
                     EditinExcel: Codeunit "Edit in Excel";
-                    StateCodeLbl: Label 'Code eq %1', Comment = '%1= State Code';
+                    EditinExcelFilters: Codeunit "Edit in Excel Filters";
                 begin
+                    EditinExcelFilters.AddFieldV2('Code', Enum::"Edit in Excel Filter Type"::Equal, Rec.Code, Enum::"Edit in Excel Edm Type"::"Edm.String");
+
                     EditinExcel.EditPageInExcel(
                         'States',
-                        CurrPage.ObjectId(false),
-                        StrSubstNo(StateCodeLbl, Rec.Code));
+                        Page::States,
+                        EditinExcelFilters);
                 end;
             }
         }

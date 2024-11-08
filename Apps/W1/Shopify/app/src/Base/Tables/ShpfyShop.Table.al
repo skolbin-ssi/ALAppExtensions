@@ -1,9 +1,27 @@
+namespace Microsoft.Integration.Shopify;
+
+using Microsoft.Finance.GeneralLedger.Account;
+using System.Globalization;
+using System.IO;
+using Microsoft.Sales.Customer;
+using Microsoft.Sales.Pricing;
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.VAT.Setup;
+using Microsoft.Finance.SalesTax;
+using Microsoft.Foundation.Address;
+using Microsoft.Inventory.Item;
+using System.Security.AccessControl;
+using System.DataAdministration;
+using System.Privacy;
+using System.Threading;
+using Microsoft.Inventory.Location;
+
 /// <summary>
 /// Table Shpfy Shop (ID 30102).
 /// </summary>
 table 30102 "Shpfy Shop"
 {
-    Access = Internal;
     Caption = 'Shopify Shop';
     DataClassification = SystemMetadata;
     DrillDownPageId = "Shpfy Shops";
@@ -20,20 +38,25 @@ table 30102 "Shpfy Shop"
         field(2; "Shopify URL"; Text[250])
         {
             Caption = 'Shopify URL';
+            Access = Internal;
             DataClassification = SystemMetadata;
             ExtendedDatatype = URL;
 
             trigger OnValidate()
             var
-                ShpfyAuthenticationMgt: Codeunit "Shpfy Authentication Mgt.";
+                AuthenticationMgt: Codeunit "Shpfy Authentication Mgt.";
             begin
                 if ("Shopify URL" <> '') then begin
                     if not "Shopify URL".ToLower().StartsWith('https://') then
                         "Shopify URL" := CopyStr('https://' + "Shopify URL", 1, MaxStrLen("Shopify URL"));
 
-                    if not ShpfyAuthenticationMgt.IsValidShopUrl("Shopify URL") then
+                    if "Shopify URL".ToLower().StartsWith('https://admin.shopify.com/store/') then
+                        "Shopify URL" := CopyStr('https://' + "Shopify URL".Replace('https://admin.shopify.com/store/', '').Split('/').Get(1) + '.myshopify.com', 1, MaxStrLen("Shopify URL"));
+
+                    if not AuthenticationMgt.IsValidShopUrl("Shopify URL") then
                         Error(InvalidShopUrlErr);
                 end;
+                Rec.CalcShopId();
             end;
         }
         field(3; Enabled; Boolean)
@@ -43,18 +66,29 @@ table 30102 "Shpfy Shop"
             trigger OnValidate()
             var
                 CustomerConsentMgt: Codeunit "Customer Consent Mgt.";
+                WebhooksMgt: Codeunit "Shpfy Webhooks Mgt.";
             begin
                 if Rec."Enabled" then begin
                     Rec.TestField("Shopify URL");
                     Rec."Enabled" := CustomerConsentMgt.ConfirmUserConsent();
+                end else begin
+                    Rec.Enabled := true;
+                    Rec.Validate("Order Created Webhooks", false);
+                    WebhooksMgt.DisableBulkOperationsWebhook(Rec);
+                    Rec.Enabled := false;
                 end;
             end;
         }
+#if not CLEANSCHEMA26
         field(5; "Log Enabled"; Boolean)
         {
             Caption = 'Log Enabled';
             DataClassification = SystemMetadata;
+            ObsoleteReason = 'Replaced with field "Logging Mode"';
+            ObsoleteState = Removed;
+            ObsoleteTag = '26.0';
         }
+#endif
         field(6; "Customer Price Group"; Code[10])
         {
             Caption = 'Customer Price Group';
@@ -73,7 +107,7 @@ table 30102 "Shpfy Shop"
         {
             Caption = 'Shipping Charges Account';
             DataClassification = SystemMetadata;
-            TableRelation = "G/L Account";
+            TableRelation = "G/L Account"."No.";
             ValidateTableRelation = true;
 
             trigger OnValidate()
@@ -98,13 +132,18 @@ table 30102 "Shpfy Shop"
             OptionCaption = ' ,To Shopify,From Shopify';
             OptionMembers = " ","To Shopify","From Shopify";
         }
+#if not CLEANSCHEMA25
         field(11; "Item Template Code"; Code[10])
         {
             Caption = 'Item Template Code';
             DataClassification = SystemMetadata;
             TableRelation = "Config. Template Header".Code where("Table Id" = const(27));
             ValidateTableRelation = true;
+            ObsoleteReason = 'Replaced by Item Templ. Code';
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
         }
+#endif
         field(12; "Sync Item Images"; Option)
         {
             Caption = 'Sync Item Images';
@@ -122,10 +161,28 @@ table 30102 "Shpfy Shop"
             Caption = 'Sync Item Attributes';
             DataClassification = SystemMetadata;
         }
+        field(15; "Sync Item Marketing Text"; Boolean)
+        {
+            Caption = 'Sync Item Marketing Text';
+            DataClassification = SystemMetadata;
+        }
         field(21; "Auto Create Orders"; Boolean)
         {
             Caption = 'Auto Create Orders';
             DataClassification = SystemMetadata;
+            trigger OnValidate()
+            var
+                ErrorInfo: ErrorInfo;
+            begin
+                if Rec."Return and Refund Process" = "Shpfy ReturnRefund ProcessType"::"Auto Create Credit Memo" then
+                    if not Rec."Auto Create Orders" then begin
+                        ErrorInfo.FieldNo(Rec.FieldNo("Auto Create Orders"));
+                        ErrorInfo.ErrorType := ErrorType::Client;
+                        ErrorInfo.RecordId := Rec.RecordId;
+                        ErrorInfo.Message := StrSubstNo(AutoCreateErrorMsg, Rec.FieldCaption("Auto Create Orders"), Rec.FieldCaption("Return and Refund Process"), Rec."Return and Refund Process");
+                        Error(ErrorInfo);
+                    end;
+            end;
         }
         field(22; "Auto Create Unknown Items"; Boolean)
         {
@@ -137,13 +194,18 @@ table 30102 "Shpfy Shop"
             Caption = 'Auto Create Unknown Customers';
             DataClassification = SystemMetadata;
         }
+#if not CLEANSCHEMA25
         field(24; "Customer Template Code"; Code[10])
         {
             Caption = 'Customer Template Code';
             DataClassification = SystemMetadata;
             TableRelation = "Config. Template Header".Code where("Table Id" = const(18));
             ValidateTableRelation = true;
+            ObsoleteReason = 'Replaced by  "Customer Templ. Code"';
+            ObsoleteState = Removed;
+            ObsoleteTag = '25.0';
         }
+#endif
         field(25; "Product Collection"; Option)
         {
             Caption = 'Product Collection';
@@ -162,12 +224,22 @@ table 30102 "Shpfy Shop"
             DataClassification = CustomerContent;
             InitValue = WithOrderImport;
         }
+#if not CLEANSCHEMA27
         field(29; "Export Customer To Shopify"; Boolean)
         {
             Caption = 'Export Customer to Shopify';
             DataClassification = CustomerContent;
             InitValue = true;
+            ObsoleteReason = 'Replaced with action "Add Customer to Shopify" in Shopify Customers page.';
+#if not CLEAN24
+            ObsoleteState = Pending;
+            ObsoleteTag = '24.0';
+#else
+            ObsoleteState = Removed;
+            ObsoleteTag = '27.0';
+#endif
         }
+#endif
         field(30; "Shopify Can Update Customer"; Boolean)
         {
             Caption = 'Shopify Can Update Customers';
@@ -296,7 +368,7 @@ table 30102 "Shpfy Shop"
         {
             Caption = 'Tip Account';
             DataClassification = SystemMetadata;
-            TableRelation = "G/L Account";
+            TableRelation = "G/L Account"."No.";
             ValidateTableRelation = true;
 
             trigger OnValidate()
@@ -311,7 +383,7 @@ table 30102 "Shpfy Shop"
         {
             Caption = 'Sold Gift Card Account';
             DataClassification = SystemMetadata;
-            TableRelation = "G/L Account";
+            TableRelation = "G/L Account"."No.";
             ValidateTableRelation = true;
 
             trigger OnValidate()
@@ -334,72 +406,191 @@ table 30102 "Shpfy Shop"
         }
         field(51; "Action for Removed Products"; Enum "Shpfy Remove Product Action")
         {
-            Caption = 'Action for Removed Products';
+            Caption = 'Action for Removed Products and Blocked Items';
             DataClassification = CustomerContent;
         }
-        field(52; "Currency Code"; code[10])
+        field(52; "Currency Code"; Code[10])
         {
             Caption = 'Currency Code';
             DataClassification = CustomerContent;
             TableRelation = Currency.Code;
+
+            trigger OnValidate()
+            var
+                CurrencyExchangeRate: Record "Currency Exchange Rate";
+            begin
+                if "Currency Code" <> '' then begin
+                    CurrencyExchangeRate.SetRange("Currency Code", "Currency Code");
+                    if CurrencyExchangeRate.IsEmpty() then
+                        Error(CurrencyExchangeRateNotDefinedErr);
+                end;
+            end;
         }
+        field(53; "Gen. Bus. Posting Group"; Code[20])
+        {
+            Caption = 'Gen. Bus. Posting Group';
+            DataClassification = CustomerContent;
+            TableRelation = "Gen. Business Posting Group";
+        }
+        field(54; "VAT Bus. Posting Group"; Code[20])
+        {
+            Caption = 'VAT Bus. Posting Group';
+            DataClassification = CustomerContent;
+            TableRelation = "VAT Business Posting Group";
+        }
+        field(55; "Tax Area Code"; Code[20])
+        {
+            Caption = 'Tax Area Code';
+            DataClassification = CustomerContent;
+            TableRelation = "Tax Area";
+        }
+        field(56; "Tax Liable"; Boolean)
+        {
+            Caption = 'Tax Liable';
+            DataClassification = CustomerContent;
+        }
+        field(57; "VAT Country/Region Code"; Code[10])
+        {
+            Caption = 'VAT Country/Region Code';
+            DataClassification = CustomerContent;
+            TableRelation = "Country/Region";
+        }
+        field(58; "Customer Posting Group"; Code[20])
+        {
+            Caption = 'Customer Posting Group';
+            DataClassification = CustomerContent;
+            TableRelation = "Customer Posting Group";
+        }
+        field(59; "Prices Including VAT"; Boolean)
+        {
+            Caption = 'Prices Including VAT';
+            DataClassification = CustomerContent;
+        }
+        field(60; "Auto Release Sales Orders"; Boolean)
+        {
+            Caption = 'Auto Release Sales Orders';
+            DataClassification = CustomerContent;
+            InitValue = true;
+        }
+        field(61; "Allow Line Disc."; Boolean)
+        {
+            Caption = 'Allow Line Disc.';
+            DataClassification = CustomerContent;
+        }
+        field(62; "Customer Templ. Code"; Code[20])
+        {
+            Caption = 'Customer Template Code';
+            DataClassification = SystemMetadata;
+            TableRelation = "Customer Templ.".Code;
+            ValidateTableRelation = true;
+        }
+        field(63; "Item Templ. Code"; Code[20])
+        {
+            Caption = 'Item Template Code';
+            DataClassification = SystemMetadata;
+            TableRelation = "Item Templ.".Code;
+            ValidateTableRelation = true;
+        }
+        field(70; "Return and Refund Process"; Enum "Shpfy ReturnRefund ProcessType")
+        {
+            Caption = 'Return and Refund Process';
+            DataClassification = CustomerContent;
+            InitValue = "Import Only";
+
+            trigger OnValidate()
+            var
+                ErrorInfo: ErrorInfo;
+                AutoCreateErrorMsg: Label 'You need to turn "%1" on if you want to set "%2" to the value of "%3".', Comment = '%1 = Field Caption of "Auto Create Orders", %2 = Field Caption of "Return and Refund Process", %3 = Field Value of "Return and Refund Process"';
+            begin
+                if Rec."Return and Refund Process" = "Shpfy ReturnRefund ProcessType"::"Auto Create Credit Memo" then
+                    if not Rec."Auto Create Orders" then begin
+                        ErrorInfo.FieldNo(Rec.FieldNo("Return and Refund Process"));
+                        ErrorInfo.ErrorType := ErrorType::Client;
+                        ErrorInfo.RecordId := Rec.RecordId;
+                        ErrorInfo.Message := StrSubstNo(AutoCreateErrorMsg, Rec.FieldCaption("Auto Create Orders"), Rec.FieldCaption("Return and Refund Process"), Rec."Return and Refund Process");
+                        Error(ErrorInfo);
+                    end;
+            end;
+        }
+        field(73; "Return Location"; Code[10])
+        {
+            Caption = 'Default Return Location';
+            DataClassification = CustomerContent;
+            TableRelation = Location where("Use As In-Transit" = const(false));
+        }
+        field(75; "Refund Acc. non-restock Items"; Code[20])
+        {
+            Caption = 'Refund Account non-restock Items';
+            DataClassification = CustomerContent;
+            TableRelation = "G/L Account"."No.";
+
+            trigger OnValidate()
+            var
+                GLAccount: Record "G/L Account";
+            begin
+                if GLAccount.Get("Refund Acc. non-restock Items") then
+                    CheckGLAccount(GLAccount);
+            end;
+        }
+        field(76; "Refund Account"; Code[20])
+        {
+            Caption = 'Refund Account';
+            DataClassification = CustomerContent;
+            TableRelation = "G/L Account"."No.";
+
+            trigger OnValidate()
+            var
+                GLAccount: Record "G/L Account";
+            begin
+                if GLAccount.Get("Refund Account") then
+                    CheckGLAccount(GLAccount);
+            end;
+        }
+#if not CLEANSCHEMA24
         field(100; "Collection Last Export Version"; BigInteger)
         {
             Caption = 'Collection Last Export Version';
             DataClassification = SystemMetadata;
             Editable = false;
+            Access = Internal;
             ObsoleteReason = 'Not used. Moved to "Shpfy Synchronization Info" table.';
-#if not CLEAN21
-            ObsoleteTag = '21.0';
-            ObsoleteState = Pending;
-#else
             ObsoleteTag = '24.0';
             ObsoleteState = Removed;
-#endif
         }
         field(101; "Collection Last Import Version"; BigInteger)
         {
             Caption = 'Collection Last Import Version';
             DataClassification = SystemMetadata;
             Editable = false;
+            Access = Internal;
             ObsoleteReason = 'Not used. Moved to "Shpfy Synchronization Info" table.';
-#if not CLEAN21
-            ObsoleteTag = '21.0';
-            ObsoleteState = Pending;
-#else
             ObsoleteTag = '24.0';
             ObsoleteState = Removed;
-#endif
         }
         field(102; "Product Last Export Version"; BigInteger)
         {
             Caption = 'Product Last Export Version';
             DataClassification = SystemMetadata;
             Editable = false;
+            Access = Internal;
             ObsoleteReason = 'Not used. Moved to "Shpfy Synchronization Info" table.';
-#if not CLEAN21
-            ObsoleteTag = '21.0';
-            ObsoleteState = Pending;
-#else
             ObsoleteTag = '24.0';
             ObsoleteState = Removed;
-#endif
         }
         field(103; "Product Last Import Version"; BigInteger)
         {
             Caption = 'Product Last Import Version';
             DataClassification = SystemMetadata;
             Editable = false;
+            Access = Internal;
             ObsoleteReason = 'Not used. Moved to "Shpfy Synchronization Info" table.';
-#if not CLEAN21
-            ObsoleteTag = '21.0';
-            ObsoleteState = Pending;
-#else
             ObsoleteTag = '24.0';
             ObsoleteState = Removed;
-#endif
         }
-        field(104; "SKU Mapping"; Enum "Shpfy SKU Mappging")
+#endif
+#pragma warning disable AS0004
+        field(104; "SKU Mapping"; Enum "Shpfy SKU Mapping")
+#pragma warning restore AS0004
         {
             Caption = 'SKU Mapping';
             DataClassification = SystemMetadata;
@@ -423,9 +614,206 @@ table 30102 "Shpfy Shop"
             DataClassification = SystemMetadata;
             InitValue = true;
         }
+        field(108; "Order Created Webhooks"; Boolean)
+        {
+            Caption = 'Order Created Webhooks';
+            DataClassification = SystemMetadata;
+
+            trigger OnValidate()
+            var
+                ShpfyWebhooksMgt: Codeunit "Shpfy Webhooks Mgt.";
+            begin
+                if "Order Created Webhooks" then
+                    ShpfyWebhooksMgt.EnableOrderCreatedWebhook(Rec)
+                else
+                    ShpfyWebhooksMgt.DisableOrderCreatedWebhook(Rec);
+            end;
+        }
+        field(109; "Order Created Webhook User"; Code[50])
+        {
+            Caption = 'Order Created Webhook User';
+            DataClassification = EndUserIdentifiableInformation;
+            Editable = false;
+            TableRelation = User."User Name";
+        }
+        field(110; "Fulfillment Service Activated"; Boolean)
+        {
+            Caption = 'Fulfillment Service Activated';
+            DataClassification = SystemMetadata;
+            Description = 'Indicates whether the Shopify Fulfillment Service is activated.';
+        }
+        field(111; "Order Created Webhook User Id"; Guid)
+        {
+            Caption = 'Order Created Webhook User Id';
+            DataClassification = EndUserIdentifiableInformation;
+            Editable = false;
+            TableRelation = User;
+
+            trigger OnValidate()
+            var
+                User: Record User;
+            begin
+                if User.Get("Order Created Webhook User Id") then
+                    "Order Created Webhook User" := User."User Name";
+            end;
+        }
+        field(112; "Order Created Webhook Id"; Text[500])
+        {
+            Caption = 'Order Created Webhook Id';
+            DataClassification = SystemMetadata;
+            Editable = false;
+        }
+        field(113; "Logging Mode"; Enum "Shpfy Logging Mode")
+        {
+            Caption = 'Logging Mode';
+            DataClassification = SystemMetadata;
+
+            trigger OnValidate()
+            begin
+                if "Logging Mode" = "Logging Mode"::All then
+                    EnableShopifyLogRetentionPolicySetup();
+            end;
+        }
+        field(114; "Bulk Operation Webhook User Id"; Guid)
+        {
+            Caption = 'Bulk Operation Webhook User Id';
+            DataClassification = EndUserIdentifiableInformation;
+            Editable = false;
+            TableRelation = User;
+        }
+        field(115; "Bulk Operation Webhook Id"; Text[500])
+        {
+            Caption = 'Bulk Operation Webhook Id';
+            DataClassification = SystemMetadata;
+            Editable = false;
+        }
+        field(116; "Sync Prices"; Boolean)
+        {
+            Caption = 'Sync Prices with Products';
+            DataClassification = SystemMetadata;
+            InitValue = true;
+        }
+        field(117; "B2B Enabled"; Boolean)
+        {
+            Caption = 'B2B Enabled';
+            DataClassification = SystemMetadata;
+        }
+        field(118; "Can Update Shopify Companies"; Boolean)
+        {
+            Caption = 'Can Update Shopify Companies';
+            DataClassification = CustomerContent;
+            InitValue = false;
+
+            trigger OnValidate()
+            begin
+                if "Can Update Shopify Companies" then
+                    "Shopify Can Update Companies" := false;
+            end;
+        }
+        field(119; "Default Contact Permission"; Enum "Shpfy Default Cont. Permission")
+        {
+            Caption = 'Default Contact Permission';
+            DataClassification = CustomerContent;
+            InitValue = "Ordering Only";
+        }
+        field(120; "Auto Create Catalog"; Boolean)
+        {
+            Caption = 'Auto Create Catalog';
+            DataClassification = CustomerContent;
+        }
+        field(121; "Company Import From Shopify"; Enum "Shpfy Company Import Range")
+        {
+            Caption = 'Company Import from Shopify';
+            DataClassification = CustomerContent;
+            InitValue = WithOrderImport;
+        }
+        field(122; "Shopify Can Update Companies"; Boolean)
+        {
+            Caption = 'Shopify Can Update Companies';
+            DataClassification = CustomerContent;
+            InitValue = false;
+
+            trigger OnValidate()
+            begin
+                if "Shopify Can Update Companies" then
+                    "Can Update Shopify Companies" := false;
+            end;
+        }
+        field(123; "Auto Create Unknown Companies"; Boolean)
+        {
+            Caption = 'Auto Create Unknown Companies';
+            DataClassification = CustomerContent;
+        }
+        field(124; "Send Shipping Confirmation"; Boolean)
+        {
+            Caption = 'Send Shipping Confirmation';
+            DataClassification = CustomerContent;
+            InitValue = true;
+        }
+        field(125; "Default Company No."; Code[20])
+        {
+            Caption = 'Default Company No.';
+            DataClassification = CustomerContent;
+            TableRelation = Customer;
+        }
+        field(126; "Company Mapping Type"; Enum "Shpfy Company Mapping")
+        {
+            Caption = 'Company Mapping Type';
+            DataClassification = CustomerContent;
+        }
+#if not CLEANSCHEMA27
+        field(127; "Replace Order Attribute Value"; Boolean)
+        {
+            Caption = 'Replace Order Attribute Value';
+            DataClassification = SystemMetadata;
+            InitValue = true;
+            ObsoleteReason = 'This feature will be enabled by default with version 27.0.';
+#if CLEAN24
+            ObsoleteState = Removed;
+            ObsoleteTag = '27.0';
+#else
+            ObsoleteState = Pending;
+            ObsoleteTag = '24.0';
+
+            trigger OnValidate()
+            begin
+                if "Replace Order Attribute Value" then
+                    UpdateOrderAttributes(Rec.Code);
+            end;
+#endif
+        }
+#endif
+        field(128; "Return Location Priority"; Enum "Shpfy Return Location Priority")
+        {
+            Caption = 'Return Location Priority';
+            DataClassification = CustomerContent;
+        }
+        field(129; "Weight Unit"; Enum "Shpfy Weight Unit")
+        {
+            Caption = 'Weight Unit';
+            DataClassification = CustomerContent;
+        }
         field(200; "Shop Id"; Integer)
         {
             DataClassification = SystemMetadata;
+        }
+#if not CLEANSCHEMA29
+        field(201; "Items Mapped to Products"; Boolean)
+        {
+            Caption = 'Items Must be Mapped to Products';
+            ObsoleteReason = 'This setting is not used';
+#if not CLEAN26
+            ObsoleteState = Pending;
+            ObsoleteTag = '26.0';
+#else
+            ObsoleteState = Removed;
+            ObsoleteTag = '29.0';
+#endif
+        }
+#endif
+        field(202; "Posted Invoice Sync"; Boolean)
+        {
+            Caption = 'Posted Invoice Sync';
         }
     }
 
@@ -436,49 +824,70 @@ table 30102 "Shpfy Shop"
             Clustered = true;
         }
         key(Idx1; "Shop Id") { }
+        key(Idx2; "Shopify URL") { }
+        key(Idx3; Enabled) { }
     }
+
+    trigger OnDelete()
+    var
+        ShpfyWebhooksMgt: Codeunit "Shpfy Webhooks Mgt.";
+    begin
+        ShpfyWebhooksMgt.DisableOrderCreatedWebhook(Rec);
+        ShpfyWebhooksMgt.DisableBulkOperationsWebhook(Rec);
+    end;
 
     var
         InvalidShopUrlErr: Label 'The URL must refer to the internal shop location at myshopify.com. It must not be the public URL that customers use, such as myshop.com.';
+        CurrencyExchangeRateNotDefinedErr: Label 'The specified currency must have exchange rates configured. If your online shop uses the same currency as Business Central then leave the field empty.';
+        AutoCreateErrorMsg: Label 'You cannot turn "%1" off if "%2" is set to the value of "%3".', Comment = '%1 = Field Caption of "Auto Create Orders", %2 = Field Caption of "Return and Refund Process", %3 = Field Value of "Return and Refund Process"';
+        ExpirationNotificationTxt: Label 'Shopify API version 30 days before expiry notification sent.', Locked = true;
+        BlockedNotificationTxt: Label 'Shopify API version expired notification sent.', Locked = true;
+        CategoryTok: Label 'Shopify Integration', Locked = true;
 
-    [NonDebuggable]
     [Scope('OnPrem')]
-    internal procedure GetAccessToken() Result: Text
+    internal procedure GetAccessToken() Result: SecretText
     var
-        ShpfyAuthenticationMgt: Codeunit "Shpfy Authentication Mgt.";
+        AuthenticationMgt: Codeunit "Shpfy Authentication Mgt.";
         Store: Text;
     begin
         Rec.Testfield(Enabled, true);
         Store := GetStoreName();
         if Store <> '' then
-            exit(ShpfyAuthenticationMgt.GetAccessToken(Store));
+            exit(AuthenticationMgt.GetAccessToken(Store));
     end;
 
-    [NonDebuggable]
     [Scope('OnPrem')]
     internal procedure RequestAccessToken()
     var
-        ShpfyAuthenticationMgt: Codeunit "Shpfy Authentication Mgt.";
+        AuthenticationMgt: Codeunit "Shpfy Authentication Mgt.";
         Store: Text;
     begin
         Store := GetStoreName();
         if Store <> '' then
-            ShpfyAuthenticationMgt.InstallShopifyApp(Store);
+            AuthenticationMgt.InstallShopifyApp(Store);
     end;
 
-    [NonDebuggable]
     [Scope('OnPrem')]
     internal procedure HasAccessToken(): Boolean
     var
-        ShpfyAuthenticationMgt: Codeunit "Shpfy Authentication Mgt.";
+        AuthenticationMgt: Codeunit "Shpfy Authentication Mgt.";
         Store: Text;
     begin
         Store := GetStoreName();
         if Store <> '' then
-            exit(ShpfyAuthenticationMgt.AccessTokenExist(Store));
+            exit(AuthenticationMgt.AccessTokenExist(Store));
     end;
 
-    local procedure GetStoreName() Store: Text
+    internal procedure TestConnection(): Boolean
+    var
+        CommunicationMgt: Codeunit "Shpfy Communication Mgt.";
+    begin
+        CommunicationMgt.SetShop(Rec);
+        CommunicationMgt.ExecuteGraphQL('{"query":"query { app { id } }"}');
+        exit(true);
+    end;
+
+    internal procedure GetStoreName() Store: Text
     begin
         Store := "Shopify URL".ToLower();
         if Store.Contains(':') then
@@ -486,7 +895,7 @@ table 30102 "Shpfy Shop"
         Store := Store.TrimStart('/').TrimEnd('/');
     end;
 
-    /// <summary> 
+    /// <summary>
     /// Calc Shop Id.
     /// </summary>
     internal procedure CalcShopId()
@@ -507,13 +916,32 @@ table 30102 "Shpfy Shop"
         end;
     end;
 
+    internal procedure GetEmptySyncTime(): DateTime
+    begin
+        exit(CreateDateTime(20040101D, 0T));
+    end;
+
     internal procedure GetLastSyncTime(Type: Enum "Shpfy Synchronization Type"): DateTime
     var
-        SyncInfo: Record "Shpfy Synchronization Info";
+        SynchronizationInfo: Record "Shpfy Synchronization Info";
     begin
-        if SyncInfo.Get(Rec.Code, Type) then
-            exit(SyncInfo."Last Sync Time");
-        exit(0DT);
+        if Type = "Shpfy Synchronization Type"::Orders then begin
+            if Rec."Shop Id" = 0 then begin
+                Rec.CalcShopId();
+                Rec.Modify();
+            end;
+            if SynchronizationInfo.Get(Format(Rec."Shop Id"), Type) then
+                if SynchronizationInfo."Last Sync Time" = 0DT then
+                    exit(GetEmptySyncTime())
+                else
+                    exit(SynchronizationInfo."Last Sync Time");
+        end;
+        if SynchronizationInfo.Get(Rec.Code, Type) then
+            if SynchronizationInfo."Last Sync Time" = 0DT then
+                exit(GetEmptySyncTime())
+            else
+                exit(SynchronizationInfo."Last Sync Time");
+        exit(GetEmptySyncTime());
     end;
 
     internal procedure SetLastSyncTime(Type: Enum "Shpfy Synchronization Type")
@@ -523,17 +951,22 @@ table 30102 "Shpfy Shop"
 
     internal procedure SetLastSyncTime(Type: Enum "Shpfy Synchronization Type"; ToDateTime: DateTime)
     var
-        SyncInfo: Record "Shpfy Synchronization Info";
+        SynchronizationInfo: Record "Shpfy Synchronization Info";
+        ShopCode: Code[20];
     begin
-        if SyncInfo.Get(Rec.Code, Type) then begin
-            SyncInfo."Last Sync Time" := ToDateTime;
-            SyncInfo.Modify();
+        if Type = "Shpfy Synchronization Type"::Orders then
+            ShopCode := Format(Rec."Shop Id")
+        else
+            ShopCode := Rec.Code;
+        if SynchronizationInfo.Get(ShopCode, Type) then begin
+            SynchronizationInfo."Last Sync Time" := ToDateTime;
+            SynchronizationInfo.Modify();
         end else begin
-            Clear(SyncInfo);
-            SyncInfo."Shop Code" := Rec.Code;
-            SyncInfo."Synchronization Type" := Type;
-            SyncInfo."Last Sync Time" := ToDateTime;
-            SyncInfo.Insert();
+            Clear(SynchronizationInfo);
+            SynchronizationInfo."Shop Code" := ShopCode;
+            SynchronizationInfo."Synchronization Type" := Type;
+            SynchronizationInfo."Last Sync Time" := ToDateTime;
+            SynchronizationInfo.Insert();
         end;
     end;
 
@@ -542,5 +975,123 @@ table 30102 "Shpfy Shop"
         GLAccount.TestField("Account Type", GLAccount."Account Type"::Posting);
         GLAccount.TestField("Direct Posting", true);
         GLAccount.TestField(Blocked, false);
+    end;
+
+    internal procedure CopyPriceCalculationFieldsFromCustomerTempl(TemplateCode: Code[20])
+    var
+        CustomerTempl: Record "Customer Templ.";
+    begin
+        if TemplateCode = '' then
+            exit;
+        if not CustomerTempl.Get(TemplateCode) then
+            exit;
+        Rec."Gen. Bus. Posting Group" := CustomerTempl."Gen. Bus. Posting Group";
+        Rec."VAT Bus. Posting Group" := CustomerTempl."VAT Bus. Posting Group";
+        Rec."Tax Area Code" := CustomerTempl."Tax Area Code";
+        Rec."Tax Liable" := CustomerTempl."Tax Liable";
+        Rec."VAT Country/Region Code" := CustomerTempl."Country/Region Code";
+        Rec."Customer Posting Group" := CustomerTempl."Customer Posting Group";
+        Rec."Prices Including VAT" := CustomerTempl."Prices Including VAT";
+        Rec."Allow Line Disc." := CustomerTempl."Allow Line Disc.";
+        Rec.Modify();
+    end;
+
+    local procedure EnableShopifyLogRetentionPolicySetup()
+    var
+        RetentionPolicySetup: Record "Retention Policy Setup";
+        JobQueueEntry: Record "Job Queue Entry";
+    begin
+        if not TaskScheduler.CanCreateTask() then
+            exit;
+
+        if not (JobQueueEntry.ReadPermission() and JobQueueEntry.WritePermission()) then
+            exit;
+
+        if not RetentionPolicySetup.Get(Database::"Shpfy Log Entry") then
+            exit;
+
+        if RetentionPolicySetup.Enabled then
+            exit;
+
+        RetentionPolicySetup.Validate(Enabled, true);
+        RetentionPolicySetup.Modify(true);
+    end;
+
+    internal procedure GetB2BEnabled(): Boolean;
+    var
+        CommunicationMgt: Codeunit "Shpfy Communication Mgt.";
+        JsonHelper: Codeunit "Shpfy Json Helper";
+        JResponse: JsonToken;
+        JItem: JsonToken;
+    begin
+        CommunicationMgt.SetShop(Rec);
+        JResponse := CommunicationMgt.ExecuteGraphQL('{"query":"query { shop { name plan { partnerDevelopment shopifyPlus } } }"}');
+        if JResponse.SelectToken('$.data.shop.plan', JItem) then
+            if JItem.IsObject then begin
+                if JsonHelper.GetValueAsBoolean(JItem, 'shopifyPlus') then
+                    exit(true);
+                if JsonHelper.GetValueAsBoolean(JItem, 'partnerDevelopment') then
+                    exit(true);
+            end;
+    end;
+
+    internal procedure GetShopWeightUnit(): Enum "Shpfy Weight Unit"
+    var
+        CommunicationMgt: Codeunit "Shpfy Communication Mgt.";
+        JsonHelper: Codeunit "Shpfy Json Helper";
+        JResponse: JsonToken;
+    begin
+        CommunicationMgt.SetShop(Rec);
+        JResponse := CommunicationMgt.ExecuteGraphQL('{"query":"query { shop { weightUnit } }"}');
+        exit(ConvertToWeightUnit(JsonHelper.GetValueAsText(JResponse, 'data.shop.weightUnit')));
+    end;
+
+#if not CLEAN24
+    local procedure UpdateOrderAttributes(ShopCode: Code[20])
+    var
+        OrderHeader: Record "Shpfy Order Header";
+        OrderAttribute: Record "Shpfy Order Attribute";
+    begin
+        OrderHeader.SetRange("Shop Code", ShopCode);
+        if OrderHeader.FindSet() then
+            repeat
+                OrderAttribute.SetRange("Order Id", OrderHeader."Shopify Order Id");
+                if OrderAttribute.FindSet() then
+                    repeat
+                        OrderAttribute."Attribute Value" := OrderAttribute.Value;
+                        OrderAttribute.Modify();
+                    until OrderAttribute.Next() = 0;
+            until OrderHeader.Next() = 0;
+    end;
+#endif
+
+    internal procedure SyncCountries()
+    begin
+        Codeunit.Run(Codeunit::"Shpfy Sync Countries", Rec);
+    end;
+
+    local procedure ConvertToWeightUnit(Value: Text): Enum "Shpfy Weight Unit"
+    var
+        CommunicationMgt: Codeunit "Shpfy Communication Mgt.";
+    begin
+        Value := CommunicationMgt.ConvertToCleanOptionValue(Value);
+        if Enum::"Shpfy Weight Unit".Names().Contains(Value) then
+            exit(Enum::"Shpfy Weight Unit".FromInteger(Enum::"Shpfy Weight Unit".Ordinals().Get(Enum::"Shpfy Weight Unit".Names().IndexOf(Value))))
+        else
+            exit(Enum::"Shpfy Weight Unit"::" ");
+    end;
+
+    internal procedure CheckApiVersionExpiryDate(ApiVersion: Text; ApiVersionExpiryDateTime: DateTime)
+    var
+        ShopMgt: Codeunit "Shpfy Shop Mgt.";
+    begin
+        if CurrentDateTime() > ApiVersionExpiryDateTime then begin
+            ShopMgt.SendBlockedNotification();
+            Session.LogMessage('0000KNZ', BlockedNotificationTxt, Verbosity::Warning, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', CategoryTok);
+        end else
+            if Round((ApiVersionExpiryDateTime - CurrentDateTime()) / 1000 / 3600 / 24, 1) <= 30 then begin
+                ShopMgt.SendExpirationNotification(DT2Date(ApiVersionExpiryDateTime));
+                Session.LogMessage('0000KO0', ExpirationNotificationTxt, Verbosity::Warning, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', CategoryTok);
+            end;
     end;
 }

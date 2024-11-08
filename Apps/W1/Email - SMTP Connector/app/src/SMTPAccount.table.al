@@ -3,6 +3,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
 
+namespace System.Email;
+
 /// <summary>
 /// Holds the information for all e-mail accounts that are registered via the SMTP connector
 /// </summary>
@@ -31,19 +33,15 @@ table 4511 "SMTP Account"
             DataClassification = CustomerContent;
         }
 
+#if not CLEANSCHEMA23
         field(4; Authentication; Enum "SMTP Authentication")
         {
             DataClassification = CustomerContent;
             ObsoleteReason = 'Replaced by "Authentication Types" as the enum is moving to SMTP API app.';
-#if not CLEAN20
-            ObsoleteState = Pending;
-            ObsoleteTag = '20.0';
-#else
             ObsoleteState = Removed;
-            ObsoleteTag = '22.0';
-#endif
+            ObsoleteTag = '23.0';
         }
-
+#endif
         field(5; "User Name"; Text[250])
         {
             DataClassification = CustomerContent;
@@ -105,7 +103,7 @@ table 4511 "SMTP Account"
         {
             DataClassification = CustomerContent;
         }
-
+#if not CLEANSCHEMA20
         field(12; "Created By"; Text[50])
         {
             DataClassification = EndUserIdentifiableInformation;
@@ -113,6 +111,7 @@ table 4511 "SMTP Account"
             ObsoleteState = Removed;
             ObsoleteTag = '20.0';
         }
+#endif
         field(13; "Authentication Type"; Enum "SMTP Authentication Types")
         {
             DataClassification = CustomerContent;
@@ -138,7 +137,7 @@ table 4511 "SMTP Account"
     end;
 
     [NonDebuggable]
-    procedure SetPassword(Password: Text)
+    procedure SetPassword(Password: SecretText)
     begin
         if IsNullGuid(Rec."Password Key") then
             Rec."Password Key" := CreateGuid();
@@ -148,7 +147,7 @@ table 4511 "SMTP Account"
     end;
 
     [NonDebuggable]
-    procedure GetPassword(PasswordKey: Guid) Password: Text
+    procedure GetPassword(PasswordKey: Guid) Password: SecretText
     begin
         if not IsolatedStorage.Get(Format(PasswordKey), DataScope::Company, Password) then
             Error(UnableToGetPasswordMsg);

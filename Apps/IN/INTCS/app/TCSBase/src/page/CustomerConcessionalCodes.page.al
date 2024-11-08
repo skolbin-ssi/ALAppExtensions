@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TCS.TCSBase;
+
+using System.Integration.Excel;
+
 page 18808 "Customer Concessional Codes"
 {
     PageType = List;
@@ -54,9 +62,8 @@ page 18808 "Customer Concessional Codes"
                 trigger OnAction()
                 var
                     EditinExcel: Codeunit "Edit in Excel";
-                    CodeLbl: Label 'Code eq ''%1''', Comment = '%1=Customer No.';
                 begin
-                    EditinExcel.EditPageInExcel('Customer Concessional Codes', CurrPage.ObjectId(false), StrSubstNo(CodeLbl, Rec."customer No."));
+                    EditinExcel.EditPageInExcel('Customer Concessional Codes', Page::"Customer Concessional Codes");
                 end;
             }
         }

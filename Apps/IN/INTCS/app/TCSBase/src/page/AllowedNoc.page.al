@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TCS.TCSBase;
+
+using System.Integration.Excel;
+
 page 18807 "Allowed NOC"
 {
     PageType = List;
@@ -58,9 +66,8 @@ page 18807 "Allowed NOC"
                 trigger OnAction()
                 var
                     EditinExcel: Codeunit "Edit in Excel";
-                    CodeLbl: Label 'Code''%1''', Comment = '%1= Customer No.';
                 begin
-                    EditinExcel.EditPageInExcel('Allowed NOC', CurrPage.ObjectId(false), StrSubstNo(CodeLbl, Rec."Customer No."));
+                    EditinExcel.EditPageInExcel('Allowed NOC', Page::"Allowed NOC");
                 end;
             }
         }

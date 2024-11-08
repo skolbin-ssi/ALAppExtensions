@@ -434,7 +434,6 @@ codeunit 134270 "Bank Pmt. Appl. Algorithm DK"
         BankAccReconciliationLine.Validate("Additional Transaction Info", AdditionalTransactionInfo);
         BankAccReconciliationLine.Validate("Transaction Date", WorkDate());
         BankAccReconciliationLine.Validate("Statement Amount", Amount);
-        BankAccReconciliationLine.Validate(Type, BankAccReconciliationLine.Type::"Bank Account Ledger Entry");
         BankAccReconciliationLine.Modify(true);
     end;
 

@@ -14,22 +14,21 @@ codeunit 148134 "Elec. VAT Submission UT"
     end;
 
     [Test]
-    [Scope('OnPrem')]
     procedure ValidateVATStatementSignWithVATCodeDependentOnOtherCode()
     var
         VATReportHeader: Record "VAT Report Header";
         VATStatementReportLine: Record "VAT Statement Report Line";
-        VATCode: Record "VAT Code";
+        VATReportingCode: Record "VAT Reporting Code";
     begin
         // [FEATURE] [UI]
         // [SCENARIO 422655] Stan can validate VAT statement with the VAT Code that has "SAF-T Code" specified
 
         Initialize();
         LibraryElecVATSubmission.InsertElecVATReportHeader(VATReportHeader);
-        VATCode.Get(LibraryElecVATSubmission.CreateSimpleVATCode());
-        VATCode.Validate("SAF-T VAT Code", '1');
-        VATCode.Modify(true);
-        LibraryElecVATSubmission.InsertVATStatementReportLineWithBoxNo(VATStatementReportLine, VATReportHeader, VATCode.Code);
+        VATReportingCode.Get(LibraryElecVATSubmission.CreateSimpleVATCode());
+        VATReportingCode.Validate("SAF-T VAT Code", '1');
+        VATReportingCode.Modify(true);
+        LibraryElecVATSubmission.InsertVATStatementReportLineWithBoxNo(VATStatementReportLine, VATReportHeader, VATReportingCode.Code);
         VATStatementReportLine.Validate(Amount, -1);
         VATStatementReportLine.Modify(true);
         Codeunit.Run(Codeunit::"Elec. VAT Validate Return", VATReportHeader);

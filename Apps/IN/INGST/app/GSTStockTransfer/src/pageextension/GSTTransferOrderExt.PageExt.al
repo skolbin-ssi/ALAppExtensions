@@ -1,7 +1,33 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.StockTransfer;
+
+using Microsoft.Inventory.Transfer;
+using Microsoft.Finance.TaxEngine.UseCaseBuilder;
+
 pageextension 18395 "GST Transfer Order Ext" extends "Transfer Order"
 {
     layout
     {
+        modify("Transfer-to Code")
+        {
+            trigger OnAfterValidate()
+            var
+                TransferLine: Record "Transfer Line";
+                TaxCaseExecution: Codeunit "Use Case Execution";
+            begin
+                if xRec."Transfer-to Code" <> Rec."Transfer-to Code" then begin
+                    TransferLine.SetRange("Document No.", Rec."No.");
+                    if TransferLine.FindSet() then
+                        repeat
+                            CurrPage.SaveRecord();
+                            TaxCaseExecution.HandleEvent('OnAfterTransferPrirce', TransferLine, '', 0);
+                        until TransferLine.Next() = 0;
+                end;
+            end;
+        }
         addafter(Status)
         {
             field("Load Unreal Prof Amt on Invt."; Rec."Load Unreal Prof Amt on Invt.")

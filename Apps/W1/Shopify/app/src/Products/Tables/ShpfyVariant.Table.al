@@ -1,9 +1,12 @@
+namespace Microsoft.Integration.Shopify;
+
+using Microsoft.Inventory.Item;
+
 /// <summary>
 /// Table Shpfy Variant (ID 30129).
 /// </summary>
 table 30129 "Shpfy Variant"
 {
-    Access = Internal;
     Caption = 'Shopify Variant';
     DataClassification = CustomerContent;
 
@@ -188,10 +191,16 @@ table 30129 "Shpfy Variant"
 
     trigger OnDelete()
     var
-        ShopifyInventory: Record "Shpfy Inventory Item";
+        InventoryItem: Record "Shpfy Inventory Item";
+        Metafield: Record "Shpfy Metafield";
     begin
-        ShopifyInventory.SetRange("Variant Id", Id);
-        if not ShopifyInventory.IsEmpty then
-            ShopifyInventory.DeleteAll();
+        InventoryItem.SetRange("Variant Id", Id);
+        if not InventoryItem.IsEmpty then
+            InventoryItem.DeleteAll();
+
+        Metafield.SetRange("Parent Table No.", Database::"Shpfy Variant");
+        Metafield.SetRange("Owner Id", Id);
+        if not Metafield.IsEmpty then
+            Metafield.DeleteAll();
     end;
 }

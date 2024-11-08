@@ -1,10 +1,13 @@
-# Lines starting with '#' are comments.
-# Each line is a file pattern followed by one or more owners.
+# Default owners
+* @microsoft/dynamics-365-business-central
 
-# These owners will be the default owners for everything in the repo.
-*       @microsoft/dynamics-smb
+# AL-Go files and build scripts are owned by Engineering Systems
+.AL-Go/ @microsoft/d365-bc-engineering-systems
+*.ps1 @microsoft/d365-bc-engineering-systems
+/.azuredevops @microsoft/d365-bc-engineering-systems
+/.github @microsoft/d365-bc-engineering-systems
+/Build @microsoft/d365-bc-engineering-systems
+/CODEOWNERS @microsoft/d365-bc-engineering-systems
 
-# AL-Go files are owned by Engineering Systems
-/Modules/.AL-Go @microsoft/dynamics-smb-engineering-systems
-/.github @microsoft/dynamics-smb-engineering-systems
-/CODEOWNERS @microsoft/dynamics-smb-engineering-systems
+/Apps/W1/EDocument @microsoft/d365-bc-integrations @microsoft/d365-bc-engineering-systems
+/Apps/W1/EDocumentsConnector @microsoft/d365-bc-integrations @microsoft/d365-bc-engineering-systems

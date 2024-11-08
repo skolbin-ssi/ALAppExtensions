@@ -12,6 +12,7 @@ codeunit 18077 "Library GST"
         CGSTLbl: Label 'CGST';
         SGSTLbl: Label 'SGST';
         IGSTLbl: Label 'IGST';
+        AmountLEVerifyErr: Label '%1 is incorrect in %2.', Comment = '%1 and %2 = Field Caption and Table Caption';
 
     procedure CreateInitialSetup(): Code[10]
     var
@@ -211,12 +212,61 @@ codeunit 18077 "Library GST"
         exit(Customer."No.");
     end;
 
+    procedure CreateCustomerSetupWithPaymentMethodBank(): Code[20]
+    var
+        Customer: Record Customer;
+        PaymentMethod: Record "Payment Method";
+        VATPostingSetup: Record "VAT Posting Setup";
+        LibrarySales: Codeunit "Library - Sales";
+        CustomerNo: Code[20];
+    begin
+        LibraryERM.FindZeroVATPostingSetup(VATPostingSetup, VATPostingSetup."VAT Calculation Type"::"Normal VAT");
+        LibraryERM.CreateGenBusPostingGroup(GenBusinessPostingGroup);
+        LibraryERM.CreateGenProdPostingGroup(GenProductPostingGroup);
+        CreateGeneralPostingSetup(GenBusinessPostingGroup.Code, GenProductPostingGroup.Code);
+        CreatePaymentMethodWithBalAccount(PaymentMethod);
+
+        CustomerNo := LibrarySales.CreateCustomerNo();
+
+        Customer.Get(CustomerNo);
+        Customer.Validate(Address, CopyStr(LibraryUtility.GenerateGUID(), 1, MaxStrLen(Customer.Address)));
+        Customer.Validate("VAT Bus. Posting Group", VATPostingSetup."VAT Bus. Posting Group");
+        Customer.Validate("Gen. Bus. Posting Group", GenBusinessPostingGroup.Code);
+        Customer.Validate("Payment Method Code", PaymentMethod.Code);
+        Customer.Modify(true);
+
+        exit(Customer."No.");
+    end;
+
+    procedure CreatePaymentMethodWithBalAccount(var PaymentMethod: Record "Payment Method")
+    var
+        BankAccount: Record "Bank Account";
+        LibraryERM: Codeunit "Library - ERM";
+    begin
+        LibraryERM.FindBankAccount(BankAccount);
+        LibraryERM.CreatePaymentMethod(PaymentMethod);
+        PaymentMethod.Validate("Bal. Account Type", PaymentMethod."Bal. Account Type"::"Bank Account");
+        PaymentMethod.Validate("Bal. Account No.", BankAccount."No.");
+        PaymentMethod.Modify(true);
+    end;
+
     procedure CreatePANNos(): Code[20]
     var
         PANNo: Code[20];
     begin
         PANNo := CopyStr(LibraryUtility.GenerateRandomAlphabeticText(5, 0), 1, 5);
         PANNo := PANNo + Format(LibraryRandom.RandIntInRange(1000, 9999));
+        Evaluate(PANNo, (PANNo + CopyStr(LibraryUtility.GenerateRandomAlphabeticText(1, 0), 1, 1)));
+
+        exit(PANNo);
+    end;
+
+    procedure CreateGovtPANNos(): Code[20]
+    var
+        PANNo: Code[20];
+    begin
+        PANNo := CopyStr(LibraryUtility.GenerateRandomAlphabeticText(4, 0), 1, 5);
+        PANNo := PANNo + Format(LibraryRandom.RandIntInRange(10000, 99999));
         Evaluate(PANNo, (PANNo + CopyStr(LibraryUtility.GenerateRandomAlphabeticText(1, 0), 1, 1)));
 
         exit(PANNo);
@@ -1253,5 +1303,24 @@ codeunit 18077 "Library GST"
         OrderAddress.Validate("Post Code", PostCode.Code);
         OrderAddress.Insert(true);
         exit(OrderAddress.Code);
+    end;
+
+    procedure VerifyGLEntryAmount(
+        GLDocType: Enum "Gen. Journal Document Type";
+        PostedDocumentNo: Code[20];
+        GLAccountNo: Code[20];
+        Amount: Decimal)
+    var
+        GLEntry: Record "G/L Entry";
+        GeneralLedgerSetup: Record "General Ledger Setup";
+        Assert: Codeunit Assert;
+    begin
+        GLEntry.SetRange("Document Type", GLDocType);
+        GLEntry.SetRange("Document No.", PostedDocumentNo);
+        GLEntry.SetRange("G/L Account No.", GLAccountNo);
+        GLEntry.FindFirst();
+
+        Assert.AreNearlyEqual(Amount, GLEntry.Amount, GeneralLedgerSetup."Inv. Rounding Precision (LCY)",
+        StrSubstNo(AmountLEVerifyErr, GLEntry.FieldCaption("Amount"), GLEntry.TableCaption));
     end;
 }

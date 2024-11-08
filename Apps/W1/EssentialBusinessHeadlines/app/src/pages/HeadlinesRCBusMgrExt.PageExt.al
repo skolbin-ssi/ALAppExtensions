@@ -3,6 +3,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information. 
 // ------------------------------------------------------------------------------------------------
 
+namespace System.Visualization;
+
 pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business Manager"
 {
 
@@ -20,6 +22,7 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
                 field(MostPopularItemText; MostPopularItemText)
                 {
                     ApplicationArea = Basic, Suite;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -39,6 +42,7 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
                 field(BusiestResourceText; BusiestResourceText)
                 {
                     ApplicationArea = Basic, Suite;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -58,6 +62,7 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
                 field(TopCustomerText; TopCustomerText)
                 {
                     ApplicationArea = Basic, Suite;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -78,6 +83,7 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
                 {
                     ApplicationArea = Basic, Suite;
                     DrillDown = true;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -98,6 +104,7 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
                 {
                     ApplicationArea = Basic, Suite;
                     DrillDown = true;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -117,6 +124,7 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
                 field(SalesIncreaseText; SalesIncreaseText)
                 {
                     ApplicationArea = Basic, Suite;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -135,6 +143,7 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
                 field(OpenVATReturnText; OpenVATReturnText)
                 {
                     ApplicationArea = Basic, Suite;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -153,6 +162,7 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
                 field(OverdueVATReturnText; OverdueVATReturnText)
                 {
                     ApplicationArea = Basic, Suite;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -171,6 +181,7 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
                 field(RecentlyOverdueInvoicesText; RecentlyOverdueInvoicesText)
                 {
                     ApplicationArea = Basic, Suite;
+                    ShowCaption = false;
 
                     trigger OnDrillDown()
                     var
@@ -218,48 +229,30 @@ pageextension 1440 "Headlines RC Bus. Mgr. Ext." extends "Headline RC Business M
     end;
 
     var
-        [InDataSet]
         MostPopularItemVisible: Boolean;
-        [InDataSet]
         MostPopularItemText: Text[250];
 
-        [InDataSet]
         LargestOrderVisible: Boolean;
-        [InDataSet]
         LargestOrderText: Text[250];
 
-        [InDataSet]
         LargestSaleVisible: Boolean;
-        [InDataSet]
         LargestSaleText: Text[250];
 
-        [InDataSet]
         SalesIncreaseVisible: Boolean;
-        [InDataSet]
         SalesIncreaseText: Text[250];
 
-        [InDataSet]
         BusiestResourceVisible: Boolean;
-        [InDataSet]
         BusiestResourceText: Text[250];
 
-        [InDataSet]
         IsTopCustomerVisible: Boolean;
-        [InDataSet]
         TopCustomerText: Text[250];
 
-        [InDataSet]
         OpenVATReturnVisible: Boolean;
-        [InDataSet]
         OpenVATReturnText: Text[250];
 
-        [InDataSet]
         OverdueVATReturnVisible: Boolean;
-        [InDataSet]
         OverdueVATReturnText: Text[250];
 
-        [InDataSet]
         RecentlyOverdueInvoicesVisible: Boolean;
-        [InDataSet]
         RecentlyOverdueInvoicesText: Text[250];
 }

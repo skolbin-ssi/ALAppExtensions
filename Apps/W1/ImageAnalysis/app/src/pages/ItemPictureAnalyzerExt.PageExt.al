@@ -1,3 +1,7 @@
+namespace Microsoft.Utility.ImageAnalysis;
+
+using Microsoft.Inventory.Item;
+using System.AI;
 // ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved. 
 // Licensed under the MIT License. See License.txt in the project root for license information. 
@@ -17,21 +21,20 @@ pageextension 2026 "Item Picture Analyzer Ext" extends "Item Card"
                 Caption = 'Analyze Picture';
                 ToolTip = 'Analyze the picture attached to the item to identify attributes and item category, and assign them to the item.';
                 Image = Refresh;
+
                 trigger OnAction()
                 var
                     ImageAnalysisSetup: Record "Image Analysis Setup";
                     ItemAttrPopulate: Codeunit "Item Attr Populate";
-                    ImageAnalyzerExtMgt: Codeunit "Image Analyzer Ext. Mgt.";
-                    OnRecord: Option " ",Item,Contact;
+                    ImageAnalyzerWizard: Page "Image Analyzer Wizard";
                 begin
-                    if not ImageAnalysisSetup.Get() then begin
-                        ImageAnalyzerExtMgt.SendEnableNotification("No.", OnRecord::Item);
-                        exit;
+                    if not ImageAnalysisSetup.Get() or not ImageAnalysisSetup."Image-Based Attribute Recognition Enabled" then begin
+                        ImageAnalyzerWizard.SetItem(Rec);
+                        ImageAnalyzerWizard.RunModal();
                     end;
-                    if not ImageAnalysisSetup."Image-Based Attribute Recognition Enabled" then begin
-                        ImageAnalyzerExtMgt.SendEnableNotification("No.", OnRecord::Item);
+
+                    if not ImageAnalysisSetup.Get() or not ImageAnalysisSetup."Image-Based Attribute Recognition Enabled" then
                         exit;
-                    end;
 
                     ItemAttrPopulate.AnalyzePicture(rec);
                 end;

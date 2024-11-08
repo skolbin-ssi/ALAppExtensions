@@ -1,3 +1,16 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Distribution;
+
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Inventory.Location;
+using System.Security.AccessControl;
+
 table 18203 "GST Distribution Header"
 {
     Caption = 'Distribution Header';
@@ -133,17 +146,18 @@ table 18203 "GST Distribution Header"
 
     var
         GLSetup: Record "General Ledger Setup";
-        NoSeriesManagement: Codeunit NoSeriesManagement;
         UpdateDimQst: Label 'You may have changed a dimension.Do you want to update the lines?';
         DimensionSetMsg: Label '%1', Comment = '%1 =Dimension Set No.';
 
     procedure AssistEdit(GSTDistributionHeader: Record "GST Distribution Header"): Boolean
+    var
+        NoSeries: Codeunit "No. Series";
     begin
         Copy(Rec);
         GLSetup.Get();
         GLSetup.TestField("GST Distribution Nos.");
-        if NoSeriesManagement.SelectSeries(GLSetup."GST Distribution Nos.", "No. Series", "No. Series") then begin
-            NoSeriesManagement.SetSeries("No.");
+        if NoSeries.LookupRelatedNoSeries(GLSetup."GST Distribution Nos.", "No. Series", "No. Series") then begin
+            "No." := NoSeries.GetNextNo("No. Series");
             Rec := GSTDistributionHeader;
             exit(true);
         end;

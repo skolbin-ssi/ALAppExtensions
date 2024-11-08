@@ -1,3 +1,5 @@
+namespace Microsoft.DataMigration.GP.HistoricalData;
+
 table 40901 "Hist. Gen. Journal Line"
 {
     DataClassification = CustomerContent;
@@ -135,6 +137,9 @@ table 40901 "Hist. Gen. Journal Line"
         key(Key2; "Account No.", "Year", Closed)
         {
             IncludedFields = "Source Type", "Journal Entry No.", "Audit Code";
+        }
+        key(Key3; "Orig. Trx. Source No.")
+        {
         }
     }
 }

@@ -1,3 +1,16 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Purchase;
+
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Purchases.Document;
+using Microsoft.Purchases.History;
+using Microsoft.Utilities;
+
 codeunit 18153 "GST Canc Corr Purch Inv Credit"
 {
     var
@@ -44,6 +57,7 @@ codeunit 18153 "GST Canc Corr Purch Inv Credit"
     var
         PurchInvLine: Record "Purch. Inv. Line";
         TaxTransactionValue: Decimal;
+        IsPaid: Boolean;
     begin
         if PurchInvHeader."GST Vendor Type" = PurchInvHeader."GST Vendor Type"::" " then
             exit;
@@ -62,8 +76,15 @@ codeunit 18153 "GST Canc Corr Purch Inv Credit"
         IsHandled := true;
         PurchInvHeader.CalcFields("Amount Including VAT");
         PurchInvHeader.CalcFields("Remaining Amount");
-        if (PurchInvHeader."Amount Including VAT" + TaxTransactionValue) <> PurchInvHeader."Remaining Amount" then
-            Error(PostedInvoiceIsPaidCancelErr);
+
+        onBeforeCheckPostedPurchaseAmountonCancellation(PurchInvHeader, PurchInvLine, TaxTransactionValue, IsPaid);
+        if not IsPaid then
+            if not PurchInvLine."GST Reverse Charge" then begin
+                if (PurchInvHeader."Amount Including VAT" + TaxTransactionValue) <> PurchInvHeader."Remaining Amount" then
+                    Error(PostedInvoiceIsPaidCancelErr);
+            end else
+                if (PurchInvHeader."Amount Including VAT") <> PurchInvHeader."Remaining Amount" then
+                    Error(PostedInvoiceIsPaidCancelErr);
     end;
 
 
@@ -71,6 +92,7 @@ codeunit 18153 "GST Canc Corr Purch Inv Credit"
     var
         TaxTransactionValue: Record "Tax Transaction Value";
     begin
+        TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
         TaxTransactionValue.SetRange("Tax Record ID", RecordId);
         TaxTransactionValue.SetFilter(Percent, '<>%1', 0);
         TaxTransactionValue.CalcSums(TaxTransactionValue.Amount);
@@ -147,6 +169,7 @@ codeunit 18153 "GST Canc Corr Purch Inv Credit"
     var
         TaxTransactionValue: Record "Tax Transaction Value";
     begin
+        TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
         TaxTransactionValue.SetRange("Tax Type", TaxTypeSetupCode);
         TaxTransactionValue.SetRange("Tax Record ID", RecordId);
         TaxTransactionValue.SetFilter(Percent, '<>%1', 0);
@@ -154,5 +177,8 @@ codeunit 18153 "GST Canc Corr Purch Inv Credit"
             exit(true);
     end;
 
-
+    [IntegrationEvent(false, false)]
+    local procedure onBeforeCheckPostedPurchaseAmountonCancellation(var PurchInvHeader: Record "Purch. Inv. Header"; var PurchInvLine: Record "Purch. Inv. Line"; var TaxTransactionValue: Decimal; var IsPaid: Boolean)
+    begin
+    end;
 }

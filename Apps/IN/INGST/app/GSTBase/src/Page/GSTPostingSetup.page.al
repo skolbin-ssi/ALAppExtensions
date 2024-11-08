@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Base;
+
+using Microsoft.Finance.TaxEngine.Core;
+using System.Integration.Excel;
+
 page 18003 "GST Posting Setup"
 {
     PageType = List;
@@ -142,9 +151,7 @@ page 18003 "GST Posting Setup"
                 begin
                     EditinExcel.EditPageInExcel(
                         'GST Posting Setup',
-                        CurrPage.ObjectId(false),
-                        StrSubstNo(CodeValueLbl,
-                        Rec."State Code"));
+                        Page::"GST Posting Setup");
                 end;
             }
         }
@@ -172,7 +179,6 @@ page 18003 "GST Posting Setup"
         SymbolType: Enum "Symbol Type";
         EmptyGuid: Guid;
         ComponentName: Text[30];
-        CodeValueLbl: Label 'Code %1', Comment = '%1 = State Code';
         GSTComponentErr: Label 'GST component code must be selected';
 
     local procedure FormatLine()

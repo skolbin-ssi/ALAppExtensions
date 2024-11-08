@@ -1,3 +1,7 @@
+namespace Mirosoft.Integration.CompanyHub;
+
+using System.Telemetry;
+
 codeunit 1154 "COHUB Url Task Manager"
 {
     TableNo = "COHUB Enviroment";
@@ -82,7 +86,7 @@ codeunit 1154 "COHUB Url Task Manager"
                 CouldNotFetchCompaniesNotification.Id := GetCouldNotFetchCompaniesGuid();
                 CouldNotFetchCompaniesNotification.Recall();
                 CouldNotFetchCompaniesNotification.Message(CouldNotFetchCompaniesNotificationMsg);
-                CouldNotFetchCompaniesNotification.Scope := NotificationScope::GlobalScope;
+                CouldNotFetchCompaniesNotification.Scope := NotificationScope::LocalScope;
                 CouldNotFetchCompaniesNotification.Send();
             end;
 

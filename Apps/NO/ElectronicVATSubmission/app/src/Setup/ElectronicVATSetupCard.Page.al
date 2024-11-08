@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.VAT.Reporting;
+
+using System.Telemetry;
+
 page 10692 "Electronic VAT Setup Card"
 {
     PageType = Card;
@@ -50,6 +58,11 @@ page 10692 "Electronic VAT Setup Card"
                 {
                     ApplicationArea = Basic, Suite;
                     ToolTip = 'Specifies the URL to connect to ID-Porten.';
+                }
+                field("Login URL"; Rec."Login URL")
+                {
+                    ApplicationArea = Basic, Suite;
+                    ToolTip = 'Specifies the URL to login to ID-Porten.';
                 }
                 field("Redirect URL"; "Redirect URL")
                 {

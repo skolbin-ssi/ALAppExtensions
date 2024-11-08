@@ -1,8 +1,20 @@
+#if not CLEANSCHEMA27
+namespace Microsoft.Integration.SyncBase;
+
 table 2401 "Sync Change"
 {
     Caption = 'Sync Change';
     DataClassification = SystemMetadata;
     ReplicateData = false;
+#if not CLEAN24
+    ObsoleteState = Pending;
+    ObsoleteReason = 'The extension is being obsoleted.';
+    ObsoleteTag = '24.0';
+#else
+    ObsoleteState = Removed;
+    ObsoleteReason = 'The extension is being obsoleted.';
+    ObsoleteTag = '27.0';
+#endif
 
     fields
     {
@@ -62,4 +74,4 @@ table 2401 "Sync Change"
     {
     }
 }
-
+#endif

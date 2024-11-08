@@ -16,18 +16,23 @@ codeunit 139554 "Library - Intrastat"
         LibrarySales: Codeunit "Library - Sales";
         LibraryRandom: Codeunit "Library - Random";
         LibraryWarehouse: Codeunit "Library - Warehouse";
+        LibraryItemTracking: Codeunit "Library - Item Tracking";
 
     procedure CreateIntrastatReportSetup()
     var
         IntrastatReportSetup: Record "Intrastat Report Setup";
         NoSeriesCode: Code[20];
     begin
-        If IntrastatReportSetup.Get() then
+        if IntrastatReportSetup.Get() then
             exit;
         NoSeriesCode := LibraryERM.CreateNoSeriesCode();
         IntrastatReportSetup.Init();
         IntrastatReportSetup.Validate("Intrastat Nos.", NoSeriesCode);
         IntrastatReportSetup.Insert();
+
+        IntrastatReportSetup.Validate("Report Receipts", true);
+        IntrastatReportSetup.Validate("Report Shipments", true);
+        IntrastatReportSetup.Modify(true);
     end;
 
     procedure CreateIntrastatReport(ReportDate: Date; var IntrastatReportNo: Code[20])
@@ -39,7 +44,6 @@ codeunit 139554 "Library - Intrastat"
         IntrastatReportHeader.Insert();
 
         IntrastatReportHeader.Validate("Statistics Period", GetStatisticalPeriod(ReportDate));
-        IntrastatReportHeader.Validate("Currency Identifier", 'S');
         IntrastatReportHeader.Modify();
 
         IntrastatReportNo := IntrastatReportHeader."No.";
@@ -376,11 +380,91 @@ codeunit 139554 "Library - Intrastat"
             exit(LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, false));
     end;
 
+    procedure CreateAndPostPurchaseOrderWithInvoice(var PurchaseLine: Record "Purchase Line"; PostingDate: Date): Code[20]
+    var
+        PurchaseHeader: Record "Purchase Header";
+    begin
+        exit(
+          CreateAndPostPurchaseDocumentMultiLineWithInvoice(
+            PurchaseLine, PurchaseHeader."Document Type"::Order, PostingDate, PurchaseLine.Type::Item, CreateItem(), 1));
+    end;
+
+    procedure CreateAndPostPurchaseDocumentMultiLineWithInvoice(var PurchaseLine: Record "Purchase Line"; DocumentType: Enum "Purchase Document Type"; PostingDate: Date;
+                                                                                                                       LineType: Enum "Purchase Line Type";
+                                                                                                                       ItemNo: Code[20];
+                                                                                                                       NoOfLines: Integer): Code[20]
+    var
+        PurchaseHeader: Record "Purchase Header";
+        i: Integer;
+    begin
+        CreatePurchaseHeader(PurchaseHeader, DocumentType, PostingDate, CreateVendor(GetCountryRegionCode()));
+        for i := 1 to NoOfLines do
+            CreatePurchaseLine(PurchaseHeader, PurchaseLine, LineType, ItemNo);
+        exit(LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, true));
+    end;
+
     procedure CreateItem(): Code[20]
     var
         Item: Record Item;
     begin
         LibraryInventory.CreateItemWithTariffNo(Item, CopyStr(LibraryUtility.CreateCodeRecord(DATABASE::"Tariff Number"), 3, 10));
+        exit(Item."No.");
+    end;
+
+    procedure CreateTrackedItem(Tracking: Integer; CreateInfo: Boolean; CreateInfoOnPosting: Boolean;
+        var SerialNoInformation: Record "Serial No. Information";
+        var LotNoInformation: Record "Lot No. Information";
+        var PackageNoInformation: Record "Package No. Information"): Code[20]
+    var
+        CountryRegion: Record "Country/Region";
+        Item: Record Item;
+        ItemTrackingCode: Record "Item Tracking Code";
+    begin
+        CreateCountryRegion(CountryRegion, false);
+        LibraryInventory.CreateItem(Item);
+        case Tracking of
+            1:
+                begin
+                    LibraryItemTracking.CreateItemTrackingCode(ItemTrackingCode, true, false, false); // Serial No.
+                    if CreateInfo then begin
+                        LibraryItemTracking.CreateSerialNoInformation(SerialNoInformation, Item."No.", '', LibraryUtility.GenerateGUID());
+                        SerialNoInformation.Validate("Country/Region Code", CountryRegion.Code);
+                        SerialNoInformation.Modify(true);
+                    end;
+                    if CreateInfoOnPosting then begin
+                        ItemTrackingCode.Validate("Create SN Info on Posting", true);
+                        ItemTrackingCode.Modify(true);
+                    end;
+                end;
+            2:
+                begin
+                    LibraryItemTracking.CreateItemTrackingCode(ItemTrackingCode, false, true, false); // Lot No.
+                    if CreateInfo then begin
+                        LibraryItemTracking.CreateLotNoInformation(LotNoInformation, Item."No.", '', LibraryUtility.GenerateGUID());
+                        LotNoInformation.Validate("Country/Region Code", CountryRegion.Code);
+                        LotNoInformation.Modify(true);
+                    end;
+                    if CreateInfoOnPosting then begin
+                        ItemTrackingCode.Validate("Create Lot No. Info on posting", true);
+                        ItemTrackingCode.Modify(true);
+                    end;
+                end;
+            3:
+                begin
+                    LibraryItemTracking.CreateItemTrackingCode(ItemTrackingCode, false, false, true); // Package No.
+                    if CreateInfo then begin
+                        LibraryItemTracking.CreatePackageNoInformation(PackageNoInformation, Item."No.", LibraryUtility.GenerateGUID());
+                        PackageNoInformation.Validate("Country/Region Code", CountryRegion.Code);
+                        PackageNoInformation.Modify(true);
+                    end;
+                end;
+        end;
+
+        Item.Validate("Item Tracking Code", ItemTrackingCode.Code);
+        CreateCountryRegion(CountryRegion, true);
+        Item.Validate("Country/Region of Origin Code", CountryRegion.Code);
+        Item.Modify(true);
+
         exit(Item."No.");
     end;
 
@@ -558,6 +642,26 @@ codeunit 139554 "Library - Intrastat"
             exit(LibrarySales.PostSalesDocument(SalesHeader, true, false));
     end;
 
+    procedure CreateAndPostSalesOrderWithInvoice(var SalesLine: Record "Sales Line"; PostingDate: Date): Code[20]
+    var
+        SalesHeader: Record "Sales Header";
+    begin
+        exit(
+          CreateAndPostSalesDocumentMultiLineWithInvoice(
+            SalesLine, SalesHeader."Document Type"::Order, PostingDate, SalesLine.Type::Item, CreateItem(), 1));
+    end;
+
+    procedure CreateAndPostSalesDocumentMultiLineWithInvoice(var SalesLine: Record "Sales Line"; DocumentType: Enum "Sales Document Type"; PostingDate: Date;
+                                                                                                         LineType: Enum "Sales Line Type";
+                                                                                                         ItemNo: Code[20];
+                                                                                                         NoOfSalesLines: Integer): Code[20]
+    var
+        SalesHeader: Record "Sales Header";
+    begin
+        CreateSalesDocument(SalesHeader, SalesLine, CreateCustomer(), PostingDate, DocumentType, LineType, ItemNo, NoOfSalesLines);
+        exit(LibrarySales.PostSalesDocument(SalesHeader, true, true));
+    end;
+
     procedure CreateAndPostTransferOrder(var TransferLine: Record "Transfer Line"; FromLocation: Code[10]; ToLocation: Code[10]; ItemNo: Code[20])
     var
         TransferHeader: Record "Transfer Header";
@@ -612,15 +716,23 @@ codeunit 139554 "Library - Intrastat"
         exit(CountryRegion.Code);
     end;
 
+    procedure GetCompanyInfoCountryRegionCode(): Code[10]
+    var
+        CompanyInformation: Record "Company Information";
+    begin
+        CompanyInformation.Get();
+        exit(CompanyInformation."Country/Region Code");
+    end;
+
     procedure GetIntrastatNo() NoSeriesCode: Code[20]
     var
         IntrastatReportSetup: Record "Intrastat Report Setup";
         NoSeries: Record "No. Series";
-        NoSeriesManagement: Codeunit NoSeriesManagement;
+        NoSeriesCodeunit: Codeunit "No. Series";
     begin
         NoSeries.SetFilter(NoSeries.Code, IntrastatReportSetup."Intrastat Nos.");
         NoSeries.FindFirst();
-        NoSeriesCode := NoSeriesManagement.GetNextNo(NoSeries.Code, WorkDate(), true);
+        NoSeriesCode := NoSeriesCodeunit.GetNextNo(NoSeries.Code);
     end;
 
     procedure GetStatisticalPeriod(ReportDate: Date): code[20]
@@ -766,6 +878,15 @@ codeunit 139554 "Library - Intrastat"
         PurchasesPayablesSetup.Modify(true);
     end;
 
+    procedure UpdateReturnReceiptOnCreditMemoSalesSetup(ReturnReceiptOnCreditMemo: Boolean)
+    var
+        SalesReceivablesSetup: Record "Sales & Receivables Setup";
+    begin
+        SalesReceivablesSetup.Get();
+        SalesReceivablesSetup.Validate("Return Receipt on Credit Memo", ReturnReceiptOnCreditMemo);
+        SalesReceivablesSetup.Modify(true);
+    end;
+
     procedure UpdateIntrastatCodeInCountryRegion()
     var
         CompanyInformation: Record "Company Information";
@@ -801,9 +922,64 @@ codeunit 139554 "Library - Intrastat"
         exit(Item."Net Weight");
     end;
 
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::IntrastatReportManagement, 'OnAfterCheckFeatureEnabled', '', true, true)]
-    local procedure OnAfterCheckFeatureEnabled(var IsEnabled: Boolean)
+    procedure CreateAndPostSalesOrderWithCountryAndLocation(CountryRegionCode: Code[10]; LocationCode: Code[10]; ItemNo: Code[20]; NewShipReceive: Boolean; NewInvoice: Boolean): Code[20]
+    var
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
     begin
-        IsEnabled := true;
+        LibrarySales.CreateCustomerWithLocationCode(Customer, LocationCode);
+        Customer.Validate("Country/Region Code", CountryRegionCode);
+        Customer.Modify(true);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        SalesHeader.Validate("Location Code", LocationCode);
+        SalesHeader.Validate("VAT Country/Region Code", CountryRegionCode);
+        SalesHeader.Modify(true);
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, ItemNo, 1);
+        exit(LibrarySales.PostSalesDocument(SalesHeader, NewShipReceive, NewInvoice));
+    end;
+
+    procedure CreateSalesOrdersWithDropShipment(var SalesHeader: Record "Sales Header"; EUCustomer: Boolean): Code[20]
+    var
+        Customer: Record Customer;
+        SalesLine: Record "Sales Line";
+    begin
+        if EUCustomer then
+            LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, CreateCustomer())
+        else begin
+            LibrarySales.CreateCustomer(Customer);
+            LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.")
+        end;
+        CreateDropShipmentLine(SalesLine, SalesHeader);
+        SalesLine.Validate("Unit Price", LibraryRandom.RandDec(1000, 2));
+        SalesLine.Modify(true);
+        LibrarySales.ReleaseSalesDocument(SalesHeader);
+        exit(SalesLine."No.");
+    end;
+
+    procedure CreatePurchOrdersWithDropShipment(var PurchHeader: Record "Purchase Header"; SellToCustomerNo: Code[20]; EUVendor: Boolean)
+    begin
+        if EUVendor then
+            LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, CreateVendor(GetCountryRegionCode()))
+        else
+            LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, CreateVendor(''));
+        PurchHeader.Validate("Sell-to Customer No.", SellToCustomerNo);
+        PurchHeader.Modify(true);
+
+        LibraryPurchase.GetDropShipment(PurchHeader);
+    end;
+
+    procedure CreateDropShipmentLine(var SalesLine: Record "Sales Line"; var SalesHeader: Record "Sales Header")
+    var
+        Purchasing: Record Purchasing;
+        Item: Record Item;
+    begin
+        Item.Get(CreateItem());
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", LibraryRandom.RandDec(10, 2));
+        LibraryPurchase.CreatePurchasingCode(Purchasing);
+        Purchasing.Validate("Drop Shipment", true);
+        Purchasing.Modify(true);
+        SalesLine.Validate("Purchasing Code", Purchasing.Code);
+        SalesLine.Modify(true);
     end;
 }

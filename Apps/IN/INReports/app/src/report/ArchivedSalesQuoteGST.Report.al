@@ -1,3 +1,26 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.Reports;
+
+using Microsoft.CRM.Team;
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.VAT.Calculation;
+using Microsoft.Foundation.Address;
+using Microsoft.Foundation.Company;
+using Microsoft.Foundation.PaymentTerms;
+using Microsoft.Foundation.Shipping;
+using Microsoft.Inventory.Location;
+using Microsoft.Sales.Archive;
+using Microsoft.Sales.Customer;
+using Microsoft.Sales.Document;
+using Microsoft.Sales.Setup;
+using System.Globalization;
+using System.Utilities;
+
 report 18003 "Archived Sales Quote GST"
 {
     DefaultLayout = RDLC;
@@ -886,7 +909,8 @@ report 18003 "Archived Sales Quote GST"
             var
                 "Sell-to Country": Text[50];
             begin
-                CurrReport.Language := Language.GetLanguageID("Language Code");
+                CurrReport.Language := GlobalLanguage.GetLanguageID("Language Code");
+                CurrReport.FormatRegion := GlobalLanguage.GetFormatRegionOrDefault("Format Region");
                 Customer.Get("Bill-to Customer No.");
                 if RespCenter.Get("Responsibility Center") then begin
                     FormatAddr.RespCenter(CompanyAddr, RespCenter);
@@ -1025,7 +1049,7 @@ report 18003 "Archived Sales Quote GST"
         RespCenter: Record "Responsibility Center";
         Country: Record "Country/Region";
         CurrExchRate: Record "Currency Exchange Rate";
-        Language: Codeunit "Language";
+        GlobalLanguage: Codeunit "Language";
         SalesCountPrintedArch: Codeunit "SalesCount-PrintedArch";
         FormatAddr: Codeunit "Format Address";
         CustAddr: array[8] of Text[50];

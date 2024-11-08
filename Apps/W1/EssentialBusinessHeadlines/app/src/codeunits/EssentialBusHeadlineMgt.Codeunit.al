@@ -3,6 +3,19 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
 
+namespace System.Visualization;
+
+using Microsoft.Sales.Document;
+using Microsoft.Sales.Receivables;
+using Microsoft.Sales.History;
+using Microsoft.Finance.VAT.Reporting;
+using Microsoft.Inventory.Item;
+using Microsoft.Projects.Resources.Resource;
+using Microsoft.Sales.Customer;
+using Microsoft.Finance.Currency;
+using System.Reflection;
+using Microsoft.Finance.GeneralLedger.Setup;
+
 codeunit 1437 "Essential Bus. Headline Mgt."
 {
     var
@@ -21,6 +34,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         OverdueVATReturnPeriodTxt: Label 'Your VAT return is overdue since %1 (%2 days)', Comment = '%1 - date; %2 - days count';
         OpenVATReturnPeriodTxt: Label 'Your VAT return is due %1 (in %2 days)', Comment = '%1 - date; %2 - days count';
         RecentlyOverdueInvoicesPayloadTxt: Label 'Overdue invoices up by %1. You can collect %2', Comment = '%1 is the number of recently overdue invoices, %2 is the total amount of the recently overdue invoices', MaxLength = 60; // support up to 3-digit number of overdue invoices and currencies up to 12 chars: '1,234,567 kr'
+        NoDaysAgoFilterTxt: Label '<-%1D>', Locked = true;
 
     local procedure ChooseQualifier(QualifierWeek: Text; QualifierMonth: Text; Qualifier3Months: Text; DaysSearch: Integer): Text
     begin
@@ -68,7 +82,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         BestQty: Decimal;
         HeadlineText: Text;
     begin
-        BestSoldItemQuery.SetFilter(PostDate, '>=%1&<=%2', CalcDate(StrSubstNo('<-%1D>', DaysSearch), WorkDate()), WorkDate());
+        BestSoldItemQuery.SetFilter(PostDate, '>=%1&<=%2', CalcDate(StrSubstNo(NoDaysAgoFilterTxt, DaysSearch), WorkDate()), WorkDate());
         BestSoldItemQuery.SetRange(ProductType, SalesLine.Type::Item);
         if not BestSoldItemQuery.Open() then
             exit;
@@ -77,6 +91,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
             exit;
 
         BestQty := BestSoldItemQuery.SumQuantity;
+        Item.SetLoadFields(Description, "Base Unit of Measure");
         Item.Get(BestSoldItemQuery.ProductNo);
         HeadlineText := EssentialBusinessHeadline."Headline Text";
 
@@ -90,7 +105,8 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         EssentialBusinessHeadline."Headline Text" := CopyStr(HeadlineText, 1, MaxStrLen(EssentialBusinessHeadline."Headline Text"));
         HeadlineDetails.SetRange(Type, HeadlineDetails.Type::Item);
         HeadlineDetails.SetRange("User Id", UserSecurityId());
-        HeadlineDetails.DeleteAll();
+        if not HeadlineDetails.IsEmpty() then
+            HeadlineDetails.DeleteAll();
 
         InsertHeadlineDetails(BestSoldItemQuery.ProductNo, HeadlineDetails.Type::Item, Item.Description, Item."Base Unit of Measure", BestSoldItemQuery.SumQuantity, 0);
 
@@ -127,7 +143,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         HeadlineDetails: Page "Headline Details";
     begin
         EssentialBusinessHeadlines.GetOrCreateHeadline(EssentialBusinessHeadlines."Headline Name"::MostPopularItem);
-        HeadlineDetails.InitProduct(SalesLine.Type::Item);
+        HeadlineDetails.InitProduct(SalesLine.Type::Item.AsInteger());
         HeadlineDetails.Run();
     end;
 
@@ -164,7 +180,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         BestQty: Decimal;
         HeadlineText: Text;
     begin
-        BusiestResource.SetFilter(PostDate, '>=%1&<=%2', CalcDate(StrSubstNo('<-%1D>', DaysSearch), WorkDate()), WorkDate());
+        BusiestResource.SetFilter(PostDate, '>=%1&<=%2', CalcDate(StrSubstNo(NoDaysAgoFilterTxt, DaysSearch), WorkDate()), WorkDate());
         BusiestResource.SetRange(ProductType, SalesLine.Type::Resource);
         if not BusiestResource.Open() then
             exit;
@@ -172,6 +188,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         if not BusiestResource.Read() then
             exit;
         BestQty := BusiestResource.SumQuantity;
+        Resource.SetLoadFields(Name, "Base Unit of Measure");
         Resource.Get(BusiestResource.ProductNo);
         HeadlineText := EssentialBusinessHeadline."Headline Text";
 
@@ -185,7 +202,8 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         EssentialBusinessHeadline."Headline Text" := CopyStr(HeadlineText, 1, MaxStrLen(EssentialBusinessHeadline."Headline Text"));
         HeadlineDetails.SetRange(Type, HeadlineDetails.Type::Resource);
         HeadlineDetails.SetRange("User Id", UserSecurityId());
-        HeadlineDetails.DeleteAll();
+        if not HeadlineDetails.IsEmpty() then
+            HeadlineDetails.DeleteAll();
 
         InsertHeadlineDetails(BusiestResource.ProductNo, HeadlineDetails.Type::Resource, Resource.Name, Resource."Base Unit of Measure", BusiestResource.SumQuantity, 0);
 
@@ -237,7 +255,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         HeadlineDetails: Page "Headline Details";
     begin
         EssentialBusinessHeadlines.GetOrCreateHeadline(EssentialBusinessHeadlines."Headline Name"::BusiestResource);
-        HeadlineDetails.InitProduct(SalesLine.Type::Resource);
+        HeadlineDetails.InitProduct(SalesLine.Type::Resource.AsInteger());
         HeadlineDetails.Run();
     end;
 
@@ -266,12 +284,11 @@ codeunit 1437 "Essential Bus. Headline Mgt."
     var
         [SecurityFiltering(SecurityFilter::Filtered)]
         SalesHeader: Record "Sales Header";
-        CurrentKeyOk: Boolean;
         HeadlineText: Text;
     begin
         SalesHeader.SetRange("Document Type", SalesHeader."Document Type"::Order);
-        SalesHeader.SetFilter("Posting Date", '>=%1&<=%2', CalcDate(StrSubstNo('<-%1D>', DaysSearch), WorkDate()), WorkDate());
-        CurrentKeyOk := SalesHeader.SetCurrentKey(Amount);
+        SalesHeader.SetFilter("Posting Date", '>=%1&<=%2', CalcDate(StrSubstNo(NoDaysAgoFilterTxt, DaysSearch), WorkDate()), WorkDate());
+        SalesHeader.SetCurrentKey(Amount);
         SalesHeader.SetAscending(Amount, false);
         HeadlineText := EssentialBusinessHeadline."Headline Text";
 
@@ -302,7 +319,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         EssentialBusinessHeadline.GetOrCreateHeadline(EssentialBusinessHeadline."Headline Name"::LargestOrder);
         SalesHeader.SetRange("Document Type", SalesHeader."Document Type"::Order);
         SalesHeader.SetFilter("Posting Date", '>=%1&<=%2',
-            CalcDate(StrSubstNo('<-%1D>', EssentialBusinessHeadline."Headline Computation Period"), WorkDate()),
+            CalcDate(StrSubstNo(NoDaysAgoFilterTxt, EssentialBusinessHeadline."Headline Computation Period"), WorkDate()),
             WorkDate());
 
         SalesHeader.SetCurrentKey(Amount);
@@ -335,33 +352,34 @@ codeunit 1437 "Essential Bus. Headline Mgt."
     var
         [SecurityFiltering(SecurityFilter::Filtered)]
         CustomerLedgerEntry: Record "Cust. Ledger Entry";
-        CurrentKeyOk: Boolean;
         HeadlineText: Text;
     begin
-        CustomerLedgerEntry.SetFilter("Posting Date", '>=%1&<=%2', CalcDate(StrSubstNo('<-%1D>', DaysSearch), WorkDate()), WorkDate());
+        CustomerLedgerEntry.SetFilter("Posting Date", '>=%1&<=%2', CalcDate(StrSubstNo(NoDaysAgoFilterTxt, DaysSearch), WorkDate()), WorkDate());
         CustomerLedgerEntry.SetRange("Document Type", CustomerLedgerEntry."Document Type"::Invoice);
         CustomerLedgerEntry.SetRange(Reversed, false);
-        CurrentKeyOk := CustomerLedgerEntry.SetCurrentKey("Amount (LCY)");
-        CustomerLedgerEntry.SetAscending("Amount (LCY)", false);
+        CustomerLedgerEntry.SetLoadFields("Currency Code", "Sales (LCY)");
+        CustomerLedgerEntry.SetCurrentKey("Sales (LCY)");
+        CustomerLedgerEntry.SetAscending("Sales (LCY)", false);
         HeadlineText := EssentialBusinessHeadline."Headline Text";
 
         // we need at least 5 sales for this headline to be valid
-        if (CustomerLedgerEntry.Count() > 5) and CustomerLedgerEntry.FindFirst() then begin
-            CustomerLedgerEntry.CalcFields(Amount);
+        if (CustomerLedgerEntry.Count() > 5) then begin
+            CustomerLedgerEntry.SetAutoCalcFields(Amount);
+            if CustomerLedgerEntry.FindFirst() then begin
+                if not Headlines.GetHeadlineText(
+                    ChooseQualifier(QualifierWeekTxt, QualifierMonthTxt, Qualifier3MonthsTxt, DaysSearch),
+                    StrSubstNo(LargestSalePayloadTxt,
+                    Headlines.Emphasize(FormatCurrency(CustomerLedgerEntry.Amount, CustomerLedgerEntry."Currency Code"))),
+                    HeadlineText)
+                then
+                    exit;
 
-            if not Headlines.GetHeadlineText(
-                ChooseQualifier(QualifierWeekTxt, QualifierMonthTxt, Qualifier3MonthsTxt, DaysSearch),
-                StrSubstNo(LargestSalePayloadTxt,
-                  Headlines.Emphasize(FormatCurrency(CustomerLedgerEntry.Amount, CustomerLedgerEntry."Currency Code"))),
-                HeadlineText)
-            then
-                exit;
-
-            EssentialBusinessHeadline."Headline Text" := CopyStr(HeadlineText, 1, MaxStrLen(EssentialBusinessHeadline."Headline Text"));
-            EssentialBusinessHeadline.Validate("Headline Visible", true);
-            EssentialBusinessHeadline.Validate("Headline Computation WorkDate", WorkDate());
-            EssentialBusinessHeadline.Validate("Headline Computation Period", DaysSearch);
-            exit(true);
+                EssentialBusinessHeadline."Headline Text" := CopyStr(HeadlineText, 1, MaxStrLen(EssentialBusinessHeadline."Headline Text"));
+                EssentialBusinessHeadline.Validate("Headline Visible", true);
+                EssentialBusinessHeadline.Validate("Headline Computation WorkDate", WorkDate());
+                EssentialBusinessHeadline.Validate("Headline Computation Period", DaysSearch);
+                exit(true);
+            end
         end else
             EssentialBusinessHeadline.Validate("Headline Visible", false);
     end;
@@ -374,13 +392,13 @@ codeunit 1437 "Essential Bus. Headline Mgt."
     begin
         EssentialBusinessHeadline.GetOrCreateHeadline(EssentialBusinessHeadline."Headline Name"::LargestSale);
         CustomerLedgerEntry.SetFilter("Posting Date", '>=%1&<=%2',
-            CalcDate(StrSubstNo('<-%1D>', EssentialBusinessHeadline."Headline Computation Period"), WorkDate()),
+            CalcDate(StrSubstNo(NoDaysAgoFilterTxt, EssentialBusinessHeadline."Headline Computation Period"), WorkDate()),
             WorkDate());
         CustomerLedgerEntry.SetRange("Document Type", CustomerLedgerEntry."Document Type"::Invoice);
         CustomerLedgerEntry.SetRange(Reversed, false);
 
-        CustomerLedgerEntry.SetCurrentKey("Amount (LCY)");
-        CustomerLedgerEntry.SetAscending("Amount (LCY)", false);
+        CustomerLedgerEntry.SetCurrentKey("Sales (LCY)");
+        CustomerLedgerEntry.SetAscending("Sales (LCY)", false);
         CustomerLedgerEntry.Ascending(false);
 
         Page.Run(Page::"Customer Ledger Entries", CustomerLedgerEntry);
@@ -412,7 +430,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         SalesThisMonthLastYear: Integer;
         HeadlineText: Text;
     begin
-        SalesIncreaseHeadline.SetFilter(PostDate, '>=%1&<=%2', CalcDate(StrSubstNo('<-%1D>', DaysSearch), WorkDate()), WorkDate());
+        SalesIncreaseHeadline.SetFilter(PostDate, '>=%1&<=%2', CalcDate(StrSubstNo(NoDaysAgoFilterTxt, DaysSearch), WorkDate()), WorkDate());
         if not SalesIncreaseHeadline.Open() then
             exit;
         if not SalesIncreaseHeadline.Read() then
@@ -427,8 +445,8 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         end;
 
         SalesIncreaseHeadline.SetFilter(PostDate, '>=%1&<=%2',
-            CalcDate(StrSubstNo('<-%1D>', 365 + DaysSearch), WorkDate()),
-            CalcDate(StrSubstNo('<-%1D>', 365), WorkDate()));
+            CalcDate(StrSubstNo(NoDaysAgoFilterTxt, 365 + DaysSearch), WorkDate()),
+            CalcDate(StrSubstNo(NoDaysAgoFilterTxt, 365), WorkDate()));
 
         if not SalesIncreaseHeadline.Open() then
             exit;
@@ -472,10 +490,10 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         SalesInvoiceHeader.SetRange(Cancelled, false);
         SalesInvoiceHeader.SetFilter(Amount, '>%1', 0);
         SalesInvoiceHeader.SetFilter("Posting Date", '(>=%1&<=%2)|(>=%3&<=%4)',
-            CalcDate(StrSubstNo('<-%1D>', DaysSearch), WorkDate()),
+            CalcDate(StrSubstNo(NoDaysAgoFilterTxt, DaysSearch), WorkDate()),
             WorkDate(),
-            CalcDate(StrSubstNo('<-%1D>', 365 + DaysSearch), WorkDate()),
-            CalcDate(StrSubstNo('<-%1D>', 365), WorkDate()));
+            CalcDate(StrSubstNo(NoDaysAgoFilterTxt, 365 + DaysSearch), WorkDate()),
+            CalcDate(StrSubstNo(NoDaysAgoFilterTxt, 365), WorkDate()));
 
         SalesInvoiceHeader.SetCurrentKey("Posting Date");
         SalesInvoiceHeader.Ascending(false);
@@ -491,6 +509,7 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         HeadlineText: Text;
     begin
         EssentialBusinessHeadline.GetOrCreateHeadline(EssentialBusinessHeadline."Headline Name"::RecentlyOverdueInvoices);
+        CustomerLedgerEntry.SetLoadFields(Open, "Due Date", "Document Type");
         FindRecentlyOverdueInvoices(CustomerLedgerEntry, WorkDate());
         RecentlyOverdueInvoices := CustomerLedgerEntry.Count();
 
@@ -501,9 +520,9 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         end;
 
         TotalAmount := 0.0;
+        CustomerLedgerEntry.SetAutoCalcFields("Amount (LCY)");
         if CustomerLedgerEntry.FindSet() then
             repeat
-                CustomerLedgerEntry.CalcFields("Amount (LCY)");
                 TotalAmount := TotalAmount + CustomerLedgerEntry."Amount (LCY)";
             until CustomerLedgerEntry.Next() = 0;
 
@@ -571,28 +590,26 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         HeadlineDetails: Record "Headline Details Per User";
         TopCustomerHeadlineQuery: Query "Top Customer Headline";
         HeadlineText: Text;
-		DocumentTypeFilter: Text;
+        DocumentTypeFilter: Text;
     begin
         TopCustomerHeadlineQuery.SetFilter(PostDate, '>=%1&<=%2',
-            CalcDate(StrSubstNo('<-%1D>', DaysSearch), WorkDate()),
+            CalcDate(StrSubstNo(NoDaysAgoFilterTxt, DaysSearch), WorkDate()),
             WorkDate());
-			
-		DocumentTypeFilter := Customer.GetTopCustomerHeadlineQueryDocumentTypeFilter();
-		if DocumentTypeFilter <> '' then
-			TopCustomerHeadlineQuery.SetFilter(DocumentType, DocumentTypeFilter);
-			
+
+        DocumentTypeFilter := Customer.GetTopCustomerHeadlineQueryDocumentTypeFilter();
+        if DocumentTypeFilter <> '' then
+            TopCustomerHeadlineQuery.SetFilter(DocumentType, DocumentTypeFilter);
+
         if not TopCustomerHeadlineQuery.Open() then
             exit;
 
         if not TopCustomerHeadlineQuery.Read() then
             exit;
 
-        Customer.Get(TopCustomerHeadlineQuery.CustomerNo);
-
         HeadlineText := EssentialBusinessHeadline."Headline Text";
         if not Headlines.GetHeadlineText(
             ChooseQualifier(QualifierWeekTxt, QualifierMonthTxt, Qualifier3MonthsTxt, DaysSearch),
-            GetTopCustomerPayload(Customer.Name, FormatLocalCurrency(TopCustomerHeadlineQuery.SumAmountLcy)),
+            GetTopCustomerPayload(TopCustomerHeadlineQuery.CustomerName, FormatLocalCurrency(TopCustomerHeadlineQuery.SumAmountLcy)),
             HeadlineText)
         then
             exit;
@@ -601,7 +618,8 @@ codeunit 1437 "Essential Bus. Headline Mgt."
         EssentialBusinessHeadline."Headline Text" := CopyStr(HeadlineText, 1, MaxStrLen(EssentialBusinessHeadline."Headline Text"));
         HeadlineDetails.SetRange(Type, HeadlineDetails.Type::Customer);
         HeadlineDetails.SetRange("User Id", UserSecurityId());
-        HeadlineDetails.DeleteAll();
+        if not HeadlineDetails.IsEmpty() then
+            HeadlineDetails.DeleteAll();
         InsertHeadlineDetails(TopCustomerHeadlineQuery.No, HeadlineDetails.Type::Customer, TopCustomerHeadlineQuery.CustomerName, '', 0, TopCustomerHeadlineQuery.SumAmountLcy);
 
         // if there is only one customer last month, do not set to visible
@@ -734,15 +752,13 @@ codeunit 1437 "Essential Bus. Headline Mgt."
 
     local procedure UpdateVATReturnHeadline(var EssentialBusinessHeadline: Record "Ess. Business Headline Per Usr"; HeadlineText: Text)
     begin
-        with EssentialBusinessHeadline do begin
-            Validate("Headline Visible", HeadlineText <> '');
-            if "Headline Visible" then begin
-                Headlines.GetHeadlineText(VATReturnQualifierTxt, HeadlineText, HeadlineText);
-                Validate("Headline Text", CopyStr(HeadlineText, 1, MaxStrLen("Headline Text")));
-                Validate("Headline Computation WorkDate", WorkDate());
-            end;
-            Modify();
+        EssentialBusinessHeadline.Validate("Headline Visible", HeadlineText <> '');
+        if EssentialBusinessHeadline."Headline Visible" then begin
+            Headlines.GetHeadlineText(VATReturnQualifierTxt, HeadlineText, HeadlineText);
+            EssentialBusinessHeadline.Validate(EssentialBusinessHeadline."Headline Text", CopyStr(HeadlineText, 1, MaxStrLen(EssentialBusinessHeadline."Headline Text")));
+            EssentialBusinessHeadline.Validate(EssentialBusinessHeadline."Headline Computation WorkDate", WorkDate());
         end;
+        EssentialBusinessHeadline.Modify();
     end;
 
     procedure OnDrillDownOpenVATReturn()

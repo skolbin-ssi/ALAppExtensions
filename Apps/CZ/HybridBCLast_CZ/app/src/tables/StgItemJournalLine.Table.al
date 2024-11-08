@@ -1,15 +1,10 @@
+#if not CLEANSCHEMA24
 table 11714 "Stg Item Journal Line"
 {
     Caption = 'Stg Item Journal Line';
-#if not CLEAN21
-    ObsoleteState = Pending;
-    ObsoleteReason = 'This functionality will be replaced by invoking the actual upgrade from each of the apps';
-    ObsoleteTag = '21.0';
-#else
     ObsoleteState = Removed;
     ObsoleteReason = 'This functionality will be replaced by invoking the actual upgrade from each of the apps';
-    ObsoleteTag = '23.0';
-#endif
+    ObsoleteTag = '24.0';
 
     fields
     {
@@ -229,8 +224,6 @@ table 11714 "Stg Item Journal Line"
             Caption = 'Last Item Ledger Entry No.';
             Editable = false;
             TableRelation = "Item Ledger Entry";
-            //This property is currently not supported
-            //TestTableRelation = false;
         }
         field(56; "Phys. Inventory"; Boolean)
         {
@@ -820,13 +813,16 @@ table 11714 "Stg Item Journal Line"
             OptionCaption = ' ,Item,SKU';
             OptionMembers = " ",Item,SKU;
         }
+#if not CLEANSCHEMA23
         field(11763; "G/L Correction"; Boolean)
         {
             Caption = 'G/L Correction';
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Core Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
+#endif
+#if not CLEANSCHEMA18
         field(11790; "Source No. 2"; Code[20])
         {
             Caption = 'Source No. 2';
@@ -837,16 +833,20 @@ table 11714 "Stg Item Journal Line"
             IF ("Source Type" = CONST(Vendor)) Vendor;
             ObsoleteTag = '18.0';
         }
+#endif
+#if not CLEANSCHEMA23
         field(11791; "Source No. 3"; Code[20])
         {
             Caption = 'Delivery-to Source No.';
             TableRelation = IF ("Source Type" = CONST(Customer)) "Ship-to Address".Code WHERE("Customer No." = FIELD("Source No."))
             ELSE
             IF ("Source Type" = CONST(Vendor)) "Order Address".Code WHERE("Vendor No." = FIELD("Source No."));
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Advanced Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
+#endif
+#if not CLEANSCHEMA18
         field(31043; "FA No."; Code[20])
         {
             Caption = 'FA No.';
@@ -870,84 +870,89 @@ table 11714 "Stg Item Journal Line"
             ObsoleteReason = 'The functionality of VAT Registration in Other Countries has been removed and this field should not be used. (Obsolete::Removed in release 01.2021)';
             ObsoleteTag = '18.0';
         }
+#endif
+#if not CLEANSCHEMA23
         field(31061; "Tariff No."; Code[20])
         {
             Caption = 'Tariff No.';
             TableRelation = "Tariff Number";
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Core Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
         field(31063; "Physical Transfer"; Boolean)
         {
             Caption = 'Physical Transfer';
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Core Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
+#endif
         field(31065; "Shipment Method Code"; Code[10])
         {
             Caption = 'Shipment Method Code';
             TableRelation = "Shipment Method";
         }
+#if not CLEANSCHEMA23
         field(31066; "Net Weight"; Decimal)
         {
             Caption = 'Net Weight';
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Core Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
         field(31069; "Incl. in Intrastat Stat. Value"; Boolean)
         {
             Caption = 'Incl. in Intrastat Stat. Value';
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Core Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
         field(31070; "Incl. in Intrastat Amount"; Boolean)
         {
             Caption = 'Incl. in Intrastat Amount';
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Core Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
         field(31071; "Country/Region of Origin Code"; Code[10])
         {
             Caption = 'Country/Region of Origin Code';
             TableRelation = "Country/Region";
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Core Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
         field(31072; "Statistic Indication"; Code[10])
         {
             Caption = 'Statistic Indication';
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Core Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
         field(31074; "Currency Code"; Code[10])
         {
             Caption = 'Currency Code';
             TableRelation = Currency;
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Advanced Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
         field(31075; "Currency Factor"; Decimal)
         {
             Caption = 'Currency Factor';
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Advanced Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
         field(31076; "Intrastat Transaction"; Boolean)
         {
             Caption = 'Intrastat Transaction';
-            ObsoleteState = Pending;
+            ObsoleteState = Removed;
             ObsoleteReason = 'Moved to Core Localization Pack for Czech.';
-            ObsoleteTag = '18.0';
+            ObsoleteTag = '23.0';
         }
+#endif
         field(31077; "Whse. Net Change Template"; Code[10])
         {
             Caption = 'Whse. Net Change Template';
@@ -1038,3 +1043,4 @@ table 11714 "Stg Item Journal Line"
     {
     }
 }
+#endif

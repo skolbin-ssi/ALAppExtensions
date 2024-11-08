@@ -1,3 +1,16 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GeneralLedger.Journal;
+
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.GST.Payments;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Inventory.Location;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Sales.Customer;
+
 tableextension 18004 "GST Gen. Journal Line Ext" extends "Gen. Journal Line"
 {
     fields
@@ -430,6 +443,7 @@ tableextension 18004 "GST Gen. Journal Line Ext" extends "Gen. Journal Line"
             TableRelation = Customer where("e-Commerce Operator" = const(true));
             DataClassification = CustomerContent;
         }
+
         field(18038; "e-Commerce Merchant Id"; Code[30])
         {
             Caption = 'e-Commerce Merchant Id';
@@ -438,10 +452,11 @@ tableextension 18004 "GST Gen. Journal Line Ext" extends "Gen. Journal Line"
                 where(
                     "Merchant Id" = field("e-Commerce Merchant Id"),
                     "Customer No." = field("e-Commerce Customer"));
-            ObsoleteState = Pending;
             ObsoleteReason = 'New field introduced as E-Comm. Merchant Id';
-            ObsoleteTag = '23.0';
+            ObsoleteState = Removed;
+            ObsoleteTag = '26.0';
         }
+
         field(18052; "E-Comm. Merchant Id"; Code[30])
         {
             Caption = 'e-Commerce Merchant Id';

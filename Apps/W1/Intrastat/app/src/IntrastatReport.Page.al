@@ -1,5 +1,16 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Inventory.Intrastat;
+
+using Microsoft.Finance.VAT.Reporting;
+using System.Telemetry;
+using System.Utilities;
+
 page 4812 "Intrastat Report"
 {
+    ApplicationArea = All;
     Caption = 'Intrastat Report';
     PageType = Card;
     SourceTable = "Intrastat Report Header";
@@ -13,7 +24,6 @@ page 4812 "Intrastat Report"
                 Caption = 'General';
                 field("No."; Rec."No.")
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     ToolTip = 'Specifies the number of the Intrastat Report.';
                     trigger OnAssistEdit()
                     begin
@@ -23,49 +33,40 @@ page 4812 "Intrastat Report"
                 }
                 field(Status; Rec.Status)
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     ToolTip = 'Specifies the status of the Intrastat Report.';
                 }
                 field(Description; Rec.Description)
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     ToolTip = 'Specifies some information about the Intrastat Report.';
                 }
                 field("Statistics Period"; Rec."Statistics Period")
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     ToolTip = 'Specifies the month to report data for. Enter the period as a four-digit number, with no spaces or symbols. Enter the year first and then the month, for example, enter 1706 for June, 2017';
                 }
                 field("Currency Identifier"; Rec."Currency Identifier")
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     ToolTip = 'Specifies a code that identifies the currency of the Intrastat report.';
                 }
                 field("Amounts in Add. Currency"; Rec."Amounts in Add. Currency")
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     ToolTip = 'Specifies that you use an additional reporting currency in the general ledger and that you want to report Intrastat in this currency.';
                     Visible = false;
                 }
                 field(Reported; Rec.Reported)
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     ToolTip = 'Specifies whether the entry has already been reported to the tax authorities.';
                 }
                 field("Export Date"; Rec."Export Date")
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     ToolTip = 'Specifies the date when the report has been exported.';
                 }
                 field("Export Time"; Rec."Export Time")
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     ToolTip = 'Specifies the time when the report has been exported.';
                 }
             }
             part(IntrastatLines; "Intrastat Report Subform")
             {
-                ApplicationArea = BasicEU, BasicNO, BasicCH;
                 SubPageLink = "Intrastat No." = field("No.");
                 UpdatePropagation = Both;
             }
@@ -74,7 +75,6 @@ page 4812 "Intrastat Report"
         {
             part(ErrorMessagesPart; "Error Messages Part")
             {
-                ApplicationArea = BasicEU, BasicNO, BasicCH;
                 Provider = IntrastatLines;
                 SubPageLink = "Record ID" = field(filter("Record ID Filter"));
             }
@@ -99,7 +99,6 @@ page 4812 "Intrastat Report"
         {
             action(GetEntries)
             {
-                ApplicationArea = BasicEU, BasicNO, BasicCH;
                 Caption = 'Suggest Lines';
                 Ellipsis = true;
                 Image = SuggestLines;
@@ -126,7 +125,6 @@ page 4812 "Intrastat Report"
 
             action(ChecklistReport)
             {
-                ApplicationArea = BasicEU, BasicNO, BasicCH;
                 Caption = 'Checklist Report';
                 Image = PrintChecklistReport;
                 ToolTip = 'Validate the Intrastat lines.';
@@ -140,18 +138,15 @@ page 4812 "Intrastat Report"
                     then begin
                         Commit();
                         Codeunit.Run(VATReportsConfiguration."Validate Codeunit ID", Rec);
-                        CurrPage.Update();
-                        exit;
-                    end;
+                    end else
+                        IntrastatReportMgt.ValidateReportWithAdvancedChecklist(Rec, false);
 
-                    IntrastatReportMgt.ValidateReportWithAdvancedChecklist(Rec, false);
                     UpdateErrors();
                     CurrPage.Update();
                 end;
             }
             action(ToggleErrorFilter)
             {
-                ApplicationArea = BasicEU, BasicNO, BasicCH;
                 Caption = 'Filter Error Lines';
                 Image = "Filter";
                 ToolTip = 'Show or hide Intrastat lines that do not have errors.';
@@ -163,7 +158,6 @@ page 4812 "Intrastat Report"
             }
             action(RecalcWeightSupplUOM)
             {
-                ApplicationArea = BasicEU, BasicNO, BasicCH;
                 Caption = 'Recalc. Weight/Suppl. UOM';
                 Image = Recalculate;
                 ToolTip = 'Recalculate weight and/or supplemental units quantity.';
@@ -182,7 +176,6 @@ page 4812 "Intrastat Report"
 
                 action(Release)
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     Caption = 'Re&lease';
                     Image = ReleaseDoc;
                     ShortCutKey = 'Ctrl+F9';
@@ -191,8 +184,15 @@ page 4812 "Intrastat Report"
                     trigger OnAction()
                     var
                         ErrorMessage: Record "Error Message";
+                        VATReportsConfiguration: Record "VAT Reports Configuration";
                     begin
-                        IntrastatReportMgt.ValidateReportWithAdvancedChecklist(Rec, false);
+                        if FindVATReportsConfiguration(VATReportsConfiguration) and
+                            (VATReportsConfiguration."Validate Codeunit ID" <> 0)
+                        then begin
+                            Commit();
+                            Codeunit.Run(VATReportsConfiguration."Validate Codeunit ID", Rec);
+                        end else
+                            IntrastatReportMgt.ValidateReportWithAdvancedChecklist(Rec, false);
                         UpdateErrors();
                         Commit();
 
@@ -206,7 +206,6 @@ page 4812 "Intrastat Report"
                 }
                 action(Reopen)
                 {
-                    ApplicationArea = BasicEU, BasicNO, BasicCH;
                     Caption = 'Re&open';
                     Enabled = Rec.Status <> Rec.Status::Open;
                     Image = ReOpen;
@@ -223,7 +222,6 @@ page 4812 "Intrastat Report"
             }
             action(CreateFile)
             {
-                ApplicationArea = BasicEU, BasicNO, BasicCH;
                 Caption = 'Create File';
                 Ellipsis = true;
                 Image = MakeDiskette;
@@ -238,18 +236,13 @@ page 4812 "Intrastat Report"
                     Commit();
 
                     if FindVATReportsConfiguration(VATReportsConfiguration) and
-                        (VATReportsConfiguration."Validate Codeunit ID" <> 0) and
-                        (VATReportsConfiguration."Content Codeunit ID" <> 0)
+                        (VATReportsConfiguration."Validate Codeunit ID" <> 0)
                     then begin
                         Commit();
                         Codeunit.Run(VATReportsConfiguration."Validate Codeunit ID", Rec);
+                    end else
+                        IntrastatReportMgt.ValidateReportWithAdvancedChecklist(Rec, false);
 
-                        Commit();
-                        Codeunit.Run(VATReportsConfiguration."Content Codeunit ID", Rec);
-                        exit;
-                    end;
-
-                    IntrastatReportMgt.ValidateReportWithAdvancedChecklist(Rec, false);
                     UpdateErrors();
                     Commit();
 
@@ -257,8 +250,14 @@ page 4812 "Intrastat Report"
                     if not ErrorMessage.IsEmpty() then
                         Error(HasErrorsMsg);
 
-                    IntrastatReportMgt.ReleaseIntrastatReport(Rec);
-                    IntrastatReportMgt.ExportWithDataExch(Rec, 0);
+                    if FindVATReportsConfiguration(VATReportsConfiguration) and
+                        (VATReportsConfiguration."Content Codeunit ID" <> 0)
+                    then
+                        Codeunit.Run(VATReportsConfiguration."Content Codeunit ID", Rec)
+                    else begin
+                        IntrastatReportMgt.ReleaseIntrastatReport(Rec);
+                        IntrastatReportMgt.ExportWithDataExch(Rec, 0);
+                    end;
 
                     FeatureTelemetry.LogUsage('0000I90', IntrastatReportTok, 'File created');
                 end;
@@ -310,8 +309,10 @@ page 4812 "Intrastat Report"
         IntrastatReportTok: Label 'Intrastat Report', Locked = true;
 
     local procedure FindVATReportsConfiguration(var VATReportsConfiguration: Record "VAT Reports Configuration"): Boolean
+    var
+        VATReportConfiguration: Enum "VAT Report Configuration";
     begin
-        VATReportsConfiguration.SetRange("VAT Report Type", "VAT Report Configuration"::"Intrastat Report");
+        VATReportsConfiguration.SetRange("VAT Report Type", VATReportConfiguration::"Intrastat Report");
         OnBeforeFindVATReportsConfiguration(Rec, VATReportsConfiguration);
         exit(VATReportsConfiguration.FindFirst());
     end;

@@ -1,3 +1,15 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TDS.TDSOnPurchase;
+
+using Microsoft.Finance.TDS.TDSBase;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Foundation.Company;
+using Microsoft.Foundation.AuditCodes;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+
 report 18716 "TDS 194Q Opening"
 {
     Caption = 'TDS 194Q Opening';
@@ -106,9 +118,6 @@ report 18716 "TDS 194Q Opening"
 
                             if TDSSectionCode = '' then
                                 Error(TDSSectionCodeErr);
-
-                            if PostingDate >= EffectiveDate then
-                                Error(PostingDateErr, EffectiveDate);
                         end;
                     }
                     field(PurchaseAmount; PurchaseAmount)
@@ -441,9 +450,6 @@ report 18716 "TDS 194Q Opening"
 
         if not CalcOverThreshold then
             Error(CalcOverThresholdErr);
-
-        if EffectiveDate <> 0D then
-            PostingDate := CalcDate('<-1D>', EffectiveDate);
     end;
 
     local procedure GetColumnID(ColumnName: Text): Integer

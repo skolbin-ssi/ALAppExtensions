@@ -1,3 +1,14 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Service.Reports;
+
+using System.Environment;
+using System.Environment.Configuration;
+using System.Telemetry;
+using System.Utilities;
+
 page 5021 "Serv. Decl. Setup Wizard"
 {
     Caption = 'Service Declaration Setup Wizard';
@@ -134,7 +145,6 @@ page 5021 "Serv. Decl. Setup Wizard"
                         var
                             ServiceTransactionTypesPage: Page "Service Transaction Types";
                         begin
-                            ServiceTransactionTypesPage.SetSetupMode();
                             ServiceTransactionTypesPage.RunModal();
                             UpdateServTransTypesCount();
                         end;
@@ -380,8 +390,11 @@ page 5021 "Serv. Decl. Setup Wizard"
     end;
 
     local procedure FinishAction();
+    var
+        GuidedExperience: Codeunit "Guided Experience";
     begin
         SetupFinished := true;
+        GuidedExperience.CompleteAssistedSetup(ObjectType::Page, Page::"Serv. Decl. Setup Wizard");
         CurrPage.Close();
     end;
 

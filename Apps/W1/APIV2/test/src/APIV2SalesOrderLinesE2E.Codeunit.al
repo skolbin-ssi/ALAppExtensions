@@ -624,6 +624,7 @@ codeunit 139835 "APIV2 - Sales Order Lines E2E"
         Item: Record "Item";
         SalesLine: Record "Sales Line";
         DiscountAmount: Decimal;
+        InvDiscAmount: Decimal;
         TargetURL: Text;
         OrderLineJSON: Text;
         ResponseText: Text;
@@ -641,6 +642,7 @@ codeunit 139835 "APIV2 - Sales Order Lines E2E"
         Commit();
 
         FindFirstSalesLine(SalesHeader, SalesLine);
+        InvDiscAmount := SalesLine."Inv. Discount Amount";
 
         // [WHEN] we PATCH the line
         TargetURL := LibraryGraphMgt
@@ -654,7 +656,7 @@ codeunit 139835 "APIV2 - Sales Order Lines E2E"
         // [THEN] order discount is kept
         Assert.AreNotEqual('', ResponseText, 'Response JSON should not be blank');
         LibraryGraphMgt.VerifyIDFieldInJson(ResponseText, 'itemId');
-        VerifyTotals(SalesHeader, DiscountAmount, SalesHeader."Invoice Discount Calculation"::Amount);
+        VerifyTotals(SalesHeader, DiscountAmount - InvDiscAmount, SalesHeader."Invoice Discount Calculation"::Amount);
         RecallNotifications();
     end;
 
@@ -1000,6 +1002,142 @@ codeunit 139835 "APIV2 - Sales Order Lines E2E"
         asserterror LibraryGraphMgt.PostToWebService(TargetURL, OrderLineJSON, ResponseText);
     end;
 
+    [Test]
+    procedure TestCreatingOrderLineWithAssemblyBOM()
+    var
+        Item1: Record "Item";
+        Item2: Record "Item";
+        Item3: Record "Item";
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        BOMComponent: Record "BOM Component";
+        AssemblyLine: Record "Assembly Line";
+        AssembletoOrderLink: Record "Assemble-to-Order Link";
+        ReservationEntry: Record "Reservation Entry";
+        LibraryAssembly: Codeunit "Library - Assembly";
+        ResponseText: Text;
+        TargetURL: Text;
+        OrderLineJSON: Text;
+        OrderId: Text;
+        LineNoFromJSON: Text;
+        LineNo: Integer;
+    begin
+        // [SCENARIO] POST a new line to an order with assembly BOM creates assembly orders and reservation links
+        // [GIVEN] An existing order and a valid JSON describing the new order line with item with assembly BOM
+        Initialize();
+        OrderId := CreateSalesOrderWithLines(SalesHeader);
+        LibraryInventory.CreateItem(Item1);
+        LibraryInventory.CreateItem(Item2);
+        LibraryInventory.CreateItem(Item3);
+        Item1."Assembly Policy" := Item1."Assembly Policy"::"Assemble-to-Order";
+        Item1."Assembly BOM" := true;
+        Item1.Modify();
+        LibraryAssembly.CreateAssemblyListComponent(
+          BOMComponent.Type::Item, Item2."No.", Item1."No.", '', BOMComponent."Resource Usage Type", LibraryRandom.RandInt(5), true);
+        LibraryAssembly.CreateAssemblyListComponent(
+          BOMComponent.Type::Item, Item3."No.", Item1."No.", '', BOMComponent."Resource Usage Type", LibraryRandom.RandInt(5), true);
+        Commit();
+
+        // [WHEN] we POST the JSON to the web service
+        OrderLineJSON := CreateOrderLineJSON(Item1.SystemId, LibraryRandom.RandIntInRange(1, 100));
+        TargetURL := LibraryGraphMgt
+                  .CreateTargetURLWithSubpage(
+                    OrderId,
+                    Page::"APIV2 - Sales Orders",
+                    OrderServiceNameTxt,
+                    OrderServiceLinesNameTxt);
+        LibraryGraphMgt.PostToWebService(TargetURL, OrderLineJSON, ResponseText);
+
+        // [THEN] the response text should not be empty and assembly orders and reservation links should be created
+        Assert.AreNotEqual('', ResponseText, 'response JSON should not be blank');
+        Assert.IsTrue(
+          LibraryGraphMgt.GetObjectIDFromJSON(ResponseText, 'sequence', LineNoFromJSON), 'Could not find sequence');
+
+        Evaluate(LineNo, LineNoFromJSON);
+        SalesLine.SetRange("Document No.", SalesHeader."No.");
+        SalesLine.SetRange("Document Type", SalesHeader."Document Type"::Order);
+        SalesLine.SetRange("Line No.", LineNo);
+        Assert.IsTrue(SalesLine.FindFirst(), 'The order line should exist');
+        SalesLine.CalcFields("Reserved Quantity");
+        Assert.AreNotEqual(SalesLine."Qty. to Assemble to Order", 0, 'Assembly to order should not be zero');
+        Assert.AreNotEqual(SalesLine."Reserved Quantity", 0, 'Reserved quantity should not be zero');
+
+        AssembletoOrderLink.SetRange(Type, AssembletoOrderLink.Type::Sale);
+        AssembletoOrderLink.SetRange("Document Type", SalesLine."Document Type");
+        AssembletoOrderLink.SetRange("Document No.", SalesLine."Document No.");
+        AssembletoOrderLink.SetRange("Document Line No.", SalesLine."Line No.");
+        Assert.IsTrue(AssembletoOrderLink.FindFirst(), 'Assemble to order link should be created');
+        AssemblyLine.SetRange("Document Type", AssembletoOrderLink."Assembly Document Type");
+        AssemblyLine.SetRange("Document No.", AssembletoOrderLink."Assembly Document No.");
+        Assert.IsFalse(AssemblyLine.IsEmpty(), 'Assembly orders should be created');
+
+        ReservationEntry.SetRange("Source ID", SalesLine."Document No.");
+        ReservationEntry.SetRange("Source Ref. No.", SalesLine."Line No.");
+        ReservationEntry.SetRange("Source Type", 37);
+        ReservationEntry.SetRange("Source Subtype", SalesLine."Document Type");
+        Assert.IsFalse(ReservationEntry.IsEmpty(), 'Reservation links should be created');
+    end;
+
+    [Test]
+    procedure TestExpandReturnsCorrectDocumentLines()
+    var
+        SalesHeader: Record "Sales Header";
+        ResponseText: Text;
+        SalesOrderLinesSet: Text;
+        TargetURL: Text;
+        OrderId: Text;
+    begin
+        // [SCENARIO] Call GET on the Header with expand Lines 
+        // [GIVEN] An order with lines.
+        Initialize();
+        OrderId := CreateSalesOrderWithLines(SalesHeader);
+
+        // [WHEN] we GET all the lines by $expand
+        TargetURL := GetHeadersURLWithExpandedLines(OrderId, Page::"APIV2 - Sales Orders", OrderServiceNameTxt);
+        LibraryGraphMgt.GetFromWebService(ResponseText, TargetURL);
+
+        // [THEN] the lines returned should be valid (numbers and integration ids)
+        LibraryGraphMgt.GetPropertyValueFromJSON(ResponseText, 'salesOrderLines', SalesOrderLinesSet);
+        VerifyOrderLines(SalesOrderLinesSet, OrderId);
+    end;
+
+    [Test]
+    procedure TestExpandReturnsCorrectDocumentLinesWithMultipleDocuments()
+    var
+        SalesHeader: Record "Sales Header";
+        ResponseText1: Text;
+        ResponseText2: Text;
+        ResponseText3: Text;
+        SalesOrderLinesSet: Text;
+        TargetURL: Text;
+        OrderId1: Text;
+        OrderId2: Text;
+        OrderId3: Text;
+    begin
+        // [SCENARIO] Call GET on the Header with expand Lines 
+        // [GIVEN] Three orders with lines.
+        Initialize();
+        OrderId1 := CreateSalesOrderWithLines(SalesHeader);
+        OrderId2 := CreateSalesOrderWithLines(SalesHeader);
+        OrderId3 := CreateSalesOrderWithLines(SalesHeader);
+
+        // [WHEN] we GET all the lines by $expand
+        TargetURL := GetHeadersURLWithExpandedLines(OrderId1, Page::"APIV2 - Sales Orders", OrderServiceNameTxt);
+        LibraryGraphMgt.GetFromWebService(ResponseText1, TargetURL);
+        TargetURL := GetHeadersURLWithExpandedLines(OrderId2, Page::"APIV2 - Sales Orders", OrderServiceNameTxt);
+        LibraryGraphMgt.GetFromWebService(ResponseText2, TargetURL);
+        TargetURL := GetHeadersURLWithExpandedLines(OrderId3, Page::"APIV2 - Sales Orders", OrderServiceNameTxt);
+        LibraryGraphMgt.GetFromWebService(ResponseText3, TargetURL);
+
+        // [THEN] the lines returned should be valid (numbers and integration ids)
+        LibraryGraphMgt.GetPropertyValueFromJSON(ResponseText1, 'salesOrderLines', SalesOrderLinesSet);
+        VerifyOrderLines(SalesOrderLinesSet, OrderId1);
+        LibraryGraphMgt.GetPropertyValueFromJSON(ResponseText2, 'salesOrderLines', SalesOrderLinesSet);
+        VerifyOrderLines(SalesOrderLinesSet, OrderId2);
+        LibraryGraphMgt.GetPropertyValueFromJSON(ResponseText3, 'salesOrderLines', SalesOrderLinesSet);
+        VerifyOrderLines(SalesOrderLinesSet, OrderId3);
+    end;
+
     local procedure CreateOrderWithAllPossibleLineTypes(var SalesHeader: Record "Sales Header"; var ExpectedNumberOfLines: Integer)
     var
         SalesLine: Record "Sales Line";
@@ -1080,6 +1218,23 @@ codeunit 139835 "APIV2 - Sales Order Lines E2E"
         LibraryGraphMgt.GetObjectIDFromJSON(LineJSON1, 'itemId', ItemId1);
         LibraryGraphMgt.GetObjectIDFromJSON(LineJSON2, 'itemId', ItemId2);
         Assert.AreNotEqual(ItemId1, ItemId2, 'Item Ids should be different for different items');
+    end;
+
+    local procedure VerifyOrderLines(SalesOrderLinesSetValue: Text; IdTxt: Text)
+    var
+        Index: Integer;
+        SalesOrderLineTxt: Text;
+        DocumentIdValue: Text;
+    begin
+        Index := 0;
+        repeat
+            SalesOrderLineTxt := LibraryGraphMgt.GetObjectFromCollectionByIndex(SalesOrderLinesSetValue, Index);
+            LibraryGraphMgt.GetPropertyValueFromJSON(SalesOrderLineTxt, 'documentId', DocumentIdValue);
+            LibraryGraphMgt.VerifyIDFieldInJson(SalesOrderLineTxt, 'documentId');
+            DocumentIdValue := '{' + DocumentIdValue + '}';
+            Assert.AreEqual(DocumentIdValue, IdTxt.ToLower(), 'The parent ID value is wrong.');
+            Index := Index + 1;
+        until (Index = LibraryGraphMgt.GetCollectionCountFromJSON(SalesOrderLinesSetValue))
     end;
 
     local procedure VerifySalesOrderLinesForSalesHeader(var SalesHeader: Record "Sales Header"; JsonObjectTxt: Text)
@@ -1214,6 +1369,22 @@ codeunit 139835 "APIV2 - Sales Order Lines E2E"
         NotificationLifecycleMgt: Codeunit "Notification Lifecycle Mgt.";
     begin
         NotificationLifecycleMgt.RecallAllNotifications();
+    end;
+
+    local procedure GetHeadersURLWithExpandedLines(DocumentId: Text; PageNumber: Integer; ServiceName: Text): Text
+    var
+        TargetURL: Text;
+        URLFilter: Text;
+    begin
+        TargetURL := LibraryGraphMgt.CreateTargetURL(DocumentId, PageNumber, ServiceName);
+        URLFilter := '$expand=salesOrderLines';
+
+        if StrPos(TargetURL, '?') <> 0 then
+            TargetURL := TargetURL + '&' + UrlFilter
+        else
+            TargetURL := TargetURL + '?' + UrlFilter;
+
+        exit(TargetURL);
     end;
 }
 

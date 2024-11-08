@@ -1,3 +1,20 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Subcontracting;
+
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Foundation.AuditCodes;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Inventory.Location;
+using Microsoft.Purchases.Vendor;
+
 codeunit 18468 "Subcontracting Post GST Liab."
 {
     var
@@ -6,7 +23,6 @@ codeunit 18468 "Subcontracting Post GST Liab."
         TempGSTPostingBufferStage: Record "GST Posting Buffer" temporary;
         TempGSTPostingBufferFinal: Record "GST Posting Buffer" temporary;
         GenJnlPostLine: Codeunit "Gen. Jnl.-Post Line";
-        NoSeriesMgt: Codeunit "NoSeriesManagement";
         GLSetupRead: Boolean;
         SourceCodeSetupRead: Boolean;
         TransactionNo: Integer;
@@ -143,7 +159,7 @@ codeunit 18468 "Subcontracting Post GST Liab."
         Vendor: Record Vendor;
         GSTLiabilityLine: Record "GST Liability Line";
         DetailedGSTEntryBuffer: Record "Detailed GST Entry Buffer";
-
+        NoSeries: Codeunit "No. Series";
         DeliveryChallanNo: Code[20];
         DocumentNo: Code[20];
     begin
@@ -172,9 +188,8 @@ codeunit 18468 "Subcontracting Post GST Liab."
                         Location.Get(GSTLiabilityLine."Company Location");
                         Location.TestField("GST Liability Invoice");
                         Location.TestField("State Code");
-                        Clear(NoSeriesMgt);
                         if GSTLiabilityLine."Delivery Challan No." <> DeliveryChallanNo then
-                            DocumentNo := NoSeriesMgt.GetNextNo(Location."GST Liability Invoice", GSTLiabilityLine."Posting Date", true);
+                            DocumentNo := NoSeries.GetNextNo(Location."GST Liability Invoice", GSTLiabilityLine."Posting Date");
 
                         TempGSTPostingBufferStage."Transaction Type" := TempGSTPostingBufferStage."Transaction Type"::Purchase;
                         TempGSTPostingBufferStage.Type := DetailedGSTEntryBuffer.Type;

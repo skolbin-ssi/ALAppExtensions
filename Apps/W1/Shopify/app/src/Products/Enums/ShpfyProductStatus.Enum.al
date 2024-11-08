@@ -1,10 +1,12 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Enum Shpfy Product Status (ID 30130).
 /// </summary>
 enum 30130 "Shpfy Product Status"
 {
-    Access = Internal;
     Caption = 'Shopify Product Status';
+    Extensible = false;
 
     value(0; Active)
     {

@@ -1,3 +1,16 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Sales;
+
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Sales.History;
+using Microsoft.Sales.Posting;
+
 codeunit 18146 "e-Invoice Management"
 {
     Permissions = tabledata "Sales Invoice Header" = rm,
@@ -174,6 +187,7 @@ codeunit 18146 "e-Invoice Management"
     var
         TaxTransactionValue: Record "Tax Transaction Value";
     begin
+        TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
         TaxTransactionValue.SetRange("Tax Type", TaxType);
         TaxTransactionValue.SetRange("Tax Record ID", RecId);
         Exit(not TaxTransactionValue.IsEmpty());

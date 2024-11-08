@@ -1,3 +1,13 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Services;
+
+using Microsoft.Finance.GST.Base;
+using Microsoft.Sales.Customer;
+using Microsoft.Service.Document;
+
 codeunit 18156 "GST Service Ship To Address"
 {
     var
@@ -166,14 +176,15 @@ codeunit 18156 "GST Service Ship To Address"
                         PresentRegNo := ShipToAddress."ARN No.";
         end;
 
-        Exit(PresentRegNo);
+        exit(PresentRegNo);
     end;
 
-    procedure CheckUpdatePreviousLineGSTPlaceofSupply(Var ServiceLine: Record "Service Line")
+    procedure CheckUpdatePreviousLineGSTPlaceofSupply(var ServiceLine: Record "Service Line")
     var
         PreviousServiceLine: Record "Service Line";
     begin
         PreviousServiceLine.SetCurrentKey("Document Type", "Document No.", Type, "No.");
+        PreviousServiceLine.LoadFields("Document Type", "Document No.", Type, "No.");
         PreviousServiceLine.SetRange("Document Type", ServiceLine."Document Type");
         PreviousServiceLine.SetRange("Document No.", ServiceLine."Document No.");
         PreviousServiceLine.SetFilter(Type, '<>%1', Type::" ");

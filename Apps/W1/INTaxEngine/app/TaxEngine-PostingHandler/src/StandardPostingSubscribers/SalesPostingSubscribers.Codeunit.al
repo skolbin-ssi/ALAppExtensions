@@ -1,3 +1,16 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TaxEngine.PostingHandler;
+
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Sales.Document;
+using Microsoft.Sales.History;
+using Microsoft.Sales.Posting;
+
 codeunit 20336 "Sales Posting Subscribers"
 {
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnBeforePostSalesDoc', '', false, false)]
@@ -110,16 +123,6 @@ codeunit 20336 "Sales Posting Subscribers"
                     TotalAmount, Currency."Invoice Rounding Precision", Currency.InvoiceRoundingDirection()),
                     Currency."Amount Rounding Precision");
     end;
-
-#if not CLEAN20
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnBeforePostCustomerEntry', '', false, false)]
-    local procedure OnBeforePostCustomerEntry(var GenJnlLine: Record "Gen. Journal Line"; var SalesHeader: Record "Sales Header")
-    var
-        TaxPostingBufferMgmt: Codeunit "Tax Posting Buffer Mgmt.";
-    begin
-        GenJnlLine."Tax ID" := TaxPostingBufferMgmt.GetTaxID();
-    end;
-#endif
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales Post Invoice Events", 'OnPostLedgerEntryOnBeforeGenJnlPostLine', '', false, false)]
     local procedure OnPostLedgerEntryOnBeforeGenJnlPostLine(var GenJnlLine: Record "Gen. Journal Line"; var SalesHeader: Record "Sales Header")

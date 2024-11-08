@@ -1,3 +1,25 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.Reports;
+
+using Microsoft.CRM.Segment;
+using Microsoft.CRM.Team;
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Foundation.Address;
+using Microsoft.Foundation.Company;
+using Microsoft.Foundation.Shipping;
+using Microsoft.Inventory.Location;
+using Microsoft.Purchases.Document;
+using Microsoft.Purchases.Posting;
+using Microsoft.Purchases.Setup;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Utilities;
+using System.Globalization;
+using System.Utilities;
+
 report 18012 "Purchase - Quote GST"
 {
     DefaultLayout = RDLC;
@@ -515,7 +537,9 @@ report 18012 "Purchase - Quote GST"
 
             trigger OnAfterGetRecord()
             begin
-                CurrReport.Language := Language.GetLanguageIdOrDefault("Language Code");
+                CurrReport.Language := GlobalLanguage.GetLanguageIdOrDefault("Language Code");
+                CurrReport.FormatRegion := GlobalLanguage.GetFormatRegionOrDefault("Format Region");
+
                 CompanyInfo.Get();
                 IsGSTApplicable := CheckGSTDoc("Purchase Line");
 
@@ -637,7 +661,7 @@ report 18012 "Purchase - Quote GST"
 
         trigger OnOpenPage()
         begin
-            LogInterLbl := SegManagement.FindInteractTmplCode(11) <> '';
+            LogInterLbl := SegManagement.FindInteractionTemplateCode(11) <> '';
             LogInteractionEnable := LogInterLbl;
         end;
     }
@@ -662,7 +686,7 @@ report 18012 "Purchase - Quote GST"
         RespCenter: Record "Responsibility Center";
         PurchSetup: Record "Purchases & Payables Setup";
         Vendor: Record Vendor;
-        Language: Codeunit Language;
+        GlobalLanguage: Codeunit Language;
         PurchCountPrinted: Codeunit "Purch.Header-Printed";
         FormatAddr: Codeunit "Format Address";
         PurchPost: Codeunit "Purch.-Post";

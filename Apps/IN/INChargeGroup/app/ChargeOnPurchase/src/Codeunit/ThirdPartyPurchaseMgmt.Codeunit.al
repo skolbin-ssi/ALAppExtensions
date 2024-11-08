@@ -1,3 +1,14 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.ChargeGroup.ChargeOnPurchase;
+
+using Microsoft.Finance.ChargeGroup.ChargeGroupBase;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Purchases.Document;
+using Microsoft.Purchases.Posting;
+
 codeunit 18518 "Third Party Purchase Mgmt."
 {
     procedure GenerateThirdPartyInvoice(PurchaseHeader: Record "Purchase Header")
@@ -110,7 +121,7 @@ codeunit 18518 "Third Party Purchase Mgmt."
     Var
         InsertPurchaseHeader: Record "Purchase Header";
         ChargeGroupHeader: Record "Charge Group Header";
-        NoSeriesManagement: Codeunit NoSeriesManagement;
+        NoSeries: Codeunit "No. Series";
         IsHandled: Boolean;
     begin
         OnBeforeInsertPurchaseHeaderWithChargeGroup(MainPurchaseHeader, ChargeGroupLines, IsHandled);
@@ -119,7 +130,7 @@ codeunit 18518 "Third Party Purchase Mgmt."
 
         InsertPurchaseHeader.Init();
         InsertPurchaseHeader."Document Type" := InsertPurchaseHeader."Document Type"::Invoice;
-        InsertPurchaseHeader."No." := NoSeriesManagement.GetNextNo(InsertPurchaseHeader.GetNoSeriesCode(), MainPurchaseHeader."Posting Date", true);
+        InsertPurchaseHeader."No." := NoSeries.GetNextNo(InsertPurchaseHeader.GetNoSeriesCode(), MainPurchaseHeader."Posting Date");
         InsertPurchaseHeader.Validate("Buy-from Vendor No.", ChargeGroupLines."Vendor No.");
         InsertPurchaseHeader.Validate("Posting Date", MainPurchaseHeader."Posting Date");
         InsertPurchaseHeader.Validate("Location Code", MainPurchaseHeader."Location Code");

@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Sales.Document;
+
+using Microsoft.Inventory.Item;
+using Microsoft.Service.Reports;
+
 tableextension 5020 "Serv. Decl. Sales Line" extends "Sales Line"
 {
     fields
@@ -26,7 +35,7 @@ tableextension 5020 "Serv. Decl. Sales Line" extends "Sales Line"
             var
                 SalesHeader: Record "Sales Header";
             begin
-                SalesHeader.Get("Document Type", "Document No.");
+                SalesHeader := Rec.GetSalesHeader();
                 if "Applicable For Serv. Decl." then
                     SalesHeader.TestField("Applicable For Serv. Decl.");
             end;

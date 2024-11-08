@@ -1,3 +1,8 @@
+namespace Microsoft.Inventory.InventoryForecast;
+
+using Microsoft.Inventory.Item;
+using Microsoft.Inventory.Ledger;
+using Microsoft.Sales.Customer;
 // ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -66,10 +71,13 @@ codeunit 139542 "Sales Forecast Lib"
     end;
 
     procedure Setup();
+    var
+        ApiKey: Text;
     begin
         MSSalesForecastSetup.GetSingleInstance();
         MSSalesForecastSetup.Validate("API URI", MockServiceURITxt);
-        MSSalesForecastSetup.SetUserDefinedAPIKey(MockServiceKeyTxt);
+        ApiKey := MockServiceKeyTxt;
+        MSSalesForecastSetup.SetUserDefinedAPIKey(ApiKey);
         MSSalesForecastSetup.Modify(true);
     end;
 

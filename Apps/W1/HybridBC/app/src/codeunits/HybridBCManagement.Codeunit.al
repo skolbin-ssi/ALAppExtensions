@@ -1,3 +1,8 @@
+namespace Microsoft.DataMigration.BC;
+
+using Microsoft.DataMigration;
+using System.Upgrade;
+
 codeunit 4008 "Hybrid BC Management"
 {
     var
@@ -59,6 +64,7 @@ codeunit 4008 "Hybrid BC Management"
     end;
 
 
+#pragma warning disable AA0245
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Hybrid Cloud Management", 'OnBackupUpgradeTags', '', false, false)]
     local procedure BackupUpgradeTags(ProductID: Text[250]; var Handled: Boolean; var BackupUpgradeTags: Boolean)
     begin
@@ -71,6 +77,7 @@ codeunit 4008 "Hybrid BC Management"
         // Don't set handled to allow the others to override
         BackupUpgradeTags := true;
     end;
+#pragma warning restore AA0245
 
     [EventSubscriber(ObjectType::Page, Page::"Migration Table Mapping", 'OnIsBCMigration', '', false, false)]
     local procedure OnIsBCMigration(var SourceBC: Boolean)
@@ -127,6 +134,63 @@ codeunit 4008 "Hybrid BC Management"
 
                 HybridReplicationDetail.Modify();
             until HybridReplicationDetail.Next() = 0;
+
+        if HybridCloudManagement.CheckFixDataOnReplicationCompleted(NotificationText) then begin
+            HybridReplicationSummary."Data Repair Status" := HybridReplicationSummary."Data Repair Status"::Pending;
+            HybridReplicationSummary.Modify();
+            Commit();
+            HybridCloudManagement.ScheduleDataFixOnReplicationCompleted(HybridReplicationSummary."Run ID", SubscriptionId, NotificationText);
+        end;
+    end;
+
+    [EventSubscriber(ObjectType::Page, Page::"Intelligent Cloud Management", 'OnOpenNewUI', '', false, false)]
+    local procedure HandleOnOpenNewUI(var OpenNewUI: Boolean)
+    begin
+        if GetBCProductEnabled() then
+            OpenNewUI := true;
+    end;
+
+    [EventSubscriber(ObjectType::Page, Page::"Cloud Mig - Select Tables", 'OnCanChangeSetup', '', false, false)]
+    local procedure OnCanChangeSetup(var CanChangeSetup: Boolean)
+    begin
+        if not GetBCProductEnabled() then
+            exit;
+
+        CanChangeSetup := true;
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Cloud Mig. Replicate Data Mgt.", 'OnCanIntelligentCloudSetupTableBeModified', '', false, false)]
+    local procedure CanIntelligentCloudSetupTableBeModified(TableID: Integer; var CanBeModified: Boolean)
+    begin
+        if not GetBCProductEnabled() then
+            exit;
+
+        CanBeModified := CheckRecordCanBeIncluded(TableID);
+    end;
+
+    local procedure CheckRecordCanBeIncluded(TableID: Integer): Boolean
+    var
+        CloudMigReplicateDataMgt: Codeunit "Cloud Mig. Replicate Data Mgt.";
+        IsObsolete: Boolean;
+    begin
+        if not CloudMigReplicateDataMgt.CanChangeIntelligentCloudStatus(TableID, IsObsolete) then
+            exit(false);
+
+        if IsObsolete then
+            exit(true);
+
+        if not TryOpenTable(TableID) then
+            exit(false);
+
+        exit(true);
+    end;
+
+    [TryFunction]
+    local procedure TryOpenTable(TableID: Integer)
+    var
+        TestRecordRef: RecordRef;
+    begin
+        TestRecordRef.Open(TableID, false);
     end;
 
     local procedure GetBCProductEnabled(): Boolean

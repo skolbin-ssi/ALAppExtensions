@@ -62,33 +62,33 @@ codeunit 148130 "Library - Elec. VAT Submission"
         VATStatementReportLine.Insert();
     end;
 
-    procedure CreateSimpleVATCode(): Code[10]
+    procedure CreateSimpleVATCode(): Code[20]
     var
-        VATCode: Record "VAT Code";
+        VATReportingCode: Record "VAT Reporting Code";
     begin
-        VATCode.Code := LibraryUtility.GenerateRandomCode(VATCode.FieldNo(Code), Database::"VAT Code");
-        VATCode.Insert(true);
-        exit(VATCode.Code)
+        VATReportingCode.Code := LibraryUtility.GenerateRandomCode(VATReportingCode.FieldNo(Code), Database::"VAT Reporting Code");
+        VATReportingCode.Insert(true);
+        exit(VATReportingCode.Code)
     end;
 
-    procedure SetVATSpecificationAndNoteToVATCode(VATCodeValue: Code[10])
+    procedure SetVATSpecificationAndNoteToVATCode(VATCodeValue: Code[20])
     var
-        VATCode: Record "VAT Code";
+        VATReportingCode: Record "VAT Reporting Code";
     begin
-        VATCode.Get(VATCodeValue);
-        VATCode.Validate("VAT Specification Code", CreateVATSpecification());
-        VATCode.Validate("VAT Note Code", CreateVATNote());
-        VATCode.Modify(true);
+        VATReportingCode.Get(VATCodeValue);
+        VATReportingCode.Validate("VAT Specification Code", CreateVATSpecification());
+        VATReportingCode.Validate("VAT Note Code", CreateVATNote());
+        VATReportingCode.Modify(true);
     end;
 
-    procedure SetVATCodeReportVATRate(VATCodeValue: Code[10]; VATRate: Decimal)
+    procedure SetVATCodeReportVATRate(VATCodeValue: Code[20]; VATRate: Decimal)
     var
-        VATCode: Record "VAT Code";
+        VATReportingCode: Record "VAT Reporting Code";
     begin
-        VATCode.Get(VATCodeValue);
-        VATCode.Validate("Report VAT Rate", true);
-        VATCode.Validate("VAT Rate For Reporting", VATRate);
-        VATCode.Modify(true);
+        VATReportingCode.Get(VATCodeValue);
+        VATReportingCode.Validate("Report VAT Rate", true);
+        VATReportingCode.Validate("VAT Rate For Reporting", VATRate);
+        VATReportingCode.Modify(true);
     end;
 
     procedure SetReportVATNoteInVATReportSetup(NewReportVATNote: Boolean)

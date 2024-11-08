@@ -3,6 +3,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
 
+namespace System.Email;
+
+using System;
+
 codeunit 4617 "Basic SMTP Auth" implements "SMTP Auth"
 {
     Access = Internal;
@@ -12,6 +16,6 @@ codeunit 4617 "Basic SMTP Auth" implements "SMTP Auth"
     var
         CancellationToken: DotNet CancellationToken;
     begin
-        SmtpClient.Authenticate(SMTPAuthentication.GetUserName(), SMTPAuthentication.GetPassword(), CancellationToken);
+        SmtpClient.Authenticate(SMTPAuthentication.GetUserName(), SMTPAuthentication.GetPassword().Unwrap(), CancellationToken);
     end;
 }

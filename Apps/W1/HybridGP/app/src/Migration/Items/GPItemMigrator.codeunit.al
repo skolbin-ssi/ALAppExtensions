@@ -1,3 +1,11 @@
+namespace Microsoft.DataMigration.GP;
+
+using System.Integration;
+using Microsoft.Inventory.Item;
+using Microsoft.Inventory.Journal;
+using Microsoft.Inventory.Tracking;
+using Microsoft.Inventory.BOM;
+
 codeunit 4019 "GP Item Migrator"
 {
     TableNo = "GP Item";
@@ -12,43 +20,35 @@ codeunit 4019 "GP Item Migrator"
         CostingMethodOption: Option FIFO,LIFO,Specific,Average,Standard;
         SimpleInvJnlNameTxt: Label 'DEFAULT', Comment = 'The default name of the item journal', Locked = true;
         LastEntryNo: Integer;
+        ItemBatchCodePrefixTxt: Label 'GPITM', Locked = true;
+        CurrentBatchNumber: Integer;
+        CurrentBatchLineNo: Integer;
 
-#pragma warning disable AA0207
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Data Migration Facade", 'OnMigrateItem', '', true, true)]
-    procedure OnMigrateItem(var Sender: Codeunit "Item Data Migration Facade"; RecordIdToMigrate: RecordId)
+    local procedure OnMigrateItem(var Sender: Codeunit "Item Data Migration Facade"; RecordIdToMigrate: RecordId)
+    begin
+        MigrateItem(Sender, RecordIdToMigrate);
+    end;
+
+    procedure MigrateItem(var Sender: Codeunit "Item Data Migration Facade"; RecordIdToMigrate: RecordId)
     var
         GPItem: Record "GP Item";
+        DataMigrationErrorLogging: Codeunit "Data Migration Error Logging";
+        HelperFunctions: Codeunit "Helper Functions";
     begin
         if RecordIdToMigrate.TableNo() <> Database::"GP Item" then
             exit;
 
+        DataMigrationErrorLogging.SetLastRecordUnderProcessing(Format(RecordIdToMigrate));
         if not GPItem.Get(RecordIdToMigrate) then
             exit;
 
-        if not ShouldMigrateItem(GPItem) then begin
+        if not HelperFunctions.ShouldMigrateItem(GPItem.No) then begin
             DecrementMigratedCount();
             exit;
         end;
 
         MigrateItemDetails(GPItem, Sender);
-    end;
-
-#pragma warning restore AA0207
-    local procedure ShouldMigrateItem(var GPItem: Record "GP Item"): Boolean
-    var
-        GPIV00101: Record "GP IV00101";
-    begin
-        if GPIV00101.Get(GPItem.No) then begin
-            if GPIV00101.INACTIVE then
-                if not GPCompanyAdditionalSettings.GetMigrateInactiveItems() then
-                    exit(false);
-
-            if GPIV00101.IsDiscontinued() then
-                if not GPCompanyAdditionalSettings.GetMigrateDiscontinuedItems() then
-                    exit(false);
-        end;
-
-        exit(true);
     end;
 
     local procedure DecrementMigratedCount()
@@ -59,11 +59,16 @@ codeunit 4019 "GP Item Migrator"
         DataMigrationStatusFacade.IncrementMigratedRecordCount(HelperFunctions.GetMigrationTypeTxt(), Database::Item, -1);
     end;
 
-    procedure MigrateItemDetails(GPItem: Record "GP Item"; ItemDataMigrationFacade: Codeunit "Item Data Migration Facade")
+#pragma warning disable AS0078
+    procedure MigrateItemDetails(var GPItem: Record "GP Item"; ItemDataMigrationFacade: Codeunit "Item Data Migration Facade")
+#pragma warning restore AS0078
+    var
+        DataMigrationErrorLogging: Codeunit "Data Migration Error Logging";
     begin
         if not ItemDataMigrationFacade.CreateItemIfNeeded(CopyStr(GPItem.No, 1, 20), GPItem.Description, GPItem.ShortName, ConvertItemType(GPItem.ItemType)) then
             exit;
 
+        DataMigrationErrorLogging.SetLastRecordUnderProcessing(Format(GPItem.RecordId));
         ItemDataMigrationFacade.CreateUnitOfMeasureIfNeeded(GPItem.BaseUnitOfMeasure, GPItem.BaseUnitOfMeasure);
         ItemDataMigrationFacade.CreateUnitOfMeasureIfNeeded(GPItem.PurchUnitOfMeasure, GPItem.PurchUnitOfMeasure);
         ItemDataMigrationFacade.SetUnitListPrice(GPItem.UnitListPrice);
@@ -71,7 +76,10 @@ codeunit 4019 "GP Item Migrator"
         ItemDataMigrationFacade.SetStandardCost(GPItem.StandardCost);
         ItemDataMigrationFacade.SetCostingMethod(GetCostingMethod(GPItem));
         ItemDataMigrationFacade.SetBaseUnitOfMeasure(GPItem.BaseUnitOfMeasure);
-        ItemDataMigrationFacade.SetGeneralProductPostingGroup(CopyStr(DefaultPostingGroupCodeTxt, 1, 20));
+
+        if GPCompanyAdditionalSettings.GetGLModuleEnabled() then
+            ItemDataMigrationFacade.SetGeneralProductPostingGroup(CopyStr(DefaultPostingGroupCodeTxt, 1, 20));
+
         ItemDataMigrationFacade.SetNetWeight(GPItem.ShipWeight);
         ItemDataMigrationFacade.SetSearchDescription(GPItem.SearchDescription);
         ItemDataMigrationFacade.SetPurchUnitOfMeasure(GPItem.PurchUnitOfMeasure);
@@ -79,9 +87,13 @@ codeunit 4019 "GP Item Migrator"
         ItemDataMigrationFacade.ModifyItem(true);
     end;
 
-#pragma warning disable AA0207
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Data Migration Facade", 'OnMigrateItemPostingGroups', '', true, true)]
-    procedure OnMigrateItemPostingGroups(var Sender: Codeunit "Item Data Migration Facade"; RecordIdToMigrate: RecordId; ChartOfAccountsMigrated: Boolean)
+    local procedure OnMigrateItemPostingGroups(var Sender: Codeunit "Item Data Migration Facade"; RecordIdToMigrate: RecordId; ChartOfAccountsMigrated: Boolean)
+    begin
+        MigrateItemPostingGroups(Sender, RecordIdToMigrate, ChartOfAccountsMigrated);
+    end;
+
+    procedure MigrateItemPostingGroups(var Sender: Codeunit "Item Data Migration Facade"; RecordIdToMigrate: RecordId; ChartOfAccountsMigrated: Boolean)
     var
         GPItem: Record "GP Item";
     begin
@@ -91,18 +103,26 @@ codeunit 4019 "GP Item Migrator"
         if RecordIdToMigrate.TableNo() <> Database::"GP Item" then
             exit;
 
+        if not GPCompanyAdditionalSettings.GetGLModuleEnabled() then
+            exit;
+
         if GPItem.Get(RecordIdToMigrate) then
             MigrateItemInventoryPostingGroup(GPItem, Sender);
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Data Migration Facade", 'OnMigrateInventoryTransactions', '', true, true)]
-    procedure OnMigrateInventoryTransactions(var Sender: Codeunit "Item Data Migration Facade"; RecordIdToMigrate: RecordId; ChartOfAccountsMigrated: Boolean)
+    local procedure OnMigrateInventoryTransactions(var Sender: Codeunit "Item Data Migration Facade"; RecordIdToMigrate: RecordId; ChartOfAccountsMigrated: Boolean)
+    begin
+        MigrateInventoryTransactions(Sender, RecordIdToMigrate, ChartOfAccountsMigrated);
+    end;
+
+    procedure MigrateInventoryTransactions(var Sender: Codeunit "Item Data Migration Facade"; RecordIdToMigrate: RecordId; ChartOfAccountsMigrated: Boolean)
     var
         Item: Record Item;
         ItemJnlLine: Record "Item Journal Line";
         GPItem: Record "GP Item";
         GPItemTransaction: Record "GP Item Transactions";
-        AdjustItemInventory: Codeunit "Adjust Item Inventory";
+        DataMigrationErrorLogging: Codeunit "Data Migration Error Logging";
         GPItemTransactionAverageQuery: Query "GP Item Transaction Average";
         GPItemTransactionStandardQuery: Query "GP Item Transaction Standard";
         GPItemTransactionQuery: Query "GP Item Transaction";
@@ -112,6 +132,9 @@ codeunit 4019 "GP Item Migrator"
             exit;
 
         if RecordIdToMigrate.TableNo() <> Database::"GP Item" then
+            exit;
+
+        if not GPCompanyAdditionalSettings.GetGLModuleEnabled() then
             exit;
 
         if GPCompanyAdditionalSettings.GetMigrateOnlyInventoryMaster() then
@@ -139,7 +162,6 @@ codeunit 4019 "GP Item Migrator"
                                     repeat
                                         CreateNewItemTrackingLinesIfNecessary(GPItemTransaction, GPItem, ItemJnlLine);
                                     until GPItemTransaction.Next() = 0;
-                                    AdjustItemInventory.PostItemJnlLines(ItemJnlLine);
                                 end;
                             end;
                         end;
@@ -159,7 +181,6 @@ codeunit 4019 "GP Item Migrator"
                                     repeat
                                         CreateNewItemTrackingLinesIfNecessary(GPItemTransaction, GPItem, ItemJnlLine);
                                     until GPItemTransaction.Next() = 0;
-                                    AdjustItemInventory.PostItemJnlLines(ItemJnlLine);
                                 end;
                             end;
                         end;
@@ -173,7 +194,6 @@ codeunit 4019 "GP Item Migrator"
                                     if GPItemTransaction.FindSet() then
                                         repeat
                                             CreateItemJnlLine(ItemJnlLine, GPItem, GPItemTransaction, GPItemTransaction.Quantity, GPItemTransaction.DateReceived);
-                                            AdjustItemInventory.PostItemJnlLines(ItemJnlLine);
                                         until GPItemTransaction.Next() = 0;
                                 end;
                             else begin
@@ -190,13 +210,13 @@ codeunit 4019 "GP Item Migrator"
                                         repeat
                                             CreateNewItemTrackingLinesIfNecessary(GPItemTransaction, GPItem, ItemJnlLine);
                                         until GPItemTransaction.Next() = 0;
-                                        AdjustItemInventory.PostItemJnlLines(ItemJnlLine);
                                     end;
                                 end;
                             end;
                         end;
                 end;
 
+            DataMigrationErrorLogging.SetLastRecordUnderProcessing(Format(GPItem.RecordId));
             if GPItem.InActive then begin
                 Item.Reset();
                 if Item.Get(GPItem.No) then begin
@@ -209,7 +229,6 @@ codeunit 4019 "GP Item Migrator"
         if ErrorText <> '' then
             Error(ErrorText);
     end;
-#pragma warning restore AA0207
 
     procedure MigrateItemInventoryPostingGroup(GPItem: Record "GP Item"; var Sender: Codeunit "Item Data Migration Facade")
     var
@@ -220,57 +239,85 @@ codeunit 4019 "GP Item Migrator"
         if not Sender.DoesItemExist(CopyStr(GPItem.No, 1, MaxStrLen(Item."No."))) then
             exit;
 
+        if not GPItem.ShouldSetPostingGroup() then
+            exit;
+
         MigrateItemClassesIfNeeded(GPItem, Sender);
+        if GPCompanyAdditionalSettings.GetMigrateItemClasses() then
+            if GPIV00101.Get(GPItem.No) then
+                ItemClassId := CopyStr(GPIV00101.ITMCLSCD.Trim(), 1, MaxStrLen(ItemClassId));
 
-        if GPItem.ItemType = 0 then begin
-            if GPCompanyAdditionalSettings.GetMigrateItemClasses() then
-                if GPIV00101.Get(GPItem.No) then
-#pragma warning disable AA0139
-                    ItemClassId := GPIV00101.ITMCLSCD.Trim();
-#pragma warning restore AA0139
+        if (ItemClassId <> '') then
+            Sender.SetInventoryPostingGroup(ItemClassId)
+        else
+            Sender.SetInventoryPostingGroup(CopyStr(DefaultPostingGroupCodeTxt, 1, 20));
 
-            if (ItemClassId <> '') then
-                Sender.SetInventoryPostingGroup(ItemClassId)
-            else
-                Sender.SetInventoryPostingGroup(CopyStr(DefaultPostingGroupCodeTxt, 1, 20));
+        Sender.ModifyItem(true);
+    end;
 
-            Sender.ModifyItem(true);
+    local procedure GetCurrentBatchState()
+    var
+        ItemJournalBatch: Record "Item Journal Batch";
+        ItemJournalLine: Record "Item Journal Line";
+    begin
+        CurrentBatchNumber := ItemJournalBatch.Count();
+
+        if ItemJournalBatch.FindLast() then begin
+            ItemJournalLine.SetRange("Journal Template Name", ItemJournalBatch."Journal Template Name");
+            ItemJournalLine.SetRange("Journal Batch Name", ItemJournalBatch.Name);
+
+            CurrentBatchLineNo := ItemJournalLine.Count();
         end;
     end;
 
-    local procedure CreateItemBatch(TemplateName: Code[10]): Code[10]
+    local procedure CreateOrGetItemBatch(TemplateName: Code[10]): Code[10]
     var
         ItemJnlBatch: Record "Item Journal Batch";
+        BatchName: Code[10];
     begin
-        ItemJnlBatch.Init();
-        ItemJnlBatch."Journal Template Name" := TemplateName;
-        ItemJnlBatch.Name := CreateBatchName();
-        ItemJnlBatch.Description := SimpleInvJnlNameTxt;
-        ItemJnlBatch.Insert();
+        if CurrentBatchNumber = 0 then
+            CurrentBatchNumber := 1;
 
-        exit(ItemJnlBatch.Name);
-    end;
+        if CurrentBatchLineNo >= GetMaxBatchLineCount() then begin
+            CurrentBatchNumber := CurrentBatchNumber + 1;
+            CurrentBatchLineNo := 0;
+        end;
 
-    local procedure CreateBatchName(): Code[10]
-    var
-        BatchName: Text;
-    begin
-        BatchName := Format(CreateGuid());
-        exit(CopyStr(BatchName, 2, 10));
+        BatchName := CopyStr(ItemBatchCodePrefixTxt + Format(CurrentBatchNumber), 1, 10);
+        if not ItemJnlBatch.Get(TemplateName, BatchName) then begin
+            Clear(ItemJnlBatch);
+            ItemJnlBatch."Journal Template Name" := TemplateName;
+            ItemJnlBatch.Name := BatchName;
+            ItemJnlBatch.Description := SimpleInvJnlNameTxt;
+            ItemJnlBatch.Insert();
+        end;
+
+        exit(BatchName);
     end;
 
     local procedure CreateItemJnlLine(var ItemJnlLine: Record "Item Journal Line"; GPItem: Record "GP Item"; GPItemTransaction: Record "GP Item Transactions"; Quantity: Decimal; PostingDate: Date)
     var
+        DataMigrationErrorLogging: Codeunit "Data Migration Error Logging";
         AdjustItemInventory: Codeunit "Adjust Item Inventory";
         ItemTemplate: Code[10];
     begin
+        DataMigrationErrorLogging.SetLastRecordUnderProcessing(Format(GPItemTransaction.RecordId));
+
+        if GPItemTransaction.Quantity = 0 then
+            exit;
+
+        GetCurrentBatchState();
+
         ItemTemplate := AdjustItemInventory.SelectItemTemplateForAdjustment();
 
-        ItemJnlLine.Init();
+        Clear(ItemJnlLine);
         ItemJnlLine.Validate("Journal Template Name", ItemTemplate);
-        ItemJnlLine.Validate("Journal Batch Name", CreateItemBatch(ItemTemplate));
+        ItemJnlLine.Validate("Journal Batch Name", CreateOrGetItemBatch(ItemTemplate));
         ItemJnlLine.Validate("Posting Date", PostingDate);
         ItemJnlLine."Document No." := CopyStr(GPItem.No, 1, 20);
+
+        CurrentBatchLineNo := CurrentBatchLineNo + 1;
+        ItemJnlLine."Line No." := CurrentBatchLineNo;
 
         if GPItemTransaction.Quantity > 0 then
             ItemJnlLine.Validate("Entry Type", ItemJnlLine."Entry Type"::"Positive Adjmt.")
@@ -298,14 +345,22 @@ codeunit 4019 "GP Item Migrator"
     var
         ReservationEntry: Record "Reservation Entry";
         TempTrackingSpecification: Record "Tracking Specification" temporary;
+        DataMigrationErrorLogging: Codeunit "Data Migration Error Logging";
         CreateReserveEntry: Codeunit "Create Reserv. Entry";
+#if CLEAN25
+        ItemJnlLineReserve: Codeunit "Item Jnl. Line-Reserve";
+#endif
         ExpirationDate: Date;
     begin
         if GPItem.ItemTrackingCode = '' then
             exit;
 
+        DataMigrationErrorLogging.SetLastRecordUnderProcessing(Format(GPItemTransactions.RecordId));
+#if not CLEAN25
         TempTrackingSpecification.InitFromItemJnlLine(ItemJnlLine);
-
+#else
+        ItemJnlLineReserve.InitFromItemJnlLine(TempTrackingSpecification, ItemJnlLine);
+#endif
         if GPItemTransactions.ExpirationDate = DMY2Date(1, 1, 1900) then
             ExpirationDate := 0D
         else
@@ -343,18 +398,12 @@ codeunit 4019 "GP Item Migrator"
 
     local procedure ConvertItemType(GPItemType: Integer): Option
     begin
-        if GPItemType = 0 then
+        if (GPItemType in [0, 2]) then
             exit(ItemTypeOption::Inventory);
 
         exit(ItemTypeOption::Service);
     end;
 
-#if not CLEAN21
-    [Obsolete('Method is not supported, it was using files', '21.0')]
-    procedure GetAll()
-    begin
-    end;
-#endif
     local procedure GetCostingMethod(var GPItem: Record "GP Item"): Option
     begin
         if ConvertItemType(GPItem.ItemType) = ItemTypeOption::Service then
@@ -390,6 +439,7 @@ codeunit 4019 "GP Item Migrator"
         InventoryPostingGroup: Record "Inventory Posting Group";
         InventoryPostingSetup: Record "Inventory Posting Setup";
         GPItemLocation: Record "GP Item Location";
+        DataMigrationErrorLogging: Codeunit "Data Migration Error Logging";
         PostingGroupCode: Code[20];
     begin
         PostingGroupCode := CopyStr(DefaultPostingGroupCodeTxt, 1, MaxStrLen(PostingGroupCode));
@@ -401,7 +451,8 @@ codeunit 4019 "GP Item Migrator"
 
             if GPItemLocation.FindSet() then
                 repeat
-#pragma warning disable AA0139                
+#pragma warning disable AA0139
+                    DataMigrationErrorLogging.SetLastRecordUnderProcessing(Format(GPItemLocation.RecordId));
                     ItemDataMigrationFacade.CreateInventoryPostingSetupIfNeeded(PostingGroupCode, CopyStr(DefaultPostingGroupDescriptionTxt, 1, MaxStrLen(InventoryPostingGroup.Description)), CopyStr(GPItemLocation.LOCNCODE, 1, MaxStrLen(InventoryPostingSetup."Location Code")));
 #pragma warning restore AA0139                       
                     ItemDataMigrationFacade.SetInventoryPostingSetupInventoryAccount(PostingGroupCode, CopyStr(GPItemLocation.LOCNCODE, 1, MaxStrLen(InventoryPostingSetup."Location Code")), DefaultAccountNumber);
@@ -417,6 +468,7 @@ codeunit 4019 "GP Item Migrator"
         GPIV40400: Record "GP IV40400";
         GPItemLocation: Record "GP Item Location";
         HelperFunctions: Codeunit "Helper Functions";
+        DataMigrationErrorLogging: Codeunit "Data Migration Error Logging";
         PostingGroupCode: Code[20];
         AccountNumber: Code[20];
     begin
@@ -452,8 +504,100 @@ codeunit 4019 "GP Item Migrator"
 
         if GPItemLocation.FindSet() then
             repeat
+                DataMigrationErrorLogging.SetLastRecordUnderProcessing(Format(GPItemLocation.RecordId));
                 ItemDataMigrationFacade.CreateInventoryPostingSetupIfNeeded(PostingGroupCode, GPIV40400.ITMCLSDC, CopyStr(GPItemLocation.LOCNCODE, 1, MaxStrLen(InventoryPostingSetup."Location Code")));
                 ItemDataMigrationFacade.SetInventoryPostingSetupInventoryAccount(PostingGroupCode, CopyStr(GPItemLocation.LOCNCODE, 1, MaxStrLen(InventoryPostingSetup."Location Code")), AccountNumber);
             until GPItemLocation.Next() = 0;
+    end;
+
+    internal procedure MigrateKitItems()
+    var
+        GPItem: Record "GP Item";
+    begin
+        GPItem.SetRange(ItemType, 2);
+        if GPItem.FindSet() then
+            repeat
+                MigrateKitComponents(GPItem);
+            until GPItem.Next() = 0;
+    end;
+
+    local procedure MigrateKitComponents(var GPItem: Record "GP Item")
+    var
+        ParentItem: Record Item;
+        GPIV00104: Record "GP IV00104";
+        LineNo: Integer;
+    begin
+        if not ParentItem.Get(GPItem.No) then
+            exit;
+
+        // Kit items must be of type Inventory
+        if ParentItem.Type <> ParentItem.Type::Inventory then begin
+            ParentItem.Validate(Type, ParentItem.Type::Inventory);
+            ParentItem.Modify();
+        end;
+
+        LineNo := 0;
+        GPIV00104.SetRange(ITEMNMBR, ParentItem."No.");
+        GPIV00104.SetCurrentKey(SEQNUMBR);
+        GPIV00104.SetAscending(SEQNUMBR, true);
+        if GPIV00104.FindSet() then
+            repeat
+                CreateBOMComponent(GPIV00104, ParentItem, LineNo);
+            until GPIV00104.Next() = 0;
+    end;
+
+    local procedure CreateBOMComponent(var GPIV00104: Record "GP IV00104"; var ParentItem: Record Item; var LineNo: Integer)
+    var
+        ComponentItem: Record Item;
+        BOMComponent: Record "BOM Component";
+        ComponentItemNo: Code[20];
+    begin
+        ComponentItemNo := CopyStr(GPIV00104.CMPTITNM.TrimEnd(), 1, MaxStrLen(ComponentItemNo));
+        if ComponentItemNo = ParentItem."No." then
+            exit;
+
+        if not ComponentItem.Get(ComponentItemNo) then
+            exit;
+
+        // Kit component items must be either Inventory or Non-Inventory
+        if ComponentItem.Type = ComponentItem.Type::Service then begin
+            ComponentItem.Validate(Type, ComponentItem.Type::"Non-Inventory");
+            ComponentItem.Modify();
+        end;
+
+        LineNo += 10000;
+
+        BOMComponent.SetRange("Parent Item No.", ParentItem."No.");
+        BOMComponent.SetRange("No.", ComponentItem."No.");
+        if BOMComponent.IsEmpty() then begin
+            Clear(BOMComponent);
+            BOMComponent.Validate(Type, BOMComponent.Type::Item);
+            BOMComponent.Validate("Parent Item No.", ParentItem."No.");
+            BOMComponent.Validate("Line No.", LineNo);
+            BOMComponent.Validate("No.", ComponentItem."No.");
+            BOMComponent.Validate("Quantity per", GPIV00104.CMPITQTY);
+            BOMComponent.Insert(true);
+        end;
+    end;
+
+    local procedure GetMaxBatchLineCount(): Integer
+    var
+        IsHandled: Boolean;
+        MaxLineCount: Integer;
+        NewMaxLineCount: Integer;
+    begin
+        MaxLineCount := 10000;
+
+        OnBeforeGetMaxItemBatchLineCount(IsHandled, NewMaxLineCount);
+        if IsHandled then
+            if NewMaxLineCount > 0 then
+                MaxLineCount := NewMaxLineCount;
+
+        exit(MaxLineCount);
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeGetMaxItemBatchLineCount(var IsHandled: Boolean; var NewMaxLineCount: Integer)
+    begin
     end;
 }

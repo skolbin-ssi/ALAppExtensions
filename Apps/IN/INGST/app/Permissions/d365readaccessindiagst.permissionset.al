@@ -1,3 +1,20 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST;
+
+using Microsoft.Finance.GST.Application;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.GST.Distribution;
+using Microsoft.Finance.GST.Payments;
+using Microsoft.Finance.GST.Reconcilation;
+using Microsoft.Finance.GST.ReturnSettlement;
+using Microsoft.Finance.GST.ServicesTransfer;
+using Microsoft.Finance.GST.StockTransfer;
+using Microsoft.Finance.GST.Subcontracting;
+using Microsoft.Finance.TaxBase;
+
 permissionset 18360 "D365 Read Access - India GST"
 {
     Access = Internal;
@@ -18,7 +35,6 @@ permissionset 18360 "D365 Read Access - India GST"
                   tabledata "Dist. Component Amount" = R,
                   tabledata "Delivery Challan Header" = R,
                   tabledata "Delivery Challan Line" = R,
-                  tabledata "E-Commerce Merchant" = R,
                   tabledata "E-Comm. Merchant" = R,
                   tabledata "GST Application Buffer" = R,
                   tabledata "GST Claim Setoff" = R,

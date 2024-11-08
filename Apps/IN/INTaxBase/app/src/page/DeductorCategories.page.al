@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TaxBase;
+
+using System.Integration.Excel;
+
 page 18545 "Deductor Categories"
 {
     PageType = List;
@@ -68,12 +76,14 @@ page 18545 "Deductor Categories"
                 trigger OnAction()
                 var
                     EditinExcel: Codeunit "Edit in Excel";
-                    DeductorCategoryCodeLbl: Label 'Code eq %1', Comment = '%1= Deductory Code';
+                    EditinExcelFilters: Codeunit "Edit in Excel Filters";
                 begin
+                    EditinExcelFilters.AddFieldV2('Code', Enum::"Edit in Excel Filter Type"::Equal, Rec.Code, Enum::"Edit in Excel Edm Type"::"Edm.String");
+
                     EditinExcel.EditPageInExcel(
                         'Deductor Categories',
-                        CurrPage.ObjectId(false),
-                        StrSubstNo(DeductorCategoryCodeLbl, Rec.Code));
+                        Page::"Deductor Categories",
+                        EditinExcelFilters);
                 end;
             }
         }

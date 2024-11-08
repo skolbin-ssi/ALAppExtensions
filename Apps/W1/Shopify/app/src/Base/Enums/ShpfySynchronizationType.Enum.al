@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Enum Shopify Synchronization Type (ID 30103).
 /// </summary>
@@ -22,5 +24,8 @@ enum 30103 "Shpfy Synchronization Type"
     {
         Caption = 'Customers';
     }
-
+    value(4; Companies)
+    {
+        Caption = 'Companies';
+    }
 }

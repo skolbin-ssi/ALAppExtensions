@@ -1,3 +1,10 @@
+namespace Microsoft.Bank.Deposit;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.Dimension;
+using Microsoft.Foundation.AuditCodes;
+using Microsoft.Foundation.Company;
+
 codeunit 1695 "Bank Deposit Subscribers"
 {
     Permissions = tabledata "Bank Deposit Header" = rmd,
@@ -95,37 +102,77 @@ codeunit 1695 "Bank Deposit Subscribers"
         SetupBankDepositReports.SetupReportSelections();
     end;
 
-#if not CLEAN21
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Feature Management Facade", 'OnAfterFeatureDisableConfirmed', '', false, false)]
-    local procedure HandleOnAfterFeatureDisableConfirmed(FeatureKey: Record "Feature Key")
-    var
-        BankAccReconciliation: Record "Bank Acc. Reconciliation";
-        BankDepositHeader: Record "Bank Deposit Header";
-        Company: Record Company;
-        BankDepositFeatureMgt: Codeunit "Bank Deposit Feature Mgt.";
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::GenJnlManagement, 'OnBeforeOpenJournalPageFromBatch', '', false, false)]
+    local procedure OnBeforeOpenJournalPageFromBatch(
+        var GenJnlBatch: Record "Gen. Journal Batch";
+        var GenJnlTemplate: Record "Gen. Journal Template";
+        var IsHandled: Boolean)
     begin
-        if FeatureKey.ID <> BankDepositFeatureMgt.GetFeatureKeyId() then
+        if not (GenJnlTemplate.Type = GenJnlTemplate.Type::"Bank Deposits") then
             exit;
 
-        if Company.FindSet() then
-        repeat
-            BankAccReconciliation.ChangeCompany(Company.Name);
-            BankAccReconciliation.Reset();
-            BankAccReconciliation.SetRange("Statement Type", BankAccReconciliation."Statement Type"::"Bank Reconciliation");
-            BankDepositHeader.ChangeCompany(Company.Name);
-            BankDepositHeader.Reset();
-            if (not BankDepositHeader.IsEmpty()) or (not BankAccReconciliation.IsEmpty()) then
-                Error(EnableFeatureErr, Company.Name, Company."Display Name");
-        until Company.Next() = 0;
-
+        OpenBankDepositPage(GenJnlBatch, GenJnlTemplate);
+        IsHandled := true;
     end;
-#endif
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Open Deposit List Page", 'OnOpenDepositListPage', '', false, false)]
+    local procedure OnOpenDepositListPage()
+    begin
+        Page.Run(Page::"Bank Deposit List");
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Open Deposits Page", 'OnOpenDepositsPage', '', false, false)]
+    local procedure OnOpenDepositsPage()
+    begin
+        Page.Run(Page::"Bank Deposits");
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Open Deposit Page", 'OnOpenDepositPage', '', false, false)]
+    local procedure OnOpenDepositPage()
+    begin
+        Page.Run(Page::"Bank Deposit List");
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Open Deposit Report", 'OnOpenDepositReport', '', false, false)]
+    local procedure OnOpenDepositReport()
+    begin
+        Report.Run(Report::"Bank Deposit Test Report");
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Open Deposit Test Report", 'OnOpenDepositTestReport', '', false, false)]
+    local procedure OnOpenDepositTestReport()
+    begin
+        Report.Run(Report::"Bank Deposit Test Report");
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Open P. Bank Deposits L. Page", 'OnOpenPostedBankDepositsListPage', '', false, false)]
+    local procedure OnOpenPostedBankDepositsListPage()
+    begin
+        Page.Run(Page::"Posted Bank Deposit List");
+    end;
+
+    local procedure OpenBankDepositPage(GenJnlBatch: Record "Gen. Journal Batch"; GenJnlTemplate: Record "Gen. Journal Template")
+    var
+        BankDepositHeader: Record "Bank Deposit Header";
+        SetupBankDepositReports: Codeunit "Setup Bank Deposit Reports";
+    begin
+        BankDepositHeader.SetRange("Journal Template Name", GenJnlTemplate.Name);
+        BankDepositHeader.SetRange("Journal Batch Name", GenJnlBatch.Name);
+        if not BankDepositHeader.FindFirst() then begin
+            SetupBankDepositReports.InsertSetupData();
+
+            BankDepositHeader.Init();
+            BankDepositHeader."Journal Template Name" := GenJnlTemplate.Name;
+            BankDepositHeader."Journal Batch Name" := GenJnlBatch.Name;
+            BankDepositHeader.Insert(true);
+        end;
+
+        Page.Run(GenJnlTemplate."Page ID", BankDepositHeader);
+    end;
+
     var
         PostedBankDepositLinesLbl: Label 'Posted bank deposit - line information', Locked = true;
         PostingBankDepositLinesLbl: Label 'Before posting bank deposit - line information', Locked = true;
         OnBeforeUndoPostingBankDepositLbl: Label 'User is attempting to undo posted bank deposit.', Locked = true;
         OnAfterUndoPostingBankDepositLbl: Label 'User successfully reversed all transactions in posted bank deposit.', Locked = true;
-#if not CLEAN21
-        EnableFeatureErr: Label 'You must either post or delete all bank deposits and bank account reconciliations in company "%1 - %2" before disabling Bank Deposits feature.', Comment = '%1 - Company''s name, %2 - Company''s display name';
-#endif
 }

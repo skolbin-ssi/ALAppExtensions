@@ -3,6 +3,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
 
+namespace System.Email;
+
 table 4508 "Email - Outlook Account"
 {
     DataClassification = CustomerContent;
@@ -29,6 +31,7 @@ table 4508 "Email - Outlook Account"
         {
             DataClassification = SystemMetadata;
         }
+#if not CLEANSCHEMA20
         field(5; "Created By"; Text[50])
         {
             DataClassification = EndUserIdentifiableInformation;
@@ -36,6 +39,7 @@ table 4508 "Email - Outlook Account"
             ObsoleteState = Removed;
             ObsoleteTag = '20.0';
         }
+#endif
     }
 
     keys

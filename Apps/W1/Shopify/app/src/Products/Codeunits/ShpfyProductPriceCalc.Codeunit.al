@@ -1,25 +1,41 @@
+namespace Microsoft.Integration.Shopify;
+
+using Microsoft.Inventory.Item;
+using Microsoft.Sales.Document;
+using Microsoft.Sales.Customer;
+using Microsoft.Finance.VAT.Setup;
+
 /// <summary>
 /// Codeunit Shpfy Product Price Calc. (ID 30182).
 /// </summary>
 codeunit 30182 "Shpfy Product Price Calc."
 {
     Access = Internal;
-    EventSubscriberInstance = Manual;
+    SingleInstance = true;
     Permissions =
-        tabledata "Config. Template Header" = r,
         tabledata Customer = rmid,
         tabledata Item = r,
         tabledata "Item Unit of Measure" = r,
         tabledata "Sales Header" = rimd,
         tabledata "Sales Line" = rmid,
         tabledata "VAT Posting Setup" = r;
-    SingleInstance = true;
 
     var
-        TempCustomer: Record Customer temporary;
         TempSalesHeader: Record "Sales Header" temporary;
         Shop: Record "Shpfy Shop";
-        Events: Codeunit "Shpfy Product Events";
+        Catalog: Record "Shpfy Catalog";
+        ProductEvents: Codeunit "Shpfy Product Events";
+        GenBusPostingGroup: Code[20];
+        VATBusPostingGroup: Code[20];
+        TaxAreaCode: Code[20];
+        TaxLiable: Boolean;
+        VATCountryRegionCode: Code[10];
+        CustomerPriceGroup: Code[10];
+        CustomerNo: Code[20];
+        CustomerDiscGroup: Code[20];
+        CustomerPostingGroup: Code[20];
+        PricesIncludingVAT: Boolean;
+        AllowLineDisc: Boolean;
 
 
     /// <summary> 
@@ -33,18 +49,15 @@ codeunit 30182 "Shpfy Product Price Calc."
     /// <param name="ComparePrice">Parameter of type Decimal.</param>
     internal procedure CalcPrice(Item: Record Item; ItemVariant: Code[20]; UnitOfMeasure: Code[20]; var UnitCost: Decimal; var Price: Decimal; var ComparePrice: Decimal)
     var
-        Customer: Record Customer;
-        ItemUOM: Record "Item Unit of Measure";
+        ItemUnitofMeasure: Record "Item Unit of Measure";
         TempSalesLine: Record "Sales Line" temporary;
-        PriceCalc: Codeunit "Shpfy Product Price Calc.";
+        ShpfyUpdatePriceSouce: codeunit "Shpfy Update Price Source";
         IsHandled: Boolean;
     begin
-        Events.OnBeforeCalculateUnitPrice(Item, ItemVariant, UnitOfMeasure, Shop, UnitCost, Price, ComparePrice, IsHandled);
+        ProductEvents.OnBeforeCalculateUnitPrice(Item, ItemVariant, UnitOfMeasure, Shop, Catalog, UnitCost, Price, ComparePrice, IsHandled);
         if not IsHandled then begin
+            BindSubscription(ShpfyUpdatePriceSouce);
             if TempSalesHeader.FindFirst() then begin
-                if BindSubscription(PriceCalc) then;
-                Customer := TempCustomer;
-                Customer.Insert(false);
                 Clear(TempSalesLine);
                 TempSalesLine."Document Type" := TempSalesHeader."Document Type";
                 TempSalesLine."Document No." := TempSalesHeader."No.";
@@ -59,21 +72,20 @@ codeunit 30182 "Shpfy Product Price Calc."
                 UnitCost := TempSalesLine."Unit Cost";
                 ComparePrice := TempSalesLine."Unit Price";
                 Price := TempSalesLine."Line Amount";
-                Customer.Delete(false);
-                if UnbindSubscription(PriceCalc) then;
             end else begin
                 UnitCost := Item."Unit Cost";
                 Price := Item."Unit Price";
-                if (UnitOfMeasure <> '') and ItemUOM.Get(Item."No.", UnitOfMeasure) then begin
-                    UnitCost := UnitCost * ItemUOM."Qty. per Unit of Measure";
-                    Price := Price * ItemUOM."Qty. per Unit of Measure";
+                if (UnitOfMeasure <> '') and ItemUnitofMeasure.Get(Item."No.", UnitOfMeasure) then begin
+                    UnitCost := UnitCost * ItemUnitofMeasure."Qty. per Unit of Measure";
+                    Price := Price * ItemUnitofMeasure."Qty. per Unit of Measure";
                 end;
                 ComparePrice := Price;
             end;
+            UnbindSubscription(ShpfyUpdatePriceSouce);
             if ComparePrice <= Price then
                 ComparePrice := 0;
-            Events.OnAfterCalculateUnitPrice(Item, ItemVariant, UnitOfMeasure, Shop, UnitCost, Price, ComparePrice);
         end;
+        ProductEvents.OnAfterCalculateUnitPrice(Item, ItemVariant, UnitOfMeasure, Shop, Catalog, UnitCost, Price, ComparePrice);
     end;
 
     /// <summary> 
@@ -81,89 +93,65 @@ codeunit 30182 "Shpfy Product Price Calc."
     /// </summary>
     local procedure CreateTempSalesHeader()
     var
-        PostingSetupMgt: Codeunit PostingSetupManagement;
+        Customer: Record Customer;
     begin
-        CreateTempCustomer(Shop.Code);
-        if Shop."Customer Price Group" <> '' then
-            TempCustomer."Customer Price Group" := Shop."Customer Price Group";
-        if Shop."Customer Discount Group" <> '' then
-            TempCustomer."Customer Disc. Group" := Shop."Customer Discount Group";
         Clear(TempSalesHeader);
         TempSalesHeader."Document Type" := TempSalesHeader."Document Type"::Quote;
         TempSalesHeader."No." := Shop.Code;
-        TempSalesHeader."Sell-to Customer No." := Shop.Code;
-        TempCustomer.TestField("Gen. Bus. Posting Group");
-        TempSalesHeader."Gen. Bus. Posting Group" := TempCustomer."Gen. Bus. Posting Group";
-        TempSalesHeader."VAT Bus. Posting Group" := TempCustomer."VAT Bus. Posting Group";
-        TempSalesHeader."Tax Area Code" := TempCustomer."Tax Area Code";
-        TempSalesHeader."Tax Liable" := TempCustomer."Tax Liable";
-        TempSalesHeader."VAT Country/Region Code" := TempCustomer."Country/Region Code";
-        TempSalesHeader."Shipping Advice" := TempCustomer."Shipping Advice";
-        TempSalesHeader."Customer Price Group" := TempCustomer."Customer Price Group";
-        TempSalesHeader."Customer Disc. Group" := TempCustomer."Customer Disc. Group";
-        TempSalesHeader."Bill-to Customer No." := Shop.Code;
-        PostingSetupMgt.CheckCustPostingGroupReceivablesAccount(TempCustomer."Customer Posting Group");
-        TempSalesHeader."Customer Posting Group" := TempCustomer."Customer Posting Group";
-        TempSalesHeader."Payment Terms Code" := TempCustomer."Payment Terms Code";
-        TempSalesHeader."Prices Including VAT" := TempCustomer."Prices Including VAT";
-        TempSalesHeader."Allow Line Disc." := TempCustomer."Allow Line Disc.";
-        TempSalesHeader."Tax Area Code" := TempCustomer."Tax Area Code";
-        TempSalesHeader."Tax Liable" := TempCustomer."Tax Liable";
-        TempSalesHeader."Responsibility Center" := TempCustomer."Responsibility Center";
-        TempSalesHeader."Shipping Agent Code" := TempCustomer."Shipping Agent Code";
-        TempSalesHeader."Shipping Agent Service Code" := TempCustomer."Shipping Agent Service Code";
+        if CustomerNo <> '' then begin
+            Customer.Get(CustomerNo);
+            TempSalesHeader."Sell-to Customer No." := CustomerNo;
+            TempSalesHeader."Bill-to Customer No." := CustomerNo;
+            TempSalesHeader."Customer Price Group" := Customer."Customer Price Group";
+            TempSalesHeader."Customer Disc. Group" := Customer."Customer Disc. Group";
+            TempSalesHeader."Allow Line Disc." := Customer."Allow Line Disc.";
+        end
+        else begin
+            TempSalesHeader."Sell-to Customer No." := Shop.Code;
+            TempSalesHeader."Bill-to Customer No." := Shop.Code;
+            TempSalesHeader."Customer Price Group" := CustomerPriceGroup;
+            TempSalesHeader."Customer Disc. Group" := CustomerDiscGroup;
+            TempSalesHeader."Allow Line Disc." := AllowLineDisc;
+        end;
+
+        TempSalesHeader."Gen. Bus. Posting Group" := GenBusPostingGroup;
+        TempSalesHeader."VAT Bus. Posting Group" := VATBusPostingGroup;
+        TempSalesHeader."Tax Area Code" := TaxAreaCode;
+        TempSalesHeader."Tax Liable" := TaxLiable;
+        TempSalesHeader."VAT Country/Region Code" := VATCountryRegionCode;
+        TempSalesHeader."Customer Posting Group" := CustomerPostingGroup;
+        TempSalesHeader."Prices Including VAT" := PricesIncludingVAT;
         TempSalesHeader.Validate("Document Date", WorkDate());
         TempSalesHeader.Validate("Order Date", WorkDate());
         TempSalesHeader.Validate("Currency Code", Shop."Currency Code");
         TempSalesHeader.Insert(false);
     end;
 
-    local procedure CreateTempCustomer(ShopCode: code[20])
-    var
-        ShopifyShop: Record "Shpfy Shop";
-        ConfigTemplateHeader: Record "Config. Template Header";
-        ConfigTemplateManagement: Codeunit "Config. Template Management";
-        RecRef: RecordRef;
+    internal procedure DoPricesIncludingVAT(ShopCode: Code[20]): Boolean
     begin
-        if TempCustomer."No." <> ShopCode then begin
-            Clear(TempCustomer);
-            if not TempCustomer.Get(ShopCode) then begin
-                ShopifyShop.Get(ShopCode);
-                if (ShopifyShop."Customer Template Code" <> '') and ConfigTemplateHeader.Get(ShopifyShop."Customer Template Code") then begin
-                    TempCustomer."No." := ShopCode;
-                    TempCustomer.Insert();
-                    RecRef.GetTable(TempCustomer);
-                    ConfigTemplateManagement.ApplyTemplateLinesWithoutValidation(ConfigTemplateHeader, RecRef);
-                    RecRef.SetTable(TempCustomer);
-                    TempCustomer.Modify();
-                end;
-            end;
-        end;
+        if Shop.Code <> ShopCode then
+            Shop.Get(ShopCode);
+        exit(Shop."Prices Including VAT");
     end;
 
-    internal procedure PricesIncludingVAT(ShopCode: Code[20]): Boolean
+    internal procedure GetCurrencyCode(): Code[10]
     begin
-        CreateTempCustomer(ShopCode);
-        exit(TempCustomer."Prices Including VAT");
+        exit(Shop."Currency Code");
     end;
 
-    /// <summary> 
-    /// Set Shop.
-    /// </summary>
-    /// <param name="Code">Parameter of type Code[20].</param>
-    internal procedure SetShop(Code: Code[20])
-    var
-        ShpfyShop: Record "Shpfy Shop";
+    internal procedure GetAllowLineDisc(): Boolean
     begin
-        ShpfyShop.Get(Code);
-        if (Shop.Code <> ShpfyShop.Code) or (Shop.SystemModifiedAt < ShpfyShop.SystemModifiedAt) then begin
-            Shop := ShpfyShop;
-            Clear(TempSalesHeader);
-            TempSalesHeader.DeleteAll();
-            Clear(TempCustomer);
-            TempCustomer.DeleteAll();
-            CreateTempSalesHeader();
-        end;
+        exit(AllowLineDisc);
+    end;
+
+    internal procedure GetPricesIncludingVAT(): Boolean
+    begin
+        exit(PricesIncludingVAT);
+    end;
+
+    internal procedure GetVATBusPostingGroup(): Code[20]
+    begin
+        exit(VATBusPostingGroup);
     end;
 
     /// <summary> 
@@ -172,21 +160,68 @@ codeunit 30182 "Shpfy Product Price Calc."
     /// <param name="ShopifyShop">Parameter of type Record "Shopify Shop".</param>
     internal procedure SetShop(ShopifyShop: Record "Shpfy Shop")
     begin
-        SetShop(ShopifyShop.Code);
+        if (Shop.Code <> ShopifyShop.Code) or (Shop.SystemModifiedAt < ShopifyShop.SystemModifiedAt) then begin
+            Shop := ShopifyShop;
+            SetParameters(Shop);
+            Clear(TempSalesHeader);
+            TempSalesHeader.DeleteAll();
+            CreateTempSalesHeader();
+        end;
     end;
 
-
-    [EventSubscriber(ObjectType::Table, Database::"Sales Line", 'OnBeforeGetSalesHeader', '', true, false)]
-    local procedure GetHeader(var SalesLine: Record "Sales Line"; var SalesHeader: Record "Sales Header"; var IsHanded: Boolean)
-    var
-        CustomerNo: Code[20];
+    internal procedure SetShopAndCatalog(ShopifyShop: Record "Shpfy Shop"; ShopifyCatalog: Record "Shpfy Catalog")
     begin
-        if SalesLine."System-Created Entry" and (SalesLine."Document Type" = SalesLine."Document Type"::Quote) then begin
-            CustomerNo := SalesLine."Sell-to Customer No.";
-            if CustomerNo = '' then
-                CustomerNo := SalesHeader."Sell-to Customer No.";
-            SalesHeader := TempSalesHeader;
-            IsHanded := true;
+        if (Shop.Code <> ShopifyShop.Code) or (Shop.SystemModifiedAt < ShopifyShop.SystemModifiedAt) then
+            Shop := ShopifyShop;
+
+        if (Catalog.Id <> ShopifyCatalog.Id) or (Catalog.SystemModifiedAt < ShopifyCatalog.SystemModifiedAt) then
+            Catalog := ShopifyCatalog;
+
+        SetParameters(Catalog);
+        Clear(TempSalesHeader);
+        TempSalesHeader.DeleteAll();
+        CreateTempSalesHeader();
+    end;
+
+    local procedure SetParameters(SourceRec: Variant)
+    var
+        ShopifyShop: Record "Shpfy Shop";
+        ShopifyCatalog: Record "Shpfy Catalog";
+        SourceRecordRef: RecordRef;
+    begin
+        if SourceRec.IsRecord() then
+            SourceRecordRef.GetTable(SourceRec);
+
+        case SourceRecordRef.Number() of
+            Database::"Shpfy Shop":
+                begin
+                    SourceRecordRef.SetTable(ShopifyShop);
+                    GenBusPostingGroup := ShopifyShop."Gen. Bus. Posting Group";
+                    VATBusPostingGroup := ShopifyShop."VAT Bus. Posting Group";
+                    TaxAreaCode := ShopifyShop."Tax Area Code";
+                    TaxLiable := ShopifyShop."Tax Liable";
+                    VATCountryRegionCode := ShopifyShop."VAT Country/Region Code";
+                    CustomerPriceGroup := ShopifyShop."Customer Price Group";
+                    CustomerDiscGroup := ShopifyShop."Customer Discount Group";
+                    CustomerPostingGroup := ShopifyShop."Customer Posting Group";
+                    PricesIncludingVAT := ShopifyShop."Prices Including VAT";
+                    AllowLineDisc := ShopifyShop."Allow Line Disc.";
+                end;
+            Database::"Shpfy Catalog":
+                begin
+                    SourceRecordRef.SetTable(ShopifyCatalog);
+                    GenBusPostingGroup := ShopifyCatalog."Gen. Bus. Posting Group";
+                    VATBusPostingGroup := ShopifyCatalog."VAT Bus. Posting Group";
+                    TaxAreaCode := ShopifyCatalog."Tax Area Code";
+                    TaxLiable := ShopifyCatalog."Tax Liable";
+                    VATCountryRegionCode := ShopifyCatalog."VAT Country/Region Code";
+                    CustomerPriceGroup := ShopifyCatalog."Customer Price Group";
+                    CustomerDiscGroup := ShopifyCatalog."Customer Discount Group";
+                    CustomerPostingGroup := ShopifyCatalog."Customer Posting Group";
+                    PricesIncludingVAT := ShopifyCatalog."Prices Including VAT";
+                    AllowLineDisc := ShopifyCatalog."Allow Line Disc.";
+                    CustomerNo := ShopifyCatalog."Customer No.";
+                end;
         end;
     end;
 }

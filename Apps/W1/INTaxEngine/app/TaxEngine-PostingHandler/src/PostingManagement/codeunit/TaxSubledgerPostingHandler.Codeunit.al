@@ -1,3 +1,18 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TaxEngine.PostingHandler;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.TaxEngine.Core;
+using Microsoft.Finance.TaxEngine.UseCaseBuilder;
+using Microsoft.Purchases.Document;
+using Microsoft.Purchases.Posting;
+using Microsoft.Sales.Document;
+using Microsoft.Sales.Posting;
+
 codeunit 20347 "Tax Subledger Posting Handler"
 {
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Gen. Jnl.-Post Line", 'OnBeforePostGenJnlLine', '', false, false)]
@@ -8,16 +23,6 @@ codeunit 20347 "Tax Subledger Posting Handler"
         TaxPostingBufferMgmt.SetSalesPurchLcy(GenJournalLine."Sales/Purch. (LCY)");
     end;
 
-#if not CLEAN20
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnBeforePostCustomerEntry', '', false, false)]
-    local procedure OnBeforePostCustomerEntry(var TotalSalesLineLCY: Record "Sales Line")
-    var
-        TaxPostingBufferMgmt: Codeunit "Tax Posting Buffer Mgmt.";
-    begin
-        TaxPostingBufferMgmt.SetSalesPurchLcy(-TotalSalesLineLCY.Amount);
-    end;
-#endif
-
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales Post Invoice Events", 'OnPostLedgerEntryOnBeforeGenJnlPostLine', '', false, false)]
     local procedure OnPostLedgerEntryOnBeforeGenJnlPostLineSales(var TotalSalesLineLCY: Record "Sales Line")
     var
@@ -25,16 +30,6 @@ codeunit 20347 "Tax Subledger Posting Handler"
     begin
         TaxPostingBufferMgmt.SetSalesPurchLcy(-TotalSalesLineLCY.Amount);
     end;
-
-#if not CLEAN20
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnBeforePostVendorEntry', '', false, false)]
-    local procedure OnBeforePostVendorEntry(var TotalPurchLineLCY: Record "Purchase Line")
-    var
-        TaxPostingBufferMgmt: Codeunit "Tax Posting Buffer Mgmt.";
-    begin
-        TaxPostingBufferMgmt.SetSalesPurchLcy(-TotalPurchLineLCY.Amount);
-    end;
-#endif
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch. Post Invoice Events", 'OnPostLedgerEntryOnBeforeGenJnlPostLine', '', false, false)]
     local procedure OnPostLedgerEntryOnBeforeGenJnlPostLinePurchase(var TotalPurchLineLCY: Record "Purchase Line")

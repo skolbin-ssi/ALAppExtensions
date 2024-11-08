@@ -1,3 +1,7 @@
+namespace System.Security.AccessControl;
+
+using Microsoft.Inventory.InventoryForecast;
+
 permissionsetextension 28528 "D365 TEAM MEMBER - Sales and Inventory Forecast" extends "D365 TEAM MEMBER"
 {
     Permissions = tabledata "MS - Sales Forecast" = RIMD,

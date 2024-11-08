@@ -1,6 +1,12 @@
+#if not CLEAN24
+namespace Microsoft.Integration.SyncBase;
+
 codeunit 2401 "Sync Management"
 {
     SingleInstance = true;
+    ObsoleteState = Pending;
+    ObsoleteReason = 'The extension is being obsoleted.';
+    ObsoleteTag = '24.0';
 
     procedure MergeSyncChanges()
     var
@@ -43,3 +49,4 @@ codeunit 2401 "Sync Management"
     end;
 }
 
+#endif

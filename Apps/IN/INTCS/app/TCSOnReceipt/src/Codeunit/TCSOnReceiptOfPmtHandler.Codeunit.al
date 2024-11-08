@@ -1,3 +1,19 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TCS.TCSOnReceipt;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Finance.TCS.TCSBase;
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Sales.Customer;
+using Microsoft.Foundation.NoSeries;
+
 codeunit 18903 "TCS On Receipt Of Pmt. Handler"
 {
     var
@@ -52,7 +68,7 @@ codeunit 18903 "TCS On Receipt Of Pmt. Handler"
         TaxTransactionValue: Record "Tax Transaction Value";
         TCSPostingSetup: Record "TCS Posting Setup";
         Customer: Record Customer;
-        NoSeriesMgt: Codeunit NoSeriesManagement;
+        NoSeries: Codeunit "No. Series";
         TCSManagement: Codeunit "TCS Management";
         TCSAmount, TCSAmountLCY : Decimal;
         TCSAccount: Code[20];
@@ -67,7 +83,7 @@ codeunit 18903 "TCS On Receipt Of Pmt. Handler"
 
         GLSetup.Get();
         GLSetup.TestField("TCS Debit Note No.");
-        TCSDebitNoteNo := NoSeriesMgt.GetNextNo(GLSetup."TCS Debit Note No.", GenJnlLine."Posting Date", true);
+        TCSDebitNoteNo := NoSeries.GetNextNo(GLSetup."TCS Debit Note No.", GenJnlLine."Posting Date");
 
         TCSPostingSetup.SetRange("TCS Nature of Collection", GenJnlLine."TCS Nature of Collection");
         TCSPostingSetup.SetFilter("Effective Date", '<=%1', GenJnlLine."Posting Date");
@@ -143,7 +159,7 @@ codeunit 18903 "TCS On Receipt Of Pmt. Handler"
         TCSEntry."Document No." := GenJnlLine."Document No."; // Payment Document No.
         TCSEntry."Posting Date" := GenJournalLine."Posting Date";
         TCSEntry."Account Type" := TCSEntry."Account Type"::"G/L Account";
-        TCSEntry.Description := Copystr(GenJournalLine.Description, 1, 50);
+        TCSEntry.Description := GenJournalLine.Description;
         TCSEntry."Account No." := GenJournalLine."Bal. Account No.";
         TCSEntry."Customer Account No." := CustomerPostingGroup."Receivables Account";
         TCSEntry."TCS Nature of Collection" := GenJournalLine."TCS Nature of Collection";

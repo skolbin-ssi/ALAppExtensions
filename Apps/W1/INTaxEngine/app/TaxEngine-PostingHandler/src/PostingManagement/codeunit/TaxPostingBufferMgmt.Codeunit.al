@@ -1,3 +1,13 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TaxEngine.PostingHandler;
+
+using Microsoft.Finance.TaxEngine.Core;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Finance.TaxEngine.UseCaseBuilder;
+
 codeunit 20343 "Tax Posting Buffer Mgmt."
 {
     SingleInstance = true;
@@ -221,6 +231,7 @@ codeunit 20343 "Tax Posting Buffer Mgmt."
         TempGroupTaxPostingBuffer.SetRange("Gen. Prod. Posting Group", TempTaxPostingBuffer."Gen. Prod. Posting Group");
         TempGroupTaxPostingBuffer.SetRange("Component ID", TempTaxPostingBuffer."Component ID");
         TempGroupTaxPostingBuffer.SetRange("Dimension Set ID", TempTaxPostingBuffer."Dimension Set ID");
+        OnFindTempGroupTaxPostingBuffer(TempGroupTaxPostingBuffer, TempTaxPostingBuffer, Quantity, InvoiceQty);
         if not TempGroupTaxPostingBuffer.FindFirst() then begin
             TempGroupTaxPostingBuffer := TempTaxPostingBuffer;
             TempGroupTaxPostingBuffer."Group ID" := CreateGuid();
@@ -244,9 +255,15 @@ codeunit 20343 "Tax Posting Buffer Mgmt."
     end;
 
     procedure GetGroupTaxJournal(TaxID: Guid; var TempGroupTaxPostingBuffer2: Record "Transaction Posting Buffer")
+    var
+        IsHandled: Boolean;
     begin
         TempGroupTaxPostingBuffer2.Reset();
         TempGroupTaxPostingBuffer2.DeleteAll();
+
+        OnBeforeInitTempGroupTaxPostingBuffer2(TempGroupTaxPostingBuffer2, TempGroupTaxPostingBuffer, TaxID, IsHandled);
+        if IsHandled then
+            exit;
 
         TempGroupTaxPostingBuffer.Reset();
         TempGroupTaxPostingBuffer.SetRange("Tax Id", TaxID);
@@ -305,6 +322,8 @@ codeunit 20343 "Tax Posting Buffer Mgmt."
         TempTransactionValue.Reset();
         NextID := TempTransactionValue.Count();
 
+        TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
+        TaxTransactionValue.LoadFields("Tax Record ID", "Case ID");
         TaxTransactionValue.SetRange("Tax Record ID", TempTaxPostingBuffer."Tax Record ID");
         TaxTransactionValue.SetRange("Case ID", TempTaxPostingBuffer."Case ID");
         if TaxTransactionValue.FindSet() then
@@ -427,6 +446,16 @@ codeunit 20343 "Tax Posting Buffer Mgmt."
 
     [IntegrationEvent(true, false)]
     local procedure OnBeforeSetAttribtueDefaultValue(RecID: RecordId; TaxTypeCode: Code[20]; var Symbols: Record "Script Symbol Value" temporary; TaxAttribute: Record "Tax Attribute"; var Value: Variant)
+    begin
+    end;
+
+    [IntegrationEvent(true, false)]
+    local procedure OnFindTempGroupTaxPostingBuffer(var TempGroupTaxPostingBuffer: Record "Transaction Posting Buffer" temporary; TempTaxPostingBuffer: Record "Transaction Posting Buffer" temporary; Quantity: Decimal; InvoiceQty: Decimal)
+    begin
+    end;
+
+    [IntegrationEvent(true, false)]
+    local procedure OnBeforeInitTempGroupTaxPostingBuffer2(var TempGroupTaxPostingBuffer2: Record "Transaction Posting Buffer" temporary; var TempGroupTaxPostingBuffer: Record "Transaction Posting Buffer" temporary; TaxID: Guid; var IsHandled: Boolean)
     begin
     end;
 

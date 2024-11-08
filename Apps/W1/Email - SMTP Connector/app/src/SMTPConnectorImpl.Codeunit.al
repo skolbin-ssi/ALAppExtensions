@@ -3,6 +3,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
 
+namespace System.Email;
+
+using System.Security.AccessControl;
+using System.Utilities;
+using System.DataAdministration;
+
 codeunit 4513 "SMTP Connector Impl." implements "Email Connector"
 {
     Access = Internal;
@@ -145,7 +151,7 @@ codeunit 4513 "SMTP Connector Impl." implements "Email Connector"
 
         if SMTPAccount."Authentication Type" <> SMTPAccount."Authentication Type"::Anonymous then begin
             ClearLastError();
-            SMTPAuthentication.SetBasicAuthInfo(Account."User Name", CopyStr(Account.GetPassword(Account."Password Key"), 1, 250));
+            SMTPAuthentication.SetBasicAuthInfo(Account."User Name", Account.GetPassword(Account."Password Key"));
             SMTPAuthentication.SetServer(Account.Server);
             Result := SMTPClient.Authenticate(Account."Authentication Type", SMTPAuthentication);
 

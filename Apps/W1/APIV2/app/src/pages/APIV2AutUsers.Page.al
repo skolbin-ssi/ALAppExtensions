@@ -1,3 +1,9 @@
+namespace Microsoft.API.V2;
+
+using System.Security.AccessControl;
+using System.Environment;
+using System.Threading;
+
 page 30004 "APIV2 - Aut. Users"
 {
     APIGroup = 'automation';
@@ -21,42 +27,46 @@ page 30004 "APIV2 - Aut. Users"
         {
             repeater(Group)
             {
-                field(userSecurityId; "User Security ID")
+                field(userSecurityId; Rec."User Security ID")
                 {
                     Caption = 'User Security Id';
                     Editable = false;
                 }
-                field(userName; "User Name")
+                field(userName; Rec."User Name")
                 {
                     Caption = 'User Name';
                     Editable = false;
                 }
-                field(displayName; "Full Name")
+                field(displayName; Rec."Full Name")
                 {
                     Caption = 'Display Name';
                     Editable = false;
                 }
-                field(state; State)
+                field(state; Rec.State)
                 {
                     Caption = 'State';
                 }
-                field(expiryDate; "Expiry Date")
+                field(expiryDate; Rec."Expiry Date")
                 {
                     Caption = 'Expiry Date';
                 }
-                part(userGroupMember; "APIV2 - Aut. User Gr. Members")
+                field(contactEmail; Rec."Contact Email")
+                {
+                    Caption = 'Contact Email';
+                }
+                part(securityGroupMember; "APIV2 - Aut. Sec. Gr. Members")
                 {
                     Caption = 'User Group Member';
-                    EntityName = 'userGroupMember';
-                    EntitySetName = 'userGroupMembers';
-                    SubPageLink = "User Security ID" = Field("User Security ID");
+                    EntityName = 'securityGroupMember';
+                    EntitySetName = 'securityGroupMembers';
+                    SubPageLink = "User Security ID" = field("User Security ID");
                 }
                 part(userPermission; "APIV2 - Aut. User Permissions")
                 {
                     Caption = 'User Permission';
                     EntityName = 'userPermission';
                     EntitySetName = 'userPermissions';
-                    SubPageLink = "User Security ID" = Field("User Security ID");
+                    SubPageLink = "User Security ID" = field("User Security ID");
                 }
                 part(scheduledJobs; "APIV2 - Aut. Scheduled Jobs")
                 {
@@ -79,7 +89,7 @@ page 30004 "APIV2 - Aut. Users"
     begin
         BindSubscription(AutomationAPIManagement);
         if EnvironmentInformation.IsSaaS() then
-            SetFilter("License Type", '<>%1', "License Type"::"External User");
+            Rec.SetFilter("License Type", '<>%1', Rec."License Type"::"External User");
     end;
 
     var
@@ -116,7 +126,7 @@ page 30004 "APIV2 - Aut. Users"
 
         ActionContext.SetObjectType(ObjectType::Page);
         ActionContext.SetObjectId(Page::"APIV2 - Aut. Users");
-        ActionContext.AddEntityKey(FieldNo(SystemId), SystemId);
+        ActionContext.AddEntityKey(Rec.FieldNo(SystemId), Rec.SystemId);
         ActionContext.SetResultCode(WebServiceActionResultCode::Updated);
     end;
 

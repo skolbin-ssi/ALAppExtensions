@@ -1,3 +1,13 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.Reports;
+
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Sales.Customer;
+
 query 18018 GSTR1CDNRQuery
 {
     QueryType = Normal;
@@ -6,7 +16,11 @@ query 18018 GSTR1CDNRQuery
     {
         dataitem(Detailed_GST_Ledger_Entry; "Detailed GST Ledger Entry")
         {
+            DataItemTableFilter = "GST Component Code" = filter(<> 'CESS');
             column(Document_Type; "Document Type")
+            {
+            }
+            column(Document_Line_No_; "Document Line No.")
             {
             }
             filter(Entry_Type; "Entry Type")

@@ -1,3 +1,11 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.VAT.Group;
+
+using Microsoft.Finance.VAT.Reporting;
+
 codeunit 4704 "VAT Group Serialization"
 {
     internal procedure CreateVATSubmissionJson(VATReportHeader: Record "VAT Report Header"): JsonObject
@@ -9,7 +17,7 @@ codeunit 4704 "VAT Group Serialization"
         VATReportSetup.Get();
 
         VATSubmissionJson := FillVATSubmissionHeaderJson(VATReportHeader);
-        CASE VATReportSetup."VAT Group BC Version" OF
+        case VATReportSetup."VAT Group BC Version" of
             VATReportSetup."VAT Group BC Version"::NAV2017:
                 begin
                     FillVATSubmissionLinesJson(VATReportHeader).WriteTo(LinesJson);
@@ -18,7 +26,7 @@ codeunit 4704 "VAT Group Serialization"
             VATReportSetup."VAT Group BC Version"::NAV2018,
             VATReportSetup."VAT Group BC Version"::BC:
                 VATSubmissionJson.Add('vatGroupSubmissionLines', FillVATSubmissionLinesJson(VATReportHeader));
-        END;
+        end;
 
         exit(VATSubmissionJson);
     end;

@@ -1,10 +1,24 @@
+namespace Microsoft.CRM.EmailLoggin;
+
+using System.Environment.Configuration;
+using Microsoft.CRM.Setup;
+using System.Threading;
+using Microsoft.CRM.Outlook;
+using System.Security.Authentication;
+using Microsoft.CRM.Interaction;
+using System.Globalization;
+using System.Media;
+using System;
+using System.Utilities;
+using System.Security.Encryption;
+using Microsoft.Utilities;
+
 codeunit 1681 "Email Logging Management"
 {
     Access = Internal;
     Permissions = tabledata "Email Logging Setup" = rimd;
 
     var
-        EmailLoggingUsingGraphApiFeatureIdTok: Label 'EmailLoggingUsingGraphApi', Locked = true;
         EmailLoggingSetupHelpTxt: Label 'https://go.microsoft.com/fwlink/?linkid=2115467', Locked = true;
         CategoryTok: Label 'Email Logging', Locked = true;
         ActivityLogRelatedRecordCodeTxt: Label 'EMLLOGGING', Locked = true;
@@ -14,8 +28,6 @@ codeunit 1681 "Email Logging Management"
         NoPermissionsForJobErr: Label 'Your license does not allow you to schedule the email logging task or register interaction log entries. To view details about your permissions, see the Effective Permissions page.';
         EmailLoggingSetupTitleTxt: Label 'Set up the Email Logging Using the Microsoft Graph API feature.';
         EmailLoggingSetupShortTitleTxt: Label 'Set up email logging', MaxLength = 50;
-        FeatureDisabledTxt: Label 'The Email Logging Using the Microsoft Graph API feature is not enabled.', Locked = true;
-        FeatureDisabledErr: Label 'The Email Logging Using the Microsoft Graph API feature is not enabled.';
         EmailLoggingDisabledTxt: Label 'The Email Logging Using the Microsoft Graph API feature is not enabled.', Locked = true;
         EmailLoggingDisabledErr: Label 'The Email Logging Using the Microsoft Graph API feature is not enabled.';
         EmptyEmailAddressTxt: Label 'Email address is empty.', Locked = true;
@@ -39,31 +51,10 @@ codeunit 1681 "Email Logging Management"
         CannotExtractTenantIdTxt: Label 'Cannot extract the tenant ID from the access token.', Locked = true;
         CannotExtractTenantIdErr: Label 'Cannot extract the tenant ID from the access token.';
 
-    internal procedure IsEmailLoggingUsingGraphApiFeatureEnabled() FeatureEnabled: Boolean;
-    var
-        FeatureManagementFacade: Codeunit "Feature Management Facade";
-    begin
-        FeatureEnabled := FeatureManagementFacade.IsEnabled(GetEmailLoggingUsingGraphApiFeatureKey());
-        OnIsEmailLoggingUsingGraphApiFeatureEnabled(FeatureEnabled);
-    end;
-
-    [IntegrationEvent(false, false)]
-    local procedure OnIsEmailLoggingUsingGraphApiFeatureEnabled(var FeatureEnabled: Boolean)
-    begin
-    end;
-
-    local procedure GetEmailLoggingUsingGraphApiFeatureKey(): Text[50]
-    begin
-        exit(EmailLoggingUsingGraphApiFeatureIdTok);
-    end;
-
     internal procedure IsEmailLoggingEnabled(): Boolean
     var
         EmailLoggingSetup: Record "Email Logging Setup";
     begin
-        if not IsEmailLoggingUsingGraphApiFeatureEnabled() then
-            exit(false);
-
         if not EmailLoggingSetup.Get() then
             exit(false);
 
@@ -78,9 +69,6 @@ codeunit 1681 "Email Logging Management"
         GuidedExperience: Codeunit "Guided Experience";
         GuidedExperienceType: Enum "Guided Experience Type";
     begin
-        if not IsEmailLoggingUsingGraphApiFeatureEnabled() then
-            exit;
-
         if IsEmailLoggingEnabled() then
             exit;
 
@@ -94,9 +82,6 @@ codeunit 1681 "Email Logging Management"
     var
         EmailLoggingSetup: Record "Email Logging Setup";
     begin
-        if not IsEmailLoggingUsingGraphApiFeatureEnabled() then
-            Error(FeatureDisabledErr);
-
         if not EmailLoggingSetup.ReadPermission() then
             Error(NoPermissionsTxt);
 
@@ -118,15 +103,6 @@ codeunit 1681 "Email Logging Management"
         end;
 
         CheckInteractionTemplateSetup();
-    end;
-
-    internal procedure CheckFeatureEnabled()
-    begin
-        if IsEmailLoggingUsingGraphApiFeatureEnabled() then
-            exit;
-
-        Session.LogMessage('0000FZR', FeatureDisabledTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', CategoryTok);
-        Error(FeatureDisabledErr);
     end;
 
     internal procedure CheckInteractionTemplateSetup(): Boolean
@@ -163,14 +139,6 @@ codeunit 1681 "Email Logging Management"
         CurrentGlobalLanguage: Integer;
         NeedCommit: Boolean;
     begin
-        if not IsEmailLoggingUsingGraphApiFeatureEnabled() then
-            exit(false);
-
-        if GuidedExperience.Exists(GuidedExperienceType::"Assisted Setup", ObjectType::Page, Page::"Setup Email Logging") then begin
-            GuidedExperience.Remove(GuidedExperienceType::"Assisted Setup", ObjectType::Page, Page::"Setup Email Logging");
-            NeedCommit := true;
-        end;
-
         if GuidedExperience.Exists(GuidedExperienceType::"Assisted Setup", ObjectType::Page, Page::"Email Logging Setup Wizard") then begin
             if NeedCommit then
                 Commit();
@@ -288,10 +256,9 @@ codeunit 1681 "Email Logging Management"
         exit(true);
     end;
 
-    [NonDebuggable]
-    internal procedure ExtractTenantIdFromAccessToken(AccessToken: Text) TenantId: Text
+    internal procedure ExtractTenantIdFromAccessToken(AccessToken: SecretText) TenantId: Text
     begin
-        if AccessToken <> '' then begin
+        if not AccessToken.IsEmpty() then begin
             if TryExtractTenantIdFromAccessToken(TenantId, AccessToken) then begin
                 if TenantId <> '' then begin
                     Session.LogMessage('0000G01', TenantIdExtractedTxt, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', CategoryTok);
@@ -308,13 +275,13 @@ codeunit 1681 "Email Logging Management"
 
     [TryFunction]
     [NonDebuggable]
-    internal procedure TryExtractTenantIdFromAccessToken(var TenantId: Text; AccessToken: Text)
+    internal procedure TryExtractTenantIdFromAccessToken(var TenantId: Text; AccessToken: SecretText)
     var
         JwtSecurityTokenHandler: DotNet JwtSecurityTokenHandler;
         JwtSecurityToken: DotNet JwtSecurityToken;
     begin
         JwtSecurityTokenHandler := JwtSecurityTokenHandler.JwtSecurityTokenHandler();
-        JwtSecurityToken := JwtSecurityTokenHandler.ReadToken(AccessToken);
+        JwtSecurityToken := JwtSecurityTokenHandler.ReadToken(AccessToken.Unwrap());
         JwtSecurityToken.Payload().TryGetValue('tid', TenantId);
     end;
 
@@ -434,9 +401,7 @@ codeunit 1681 "Email Logging Management"
     [EventSubscriber(ObjectType::Page, Page::"Marketing Setup", 'OnRunEmailLoggingSetup', '', false, false)]
     local procedure HandleOnRunEmailLoggingSetup()
     begin
-        if IsEmailLoggingUsingGraphApiFeatureEnabled() then begin
-            Commit();
-            Page.RunModal(Page::"Email Logging Setup");
-        end;
+        Commit();
+        Page.RunModal(Page::"Email Logging Setup");
     end;
 }

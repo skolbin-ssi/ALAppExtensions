@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Sales.History;
+
+using Microsoft.Finance.GST.Sales;
+
 pageextension 18144 "GST Posted Sales Invoice Ext" extends "Posted Sales Invoice"
 {
     layout
@@ -35,19 +43,6 @@ pageextension 18144 "GST Posted Sales Invoice Ext" extends "Posted Sales Invoice
                 ApplicationArea = Basic, Suite;
                 Editable = false;
                 ToolTip = 'Specifies the customer number for which merchant id has to be recorded.';
-            }
-            field("E-Commerce Merchant Id"; Rec."E-Commerce Merchant Id")
-            {
-                ApplicationArea = Basic, Suite;
-                Editable = false;
-                ToolTip = 'Specifies the merchant ID provided to customers by their payment processor.';
-                ObsoleteState = Pending;
-                ObsoleteReason = 'New field introduced as E-Comm. Merchant Id';
-                ObsoleteTag = '23.0';
-                trigger OnValidate()
-                begin
-                    error(UnusedFieldLbl);
-                end;
             }
             field("E-Comm. Merchant Id"; Rec."E-Comm. Merchant Id")
             {
@@ -350,7 +345,6 @@ pageextension 18144 "GST Posted Sales Invoice Ext" extends "Posted Sales Invoice
         MakeFieldUneditable: Boolean;
         eInvoiceNonGSTTransactionErr: Label 'E-Invoicing is not applicable for Non-GST Transactions.';
         eInvoiceNotApplicableCustomerErr: Label 'E-Invoicing is not applicable for Unregistered, Export and Deemed Export Customers.';
-        UnusedFieldLbl: Label 'This field has been marked as obsolete and will be removed from version 23.0. Instead of this field use ‘E-Comm. Merchant Id’';
         QRCodeAlreadyExistErr: Label 'QR Code for the Invoice no. %1 is already been generated', Comment = '%1 = DocumentNo';
 
     local procedure CheckQrCode(DocumentNo: Text[20]; QRCodeHasValue: Boolean)

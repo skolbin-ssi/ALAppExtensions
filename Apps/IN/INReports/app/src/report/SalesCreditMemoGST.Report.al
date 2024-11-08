@@ -1,3 +1,28 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.Reports;
+
+using Microsoft.CRM.Contact;
+using Microsoft.CRM.Segment;
+using Microsoft.CRM.Team;
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Finance.TCS.TCSBase;
+using Microsoft.Finance.VAT.Calculation;
+using Microsoft.Foundation.Address;
+using Microsoft.Foundation.Company;
+using Microsoft.Inventory.Ledger;
+using Microsoft.Inventory.Location;
+using Microsoft.Sales.Customer;
+using Microsoft.Sales.History;
+using Microsoft.Sales.Setup;
+using System.Utilities;
+
 report 18015 "Sales - Credit Memo GST"
 {
     DefaultLayout = RDLC;
@@ -909,7 +934,7 @@ report 18015 "Sales - Credit Memo GST"
 
         trigger OnOpenPage()
         begin
-            LogIntaction := SegManagement.FindInteractTmplCode(6) <> '';
+            LogIntaction := SegManagement.FindInteractionTemplateCode(6) <> '';
             LogInteractionEnable := LogIntaction;
         end;
     }
@@ -1082,7 +1107,7 @@ report 18015 "Sales - Credit Memo GST"
 
     procedure InitLogInteraction()
     begin
-        LogIntaction := SegManagement.FindInteractTmplCode(6) <> '';
+        LogIntaction := SegManagement.FindInteractionTemplateCode(6) <> '';
     end;
 
     procedure FindPostedShipmentDate(): Date

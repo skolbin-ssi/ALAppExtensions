@@ -1,11 +1,12 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Enum Shpfy Cancel Reason (ID 30116).
 /// </summary>
 enum 30116 "Shpfy Cancel Reason"
 {
-    Access = Internal;
     Caption = 'Shopify Cancel Reason';
-    Extensible = true;
+    Extensible = false;
 
     value(0; " ")
     {
@@ -26,6 +27,14 @@ enum 30116 "Shpfy Cancel Reason"
     value(4; Other)
     {
         Caption = 'Other';
+    }
+    value(5; Staff)
+    {
+        Caption = 'Staff';
+    }
+    value(6; Declined)
+    {
+        Caption = 'Declined';
     }
     value(99; Unknown)
     {

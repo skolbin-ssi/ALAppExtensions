@@ -1,3 +1,9 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Service.Reports;
+
 page 5011 "Service Transaction Types"
 {
     PageType = List;
@@ -26,23 +32,5 @@ page 5011 "Service Transaction Types"
     }
 
     var
-        SetupMode: Boolean;
-
-    trigger OnOpenPage()
-    var
-        ServiceDeclarationMgt: Codeunit "Service Declaration Mgt.";
-    begin
-        if SetupMode then
-            exit;
-        if not ServiceDeclarationMgt.IsFeatureEnabled() then begin
-            ServiceDeclarationMgt.ShowNotEnabledMessage(CurrPage.Caption());
-            Error('');
-        end;
-    end;
-
-    procedure SetSetupMode()
-    begin
-        SetupMode := true;
-    end;
 }
 

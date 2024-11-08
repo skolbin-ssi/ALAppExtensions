@@ -1,3 +1,17 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TaxEngine.PostingHandler;
+
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.TaxEngine.Core;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Finance.TaxEngine.UseCaseBuilder;
+
 codeunit 20341 "Tax Document GL Posting"
 {
     procedure UpdateTaxPostingBuffer(
@@ -49,6 +63,7 @@ codeunit 20341 "Tax Document GL Posting"
         ToTaxTransactionValue: Record "Tax Transaction Value";
     begin
         FromTaxTransactionValue.Reset();
+        FromTaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
         FromTaxTransactionValue.SetRange("Tax Record ID", FromRecID);
         if FromTaxTransactionValue.FindSet() then
             repeat
@@ -74,7 +89,8 @@ codeunit 20341 "Tax Document GL Posting"
     begin
         if QtyToInvoice = 0 then
             exit;
-
+            
+        TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
         TaxTransactionValue.SetRange("Tax Record ID", RecID);
         if TaxTransactionValue.FindSet() then
             repeat
@@ -431,7 +447,6 @@ codeunit 20341 "Tax Document GL Posting"
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Gen. Jnl.-Post Line", 'OnAfterPostGenJnlLine', '', false, false)]
     local procedure OnAfterPostGenJnlLine(var GenJournalLine: Record "Gen. Journal Line"; Balancing: Boolean)
-    var
     begin
         if not IsNullGuid(GenJournalLine."Tax ID") then
             RevertGenJnlLineAmount(GenJournalLine, Balancing);

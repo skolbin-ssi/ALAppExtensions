@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TDS.TDSForCustomer;
+
+using System.Integration.Excel;
+
 page 18662 "TDS Cust Concessional Codes"
 {
     PageType = List;
@@ -67,9 +75,8 @@ page 18662 "TDS Cust Concessional Codes"
                 trigger OnAction()
                 var
                     EditinExcel: Codeunit "Edit in Excel";
-                    CustomerEditLbl: Label 'Code eq %1', Comment = '%1 = Customer No.';
                 begin
-                    EditinExcel.EditPageInExcel('Customer Concessional Codes', CurrPage.ObjectId(false), StrSubstNo(CustomerEditLbl, Rec."Customer No."));
+                    EditinExcel.EditPageInExcel('Customer Concessional Codes', Page::"TDS Cust Concessional Codes");
                 end;
             }
         }

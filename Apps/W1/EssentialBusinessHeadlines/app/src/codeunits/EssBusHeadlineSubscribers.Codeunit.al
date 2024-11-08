@@ -2,6 +2,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
+
+namespace System.Visualization;
+
+using System.Environment.Configuration;
+
 codeunit 1438 "Ess. Bus. Headline Subscribers"
 {
 
@@ -13,23 +18,6 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
         exit(Session.GetExecutionContext() = Session.GetExecutionContext() ::Normal);
     end;
 
-#if not CLEAN19
-#pragma warning disable AS0072, AS0022, AS0018
-    [Obsolete('My Settings has been obsoleted', '19.0')]
-    [EventSubscriber(ObjectType::Page, Page::"My Settings", 'OnBeforeLanguageChange', '', true, true)]
-    procedure OnBeforeUpdateLanguage(OldLanguageId: Integer; NewLanguageId: Integer);
-    begin
-        InvalidateHeadlines();
-    end;
-
-    [Obsolete('My Settings has been obsoleted', '19.0')]
-    [EventSubscriber(ObjectType::Page, Page::"My Settings", 'OnBeforeWorkdateChange', '', true, true)]
-    procedure OnBeforeUpdateWorkdate(OldWorkdate: Date; NewWorkdate: Date);
-    begin
-        InvalidateHeadlines();
-    end;
-#pragma warning restore
-#else
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"User Settings", 'OnUpdateUserSettings', '', true, true)]
     local procedure OnBeforeUpdateUserSettings(NewSettings: Record "User Settings"; OldSettings: Record "User Settings");
     begin
@@ -38,7 +26,7 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
         then
             InvalidateHeadlines();
     end;
-#endif
+
     local procedure InvalidateHeadlines()
     var
         EssentialBusinessHeadline: Record "Ess. Business Headline Per Usr";
@@ -49,7 +37,8 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
             exit;
 
         EssentialBusinessHeadline.SetRange("User Id", UserSecurityId());
-        EssentialBusinessHeadline.DeleteAll();
+        if not EssentialBusinessHeadline.IsEmpty() then
+            EssentialBusinessHeadline.DeleteAll();
     end;
 
     local procedure TransferHeadlineToPage(HeadlineName: Option; var HeadlineText: Text[250]; var HeadlineVisible: Boolean)
@@ -64,7 +53,7 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"RC Headlines Executor", 'OnComputeHeadlines', '', true, true)]
-    procedure OnComputeRoleCenterHeadlines(RoleCenterPageID: Integer)
+    local procedure OnComputeRoleCenterHeadlines(RoleCenterPageID: Integer)
     var
         EssentialBusinessHeadline: Record "Ess. Business Headline Per Usr";
     begin
@@ -104,7 +93,7 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"RC Headlines Page Common", 'OnIsAnyExtensionHeadlineVisible', '', true, true)]
-    procedure OnIsAnyExtensionHeadlineVisible(var ExtensionHeadlinesVisible: Boolean; RoleCenterPageID: Integer)
+    local procedure OnIsAnyExtensionHeadlineVisible(var ExtensionHeadlinesVisible: Boolean; RoleCenterPageID: Integer)
     var
         EssentialBusinessHeadline: Record "Ess. Business Headline Per Usr";
         AtLeastOneHeadlineVisible: Boolean;
@@ -150,7 +139,7 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
     end;
 
     [EventSubscriber(ObjectType::Page, Page::"Headline RC Business Manager", 'OnSetVisibility', '', true, true)]
-    procedure OnSetVisibilityBusinessManager(var MostPopularItemVisible: Boolean; var MostPopularItemText: Text[250];
+    local procedure OnSetVisibilityBusinessManager(var MostPopularItemVisible: Boolean; var MostPopularItemText: Text[250];
                                              var LargestOrderVisible: Boolean; var LargestOrderText: Text[250];
                                              var LargestSaleVisible: Boolean; var LargestSaleText: Text[250];
                                              var SalesIncreaseVisible: Boolean; var SalesIncreaseText: Text[250];
@@ -175,7 +164,7 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
     end;
 
     [EventSubscriber(ObjectType::Page, Page::"Headline RC Business Manager", 'OnSetVisibilityOpenVATReturn', '', true, true)]
-    procedure OnSetVisibilityBusinessManagerOpenVATReturn(var OpenVATReturnVisible: Boolean; var OpenVATReturnText: Text[250])
+    local procedure OnSetVisibilityBusinessManagerOpenVATReturn(var OpenVATReturnVisible: Boolean; var OpenVATReturnText: Text[250])
     var
         EssentialBusinessHeadline: Record "Ess. Business Headline Per Usr";
     begin
@@ -188,7 +177,7 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
     end;
 
     [EventSubscriber(ObjectType::Page, Page::"Headline RC Business Manager", 'OnSetVisibilityOverdueVATReturn', '', true, true)]
-    procedure OnSetVisibilityBusinessManagerOverdueVATReturn(var OverdueVATReturnVisible: Boolean; var OverdueVATReturnText: Text[250])
+    local procedure OnSetVisibilityBusinessManagerOverdueVATReturn(var OverdueVATReturnVisible: Boolean; var OverdueVATReturnText: Text[250])
     var
         EssentialBusinessHeadline: Record "Ess. Business Headline Per Usr";
     begin
@@ -201,7 +190,7 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
     end;
 
     [EventSubscriber(ObjectType::Page, Page::"Headline RC Order Processor", 'OnSetVisibility', '', true, true)]
-    procedure OnSetVisibilityOrderProcessor(var LargestOrderVisible: Boolean; var LargestOrderText: Text[250]; var LargestSaleVisible: Boolean; var LargestSaleText: Text[250])
+    local procedure OnSetVisibilityOrderProcessor(var LargestOrderVisible: Boolean; var LargestOrderText: Text[250]; var LargestSaleVisible: Boolean; var LargestSaleText: Text[250])
     var
         EssentialBusinessHeadline: Record "Ess. Business Headline Per Usr";
     begin
@@ -215,7 +204,7 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
     end;
 
     [EventSubscriber(ObjectType::Page, Page::"Headline RC Accountant", 'OnSetVisibility', '', true, true)]
-    procedure OnSetVisibilityAccountant(var LargestOrderVisible: Boolean; var LargestOrderText: Text[250];
+    local procedure OnSetVisibilityAccountant(var LargestOrderVisible: Boolean; var LargestOrderText: Text[250];
                                         var LargestSaleVisible: Boolean; var LargestSaleText: Text[250];
                                         var SalesIncreaseVisible: Boolean; var SalesIncreaseText: Text[250])
     var
@@ -232,7 +221,7 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
     end;
 
     [EventSubscriber(ObjectType::Page, Page::"Headline RC Relationship Mgt.", 'OnSetVisibility', '', true, true)]
-    procedure OnSetVisibilityRelMgt(var TopCustomerVisible: Boolean; var TopCustomerText: Text[250])
+    local procedure OnSetVisibilityRelMgt(var TopCustomerVisible: Boolean; var TopCustomerText: Text[250])
     var
         EssentialBusinessHeadline: Record "Ess. Business Headline Per Usr";
     begin
@@ -243,5 +232,4 @@ codeunit 1438 "Ess. Bus. Headline Subscribers"
 
         TransferHeadlineToPage(EssentialBusinessHeadline."Headline Name"::TopCustomer, TopCustomerText, TopCustomerVisible);
     end;
-
 }

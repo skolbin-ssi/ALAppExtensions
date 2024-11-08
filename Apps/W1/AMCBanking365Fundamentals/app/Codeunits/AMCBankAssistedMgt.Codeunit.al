@@ -1,3 +1,22 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Bank.Payment;
+
+using Microsoft.Bank.BankAccount;
+using Microsoft.Bank.Reconciliation;
+using Microsoft.Bank.Setup;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Utilities;
+using System.Environment;
+using System.Environment.Configuration;
+using System.Globalization;
+using System.IO;
+using System.Media;
+using System.Text;
+using System.Utilities;
+
 codeunit 20117 "AMC Bank Assisted Mgt."
 {
     trigger OnRun()
@@ -62,6 +81,7 @@ codeunit 20117 "AMC Bank Assisted Mgt."
         AMCBankImpBankListHndl: Codeunit "AMC Bank Imp.BankList Hndl";
         LongTimeout: Integer;
         ShortTimeout: Integer;
+        AMCBoughtModule: Boolean;
         AMCSolution: text;
         AMCSpecificURL: Text;
         AMCSignUpURL: Text;
@@ -80,6 +100,7 @@ codeunit 20117 "AMC Bank Assisted Mgt."
         end;
 
         if ((AMCBankingSetup."User Name" <> AMCBankingSetup.GetDemoUserName()) and
+            (not AMCBankingMgt.IsLicenseEqualAMC()) and
            (AMCBankingSetup."User Name" <> AMCBankingMgt.GetLicenseNumber())) then begin
             Error_Text := StrSubstNo(NotCorrectUserLbl, AMCBankingSetup."User Name", AMCBankingMgt.GetLicenseNumber(), AMCBankingSetup.GetDemoUserName()) + '\\' +
                           YouHave2OptionsLbl + '\\' +
@@ -96,7 +117,7 @@ codeunit 20117 "AMC Bank Assisted Mgt."
         end
         else
             if (CallLicenseServer) then
-                GetModuleInfoFromWebservice(AMCSpecificURL, AMCSignUpURL, AMCSupportURL, AMCSolution, ShortTimeout);
+                AMCBoughtModule := GetModuleInfoFromWebservice(AMCSpecificURL, AMCSignUpURL, AMCSupportURL, AMCSolution, ShortTimeout);
 
         if (AMCSolution <> '') then begin
             AMCBankingSetup.Solution := CopyStr(AMCSolution, 1, 50);
@@ -192,18 +213,6 @@ codeunit 20117 "AMC Bank Assisted Mgt."
         exit(BasisSetupRanOK);
     end;
 
-#if not CLEAN20
-    [Obsolete('This method is obsolete, there is no replacement. It will be removed in future release', '20.0')]
-    procedure GetDataExchDefsFromWebservice(DataExchDefFilter: Text; ApplVersion: Text; BuildNumber: Text; Timeout: Integer; AppCaller: Text[30]): Boolean;
-    var
-        TempBlob: Codeunit "Temp Blob";
-    begin
-        if (SendDataExchRequestToWebService(TempBlob, true, Timeout, ApplVersion, BuildNumber, AppCaller)) then
-            exit(GetDataExchangeData(TempBlob, DataExchDefFilter))
-        else
-            exit(false)
-    end;
-#endif
     local procedure CheckCreateDataExchDef(DataExchDefCode: Code[20])
     var
         DataExchDef: Record "Data Exch. Def";
@@ -296,7 +305,7 @@ codeunit 20117 "AMC Bank Assisted Mgt."
         AMCBankingMgt.CheckCredentials();
         AMCBankingSetup.Get();
 
-        AMCBankServiceRequestMgt.InitializeHttp(HttpRequestMessage, AMCBankingMgt.GetLicenseServerName() + '/' + AMCBankingMgt.GetLicenseXmlApi(), 'POST');
+        AMCBankServiceRequestMgt.InitializeHttp(HttpRequestMessage, AMCBankingMgt.GetCleanLicenseServerName(AMCBankingSetup) + '/' + AMCBankingMgt.GetLicenseXmlApi(), 'POST');
 
         PrepareSOAPRequestBodyModuleCreate(HttpRequestMessage);
 
@@ -365,9 +374,11 @@ codeunit 20117 "AMC Bank Assisted Mgt."
         Application1patch: Text;
         Application1Version: Text;
         Command: Text;
-        Password: Text;
+        Password: SecretText;
+        PasswordFromEvent: Text;
         Serialnumber: Text;
         System: Text;
+        SecretContent: SecretText;
     begin
 
         BodyContentXmlDoc := XmlDocument.Create();
@@ -387,14 +398,16 @@ codeunit 20117 "AMC Bank Assisted Mgt."
         System := 'Business Central';
 
         OnPrepareSOAPRequestBodyModuleCreate(Application1, Application1patch, Application1Version,
-                                             Command, Password, Serialnumber, System);
+                                             Command, PasswordFromEvent, Serialnumber, System);
+        if PasswordFromEvent <> '' then
+            Password := PasswordFromEvent;
 
         FunctionXmlElement := XmlElement.Create('function');
         FunctionXmlElement.SetAttribute('application1', Application1);
         FunctionXmlElement.SetAttribute('application1patch', Application1patch);
         FunctionXmlElement.SetAttribute('application1version', Application1Version);
         FunctionXmlElement.SetAttribute('command', Command);
-        FunctionXmlElement.SetAttribute('password', Password);
+        FunctionXmlElement.SetAttribute('password', Password.Unwrap());
         FunctionXmlElement.SetAttribute('serialnumber', Serialnumber);
         FunctionXmlElement.SetAttribute('system', System);
 
@@ -406,9 +419,9 @@ codeunit 20117 "AMC Bank Assisted Mgt."
         if (EncodPos > 0) THEN
             TempXmlDocText := DelStr(TempXmlDocText, EncodPos, STRLEN(' standalone="No"'));
 
-        contentHttpContent.WriteFrom(TempXmlDocText);
+        SecretContent := TempXmlDocText;
+        contentHttpContent.WriteFrom(SecretContent);
         HttpRequestMessage.Content(contentHttpContent);
-
     end;
 
     [IntegrationEvent(false, false)]
@@ -537,6 +550,7 @@ codeunit 20117 "AMC Bank Assisted Mgt."
         OperationXmlNode: XMLElement;
         ChildXmlElement: XmlElement;
         TempXmlDocText: Text;
+        SecretContent: SecretText;
     begin
         BodyContentXmlDoc := XmlDocument.Create();
         BodyDeclaration := XmlDeclaration.Create('1.0', 'UTF-8', 'No');
@@ -558,7 +572,8 @@ codeunit 20117 "AMC Bank Assisted Mgt."
 
         BodyContentXmlDoc.WriteTo(TempXmlDocText);
         AMCBankServiceRequestMgt.RemoveUTF16(TempXmlDocText);
-        contentHttpContent.WriteFrom(TempXmlDocText);
+        SecretContent := TempXmlDocText;
+        contentHttpContent.WriteFrom(SecretContent);
         HttpRequestMessage.Content(contentHttpContent);
     end;
 
@@ -668,17 +683,6 @@ codeunit 20117 "AMC Bank Assisted Mgt."
     begin
     end;
 
-#if not CLEAN20    
-    [IntegrationEvent(false, false)]
-    [Obsolete('This IntegrationEvent is obsolete. A new OnAfterRunBasisSetupV19 IntegrationEvent is available, with the an extra parameters (var BasisSetupRanOK) to control if setup ran ok.', '20.0')]
-    procedure OnAfterRunBasisSetupV16(UpdURL: Boolean; URLSChanged: Boolean; SignupURL: Text[250]; ServiceURL: Text[250]; SupportURL: Text[250];
-                                   UpdBank: Boolean; UpdPayMeth: Boolean; BankCountryCode: Code[10]; PaymCountryCode: Code[10];
-                                   UpdDataExchDef: Boolean; UpdCreditTransfer: Boolean; UpdPositivePay: Boolean; UpdateStatementImport: Boolean;
-                                   UpdCreditAdvice: Boolean; ApplVer: Text; BuildNo: Text;
-                                   UpdBankClearStd: Boolean; UpdBankAccounts: Boolean; var TempOnlineBankAccLink: Record "Online Bank Acc. Link"; CallLicenseServer: Boolean)
-    begin
-    end;
-#endif
     [IntegrationEvent(false, false)]
     procedure OnAfterRunBasisSetupV19(UpdURL: Boolean; URLSChanged: Boolean; SignupURL: Text[250]; ServiceURL: Text[250]; SupportURL: Text[250];
                                    UpdBank: Boolean; UpdPayMeth: Boolean; BankCountryCode: Code[10]; PaymCountryCode: Code[10];
@@ -819,7 +823,6 @@ codeunit 20117 "AMC Bank Assisted Mgt."
 
     [EventSubscriber(ObjectType::Page, Page::"AMC Banking Setup", 'OnAfterGetCurrRecordEvent', '', true, true)]
     local procedure ShowAssistedSetupNotificationAMCBankingSetup(var Rec: Record "AMC Banking Setup")
-    var
     begin
         if (Rec."AMC Enabled") then begin
             if (UpgradeNotificationIsNeeded(AMCBankingMgt.GetDataExchDef_CT()) or

@@ -1,3 +1,15 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Bank.Payment;
+
+using Microsoft.Bank.BankAccount;
+using Microsoft.Finance.GeneralLedger.Journal;
+using System;
+using System.IO;
+using System.Utilities;
+
 codeunit 20113 "AMC Bank Exp. CT Hndl"
 {
     Permissions = TableData "Data Exch." = rimd,
@@ -21,7 +33,7 @@ codeunit 20113 "AMC Bank Exp. CT Hndl"
             BankFileName := "Data Exch. Def Code" + GetFileExtension();
 
         if FileManagement.BLOBExport(TempBlob, BankFileName, true) = '' then
-            LogInternalError(DownloadFromStreamErr, DataClassification::SystemMetadata, Verbosity::Error);
+            Session.LogMessage('0000M0N', DownloadFromStreamErr, Verbosity::Error, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', AmcTelemetryCategoryTxt);
 
         Get("Entry No.");
         RecordRef.GetTable(Rec);
@@ -42,6 +54,7 @@ codeunit 20113 "AMC Bank Exp. CT Hndl"
         BankDataConvServSysErr: Label 'The AMC Banking has returned the following error message:';
         AddnlInfoTxt: Label 'For more information, go to %1.', Comment = '%1=Support URL';
         PaymentExportWebCallTxt: Label 'paymentExportBank', locked = true;
+        AmcTelemetryCategoryTxt: Label 'AMC', Locked = true;
         PayBankAcountNo: Code[20];
 
     [Scope('OnPrem')]
@@ -50,14 +63,14 @@ codeunit 20113 "AMC Bank Exp. CT Hndl"
         RequestBodyTempBlob: Codeunit "Temp Blob";
     begin
         if not DataExch."File Content".HasValue() then
-            LogInternalError(NoRequestBodyErr, DataClassification::SystemMetadata, Verbosity::Error);
+            Session.LogMessage('0000M0O', NoRequestBodyErr, Verbosity::Error, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', AmcTelemetryCategoryTxt);
 
         RequestBodyTempBlob.FromRecord(DataExch, DataExch.FieldNo("File Content"));
 
         SendPaymentRequestToWebService(PaymentFileTempBlob, RequestBodyTempBlob, DataExch."Entry No.", AMCBankingMgt.GetAppCaller());
 
         if not PaymentFileTempBlob.HasValue() then
-            LogInternalError(NothingToExportErr, DataClassification::SystemMetadata, Verbosity::Error);
+            Session.LogMessage('0000M0P', NothingToExportErr, Verbosity::Error, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', AmcTelemetryCategoryTxt);
     end;
 
     local procedure SendPaymentRequestToWebService(var PaymentFileTempBlob: Codeunit "Temp Blob"; var BodyTempBlob: Codeunit "Temp Blob"; DataExchEntryNo: Integer; AppCaller: Text[30])
@@ -102,6 +115,7 @@ codeunit 20113 "AMC Bank Exp. CT Hndl"
         BodyXMLElement: XmlElement;
         Found: Boolean;
         TempXmlDocText: text;
+        SecretContent: SecretText;
         contentHttpContent: HttpContent;
     begin
         AMCBankingSetup.Get();
@@ -118,6 +132,7 @@ codeunit 20113 "AMC Bank Exp. CT Hndl"
 
         EnvelopeXmlDoc.WriteTo(TempXmlDocText);
         AMCBankServiceRequestMgt.RemoveUTF16(TempXmlDocText);
+        SecretContent := TempXmlDocText;
         contentHttpContent.WriteFrom(TempXmlDocText);
         PaymentHttpRequestMessage.Content(contentHttpContent);
     end;
@@ -125,6 +140,7 @@ codeunit 20113 "AMC Bank Exp. CT Hndl"
     local procedure DisplayErrorFromResponse(PaymentFileTempBlob: Codeunit "Temp Blob"; DataExchEntryNo: Integer)
     var
         GenJournalLine: Record "Gen. Journal Line";
+        GenJournalLineCopy: Record "Gen. Journal Line";
         ResponseXmlDoc: XmlDocument;
         DataInStream: InStream;
         SysLogXMLNodeList: XmlNodeList;
@@ -144,7 +160,10 @@ codeunit 20113 "AMC Bank Exp. CT Hndl"
             end;
             GenJournalLine.SetRange("Data Exch. Entry No.", DataExchEntryNo);
             GenJournalLine.FindFirst();
-            if GenJournalLine.HasPaymentFileErrorsInBatch() then begin
+            GenJournalLineCopy."Journal Template Name" := GenJournalLine."Journal Template Name";
+            GenJournalLineCopy."Journal Batch Name" := GenJournalLine."Journal Batch Name";
+
+            if GenJournalLineCopy.HasPaymentFileErrorsInBatch() then begin
                 Commit();
                 Error(HasErrorsErr);
             end;

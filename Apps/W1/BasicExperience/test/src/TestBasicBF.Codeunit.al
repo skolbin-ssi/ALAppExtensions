@@ -10,7 +10,7 @@ codeunit 139502 "Test Basic BF"
 
     var
         Assert: Codeunit Assert;
-        AllProfileFilterTxt: Label 'MANUFACTURING|PROJECTS|SERVICES|WAREHOUSE|SHIPPING AND RECEIVING - WMS|SHIPPING AND RECEIVING|WAREHOUSE WORKER - WMS|PRODUCTION PLANNER|PROJECT MANAGER|DISPATCHER', Locked = true, Comment = 'As default the profile "SALES AND RELATIONSHIP MANAGER" cannot disable because it is set up as a default profile for one or more users or user groups.';
+        AllProfileFilterTxt: Label 'MANUFACTURING|PROJECTS|SERVICES|WAREHOUSE|SHIPPING AND RECEIVING - WMS|SHIPPING AND RECEIVING|WAREHOUSE WORKER - WMS|PRODUCTION PLANNER|PROJECT MANAGER|DISPATCHER', Locked = true, Comment = 'As default the profile "SALES AND RELATIONSHIP MANAGER" cannot disable because it is set up as a default profile for one or more users.';
 
     trigger OnRun();
     begin
@@ -19,7 +19,6 @@ codeunit 139502 "Test Basic BF"
 
     [Test]
     procedure TestBasicExperienceTierAfterInstall();
-    var
     begin
         // [SCENARIO] Check the Basic Experience Tier After Install of Basic Extension 
         // [GIVEN] Basic Extension is installed
@@ -31,7 +30,6 @@ codeunit 139502 "Test Basic BF"
 
     [Test]
     procedure TestBasicApplicationAreaAfterInstall();
-    var
     begin
         // [SCENARIO] Check the Basic Application Area After Install of Basic Extension 
         // [GIVEN] Basic Extension is installed
@@ -43,7 +41,6 @@ codeunit 139502 "Test Basic BF"
 
     [Test]
     procedure TestDisabledRoleCenterAfterInstall();
-    var
     begin
         // [SCENARIO] Check disable Role Center After Install of Basic Extension 
         // [GIVEN] Basic Extension is installed
@@ -183,7 +180,6 @@ codeunit 139502 "Test Basic BF"
                     ApplicationAreaSetup.FieldName(Planning),
                     ApplicationAreaSetup.FieldName(Dimensions),
                     ApplicationAreaSetup.FieldName(Prepayments),
-                    ApplicationAreaSetup.FieldName(XBRL),
                     ApplicationAreaSetup.FieldName(Comments),
                     ApplicationAreaSetup.FieldName("Record Links"),
                     ApplicationAreaSetup.FieldName(Notes),

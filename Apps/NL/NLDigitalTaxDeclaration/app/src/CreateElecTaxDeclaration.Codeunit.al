@@ -1,3 +1,15 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.VAT.Reporting;
+
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Foundation.Company;
+using Microsoft.Utilities;
+using System.Environment;
+using System.Utilities;
+
 codeunit 11421 "Create Elec. Tax Declaration"
 {
     TableNo = "VAT Report Header";
@@ -101,7 +113,6 @@ codeunit 11421 "Create Elec. Tax Declaration"
         DigitalTaxDeclMgt.AddInstallationDistanceSalesWithinTheEC(TempNameValueBufferAmtCode);
         AddAmount(RootElement, VATStatementReportLine, TempNameValueBufferAmtCode.Name, TempNameValueBufferAmtCode.Value);
         AddContextElement(RootElement, 'MessageReferenceSupplierVAT', VATReportHeader."Additional Information");
-        AddAmount(RootElement, VATStatementReportLine, TempNameValueBufferAmtCode.Name, TempNameValueBufferAmtCode.Value);
         AddContextElement(RootElement, 'SoftwarePackageName', 'Microsoft Dynamics NAV');
         AddContextElement(
           RootElement, 'SoftwarePackageVersion', GetStrippedAppVersion(CopyStr(ApplicationSystemConstants.ApplicationVersion(), 3, 250)));
@@ -211,9 +222,11 @@ codeunit 11421 "Create Elec. Tax Declaration"
         VATReportArchive: Record "VAT Report Archive";
         TempBlob: Codeunit "Temp Blob";
         BlobOutStream: OutStream;
+        XMLDocText: Text;
     begin
         TempBlob.CreateOutStream(BlobOutStream, TextEncoding::UTF8);
-        XMLDoc.WriteTo(BlobOutStream);
+        XMLDoc.WriteTo(XMLDocText);
+        BlobOutStream.WriteText(XMLDocText);
         VATReportArchive.ArchiveSubmissionMessage(VATReportHeader."VAT Report Config. Code", VATReportHeader."No.", TempBlob);
     end;
 

@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Codeunit Shpfy Sync Shop Locations (ID 30198).
 /// </summary>
@@ -8,14 +10,14 @@ codeunit 30198 "Shpfy Sync Shop Locations"
 
     trigger OnRun()
     begin
-        ShpfyShop := Rec;
-        ShpfyCommunicationMgt.SetShop(Rec);
+        Shop := Rec;
+        CommunicationMgt.SetShop(Rec);
         SyncLocations();
     end;
 
     var
-        ShpfyShop: record "Shpfy Shop";
-        ShpfyCommunicationMgt: Codeunit "Shpfy Communication Mgt.";
+        Shop: record "Shpfy Shop";
+        CommunicationMgt: Codeunit "Shpfy Communication Mgt.";
         JsonHelper: Codeunit "Shpfy Json Helper";
 
     /// <summary> 
@@ -29,19 +31,19 @@ codeunit 30198 "Shpfy Sync Shop Locations"
         IsNew: Boolean;
         JValue: JsonValue;
     begin
-        if JsonHelper.GetValueAsBoolean(JLocation, 'legacy') then
-            exit;
-        if JsonHelper.GetJsonValue(JLocation, JValue, 'id') then begin
-            if not ShopLocation.Get(ShpfyShop.Code, JValue.AsBigInteger()) then begin
+        if JsonHelper.GetJsonValue(JLocation, JValue, 'legacyResourceId') then begin
+            if not ShopLocation.Get(Shop.Code, JValue.AsBigInteger()) then begin
                 ShopLocation.Init();
-                ShopLocation."Shop Code" := ShpfyShop.Code;
+                ShopLocation."Shop Code" := Shop.Code;
                 ShopLocation.Id := JValue.AsBigInteger();
                 IsNew := true;
             end;
 #pragma warning disable AA0139
             ShopLocation.Name := JsonHelper.GetValueAsText(JLocation, 'name', MaxStrLen(ShopLocation.Name));
 #pragma warning restore AA0139
-            ShopLocation.Active := JsonHelper.GetValueAsBoolean(JLocation, 'active');
+            ShopLocation.Active := JsonHelper.GetValueAsBoolean(JLocation, 'isActive');
+            ShopLocation."Is Primary" := JsonHelper.GetValueAsBoolean(JLocation, 'isPrimary');
+            ShopLocation."Is Fulfillment Service" := JsonHelper.GetJsonToken(JLocation.AsToken(), 'fulfillmentService').IsObject;
             if IsNew then
                 ShopLocation.Insert()
             else begin
@@ -55,45 +57,55 @@ codeunit 30198 "Shpfy Sync Shop Locations"
     /// <summary> 
     /// Sync Locations.
     /// </summary>
-    local procedure SyncLocations()
-    var
-        JRequest: JsonToken;
-        JResponse: JsonToken;
-        Url: Text;
-    begin
-        Url := ShpfyCommunicationMgt.CreateWebRequestURL('locations.json');
-        JResponse := ShpfyCommunicationMgt.ExecuteWebRequest(Url, 'GET', JRequest);
-        SyncLocations(JResponse);
-    end;
-
-    internal procedure SyncLocations(JLocationResult: JsonToken)
+    internal procedure SyncLocations()
     var
         ShopLocation: Record "Shpfy Shop Location";
         TempShopLocation: Record "Shpfy Shop Location" temporary;
-        JLocations: JsonArray;
+        Parameters: Dictionary of [Text, Text];
+        GraphQLType: Enum "Shpfy GraphQL Type";
+        Cursor: Text;
         JLocation: JsonToken;
+        JPageInfo: JsonObject;
+        JResponse: JsonToken;
     begin
-        ShopLocation.SetRange("Shop Code", ShpfyShop.Code);
-        if ShopLocation.FindSet(false, false) then
+        ShopLocation.SetRange("Shop Code", Shop.Code);
+        if ShopLocation.FindSet(false) then
             repeat
                 TempShopLocation := ShopLocation;
                 TempShopLocation.Insert(false);
             until ShopLocation.Next() = 0;
 
-        if JsonHelper.GetJsonArray(JLocationResult.AsObject(), JLocations, 'locations') then
-            foreach JLocation in JLocations do
-                ImportLocation(JLocation.AsObject(), TempShopLocation);
+        GraphQLType := "Shpfy GraphQL Type"::GetLocations;
+        repeat
+            JResponse := CommunicationMgt.ExecuteGraphQL(GraphQLType, Parameters);
+            Clear(Cursor);
+            if JsonHelper.GetJsonObject(JResponse, JPageInfo, 'data.locations.pageInfo') then begin
+                Cursor := JsonHelper.GetValueAsText(JPageInfo, 'endCursor');
+                GraphQLType := GraphQLType::GetNextLocations;
+                if Parameters.ContainsKey('After') then
+                    Parameters.Set('After', Cursor)
+                else
+                    Parameters.Add('After', Cursor);
+                foreach JLocation in JsonHelper.GetJsonArray(JResponse, 'data.locations.nodes') do
+                    ImportLocation(JLocation.AsObject(), TempShopLocation)
+            end;
+        until not HasNextResults(JPageInfo);
 
-        if TempShopLocation.FindSet(false, false) then
+        if TempShopLocation.FindSet(false) then
             repeat
                 if ShopLocation.Get(TempShopLocation."Shop Code", TempShopLocation.Id) then
                     ShopLocation.Delete(true);
             until TempShopLocation.Next() = 0;
     end;
 
-    internal procedure SetShop(Shop: Record "Shpfy Shop")
+    local procedure HasNextResults(JObject: JsonObject): Boolean
     begin
-        ShpfyShop := Shop;
+        exit(JsonHelper.GetValueAsBoolean(JObject, 'hasNextPage'));
+    end;
+
+    internal procedure SetShop(ShopifyShop: Record "Shpfy Shop")
+    begin
+        Shop := ShopifyShop;
     end;
 
 }

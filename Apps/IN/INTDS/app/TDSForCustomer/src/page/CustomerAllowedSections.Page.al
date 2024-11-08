@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TDS.TDSForCustomer;
+
+using System.Integration.Excel;
+
 page 18661 "Customer Allowed Sections"
 {
     PageType = List;
@@ -61,9 +69,8 @@ page 18661 "Customer Allowed Sections"
                 trigger OnAction()
                 var
                     EditinExcel: Codeunit "Edit in Excel";
-                    TDSSectionCodeLbl: Label 'Code eq %1', Comment = '%1= TDS Section Code';
                 begin
-                    EditinExcel.EditPageInExcel('Allowed Sections', CurrPage.ObjectId(false), TDSSectionCodeLbl);
+                    EditinExcel.EditPageInExcel('Allowed Sections', Page::"Customer Allowed Sections");
                 end;
             }
         }

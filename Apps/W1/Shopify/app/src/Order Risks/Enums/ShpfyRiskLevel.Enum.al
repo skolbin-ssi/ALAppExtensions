@@ -1,10 +1,12 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Enum Shpfy Risk Level (ID 30126).
 /// </summary>
 enum 30126 "Shpfy Risk Level"
 {
-    Access = Internal;
     Caption = 'Shopify Risk Level';
+    Extensible = false;
     value(0; " ")
     {
         Caption = ' ';
@@ -21,5 +23,12 @@ enum 30126 "Shpfy Risk Level"
     {
         Caption = 'High';
     }
-
+    value(4; Pending)
+    {
+        Caption = 'Pending';
+    }
+    value(5; None)
+    {
+        Caption = 'None';
+    }
 }

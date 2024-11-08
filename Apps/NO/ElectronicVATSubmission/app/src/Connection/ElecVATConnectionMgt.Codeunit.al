@@ -1,3 +1,15 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.VAT.Reporting;
+
+using Microsoft.Utilities;
+using System.Integration;
+using System.Security.AccessControl;
+using System.Security.Authentication;
+using System.Utilities;
+
 codeunit 10687 "Elec. VAT Connection Mgt."
 {
     trigger OnRun()
@@ -124,7 +136,9 @@ codeunit 10687 "Elec. VAT Connection Mgt."
         exit(Result);
     end;
 
-    procedure IsVATReportAccepted(VATReportHeader: Record "VAT Report Header") Accepted: Boolean
+#pragma warning disable AS0078
+    procedure IsVATReportAccepted(var VATReportHeader: Record "VAT Report Header") Accepted: Boolean
+#pragma warning restore AS0078
     var
         TempBlob: Codeunit "Temp Blob";
         FeedbackUrl: Text;
@@ -178,6 +192,8 @@ codeunit 10687 "Elec. VAT Connection Mgt."
                     TempBlob.CreateOutStream(ContentOutStream, TextEncoding::UTF8);
                     ContentOutStream.WriteText(ContentJToken.AsValue().AsText());
                     ElecVATLoggingMgt.AttachXmlResponseToVATRepHeader(TempBlob, VATReportHeader, DataType);
+                    VATReportHeader.Validate(KID, GetKidNumberFromXMLResponse(ContentJToken.AsValue().AsText()));
+                    VATReportHeader.Modify(true);
                 end;
                 if not JObject.SelectToken('Status.reason', JToken) then
                     error(ParseFeedbackInstanceErr, Response);
@@ -187,6 +203,14 @@ codeunit 10687 "Elec. VAT Connection Mgt."
             end;
         end;
         exit(Accepted);
+    end;
+
+    local procedure GetKidNumberFromXMLResponse(XmlResponse: Text): Text
+    var
+        ElecVATXMLHelper: Codeunit "Elec. VAT XML Helper";
+    begin
+        ElecVATXMLHelper.LoadXmlFromText(XmlResponse);
+        exit(ElecVATXMLHelper.GetFirstNodeValueByXPath('//*[name()=''betalingsinformasjon'']/*[name()=''kundeidentifikasjonsnummer'']'));
     end;
 
     local procedure SaveResponseToVATArchive(VATReportHeader: Record "VAT Report Header"; Response: Text)
@@ -243,7 +267,7 @@ codeunit 10687 "Elec. VAT Connection Mgt."
         ElecVATLoggingMgt.LogValidationRun();
         TempVATStatementReportLine := VATStatementReportLine;
         TempVATStatementReportLine.Insert();
-        Request := ElecVATCreateContent.CreateVATReportLinesContent(TempVATStatementReportLine);
+        Request := ElecVATCreateContent.CreateVATReportLinesNodeContent(TempVATStatementReportLine);
         ElecVATLoggingMgt.AttachXmlSubmissionTextToVATRepHeader(Request, VATReportHeader, 'mvakode-' + VATStatementReportLine."Box No.");
         Commit();
         InvokePostRequestWithAccessTokenCheck(Response, ElecVATSetup."Validate VAT Return Url", GetXmlContentType(), Request, ValidateVATReturnTxt, ValidateReturnErr);
@@ -469,7 +493,7 @@ codeunit 10687 "Elec. VAT Connection Mgt."
         RequestHeaders: HttpHeaders;
         ErrorMessage: Text;
         HttpError: Text;
-        Bearer: Text;
+        Bearer: SecretText;
         LogStatus: Option;
         Result: Boolean;
     begin
@@ -479,7 +503,7 @@ codeunit 10687 "Elec. VAT Connection Mgt."
         RequestHeaders.Clear();
         ElecVATOAuthMgt.GetOAuthSetup(OAuth20Setup);
         IsolatedStorage.Get(OAuth20Setup."Altinn Token", OAuth20Setup.GetTokenDataScope(), Bearer);
-        RequestHeaders.Add('Authorization', StrSubstNo(BearerTxt, Bearer));
+        RequestHeaders.Add('Authorization', SecretStrSubstNo(BearerTxt, Bearer));
         HttpRequestMessageVar.Method('GET');
         HttpRequestMessageVar.SetRequestUri(RequestPath);
         if not HttpClientVar.Send(HttpRequestMessageVar, HttpResponseMessageVar) then

@@ -1,3 +1,11 @@
+namespace Microsoft.Integration.Shopify;
+
+using System.Text;
+using System.Utilities;
+using Microsoft.Foundation.Address;
+using Microsoft.Foundation.Company;
+using System.DateTime;
+
 /// <summary>
 /// Codeunit Shpfy Json Helper (ID 30157).
 /// </summary>
@@ -132,6 +140,19 @@ codeunit 30157 "Shpfy Json Helper"
     #endregion GetArrayAsText
 
     #region GetJsonArray
+    internal procedure GetJsonArray(JToken: JsonToken; TokenPath: Text): JsonArray
+    var
+        JResult: JsonArray;
+    begin
+        if GetJsonArray(JToken, JResult, TokenPath) then
+            exit(JResult);
+    end;
+
+    internal procedure GetJsonArray(JObject: JsonObject; TokenPath: Text): JsonArray
+    begin
+        exit(GetJsonArray(JObject.AsToken(), TokenPath));
+    end;
+
     /// <summary> 
     /// Get Json Array.
     /// </summary>
@@ -176,6 +197,19 @@ codeunit 30157 "Shpfy Json Helper"
     #endregion GetJsonArray
 
     #region GetJsonObject
+    internal procedure GetJsonObject(JToken: JsonToken; TokenPath: Text): JsonObject
+    var
+        JResult: JsonObject;
+    begin
+        if GetJsonObject(JToken, JResult, TokenPath) then
+            exit(JResult);
+    end;
+
+    internal procedure GetJsonObject(JObject: JsonObject; TokenPath: Text): JsonObject
+    begin
+        exit(GetJsonObject(JObject.AsToken(), TokenPath));
+    end;
+
     /// <summary> 
     /// Get Json Object.
     /// </summary>
@@ -234,6 +268,25 @@ codeunit 30157 "Shpfy Json Helper"
                     exit(JToken);
     end;
     #endregion GetJsonToken
+
+    #region IsNull
+    internal procedure IsNull(JToken: JsonToken; TokenPath: Text): boolean
+    var
+        TokenPaths: List of [Text];
+    begin
+        TokenPaths := TokenPath.Split('.');
+        foreach TokenPath in TokenPaths do
+            if JToken.AsObject().Get(TokenPath, JToken) then
+                if TokenPaths.IndexOf(TokenPath) = TokenPaths.Count then
+                    if JToken.IsValue then
+                        exit(JToken.AsValue().IsNull);
+    end;
+
+    internal procedure IsNull(JObject: JsonObject; TokenPath: Text): boolean
+    begin
+        exit(IsNull(JObject.AsToken(), TokenPath))
+    end;
+    #endregion IsNull
 
     #region GetJsonValue
     /// <summary> 
@@ -524,10 +577,49 @@ codeunit 30157 "Shpfy Json Helper"
     /// <returns>Return value of type Date.</returns>
     internal procedure GetValueAsDate(JObject: JsonObject; TokenPath: Text): Date
     var
+        CompanyInformation: Record "Company Information";
+        PostCode: Record "Post Code";
         JValue: JsonValue;
+        Result: Date;
+        UTC: DateTime;
+        OffSet: Duration;
     begin
         if GetJsonValue(JObject, JValue, TokenPath) then
-            exit(JValue.AsDate());
+            if TryAsDate(JValue, Result) then
+                exit(Result)
+            else begin
+                if TryGetUTC(JValue.AsDateTime(), UTC) then begin
+                    if CompanyInformation.Get() then
+                        if PostCode.Get(CompanyInformation."Post Code", CompanyInformation.City) then
+                            if PostCode."Time Zone" <> '' then
+                                if TryGetTimezoneOffset(UTC, PostCode."Time Zone", OffSet) then
+                                    exit(DT2Date(UTC + OffSet));
+                    exit(DT2Date(UTC));
+                end;
+                exit(DT2Date(JValue.AsDateTime()));
+            end;
+    end;
+
+    [TryFunction]
+    local procedure TryGetTimezoneOffset(DateTime: DateTime; TimeZoneCode: Text; var OffSet: Duration)
+    var
+        TimeZone: Codeunit "Time Zone";
+    begin
+        OffSet := TimeZone.GetTimezoneOffset(DateTime, TimeZoneCode);
+    end;
+
+    [TryFunction]
+    local procedure TryGetUTC(DateTime: DateTime; var UTC: DateTime)
+    var
+        TimeZone: Codeunit "Time Zone";
+    begin
+        UTC := DateTime - TimeZone.GetTimezoneOffset(DateTime);
+    end;
+
+    [TryFunction]
+    local procedure TryAsDate(JValue: JsonValue; var ResultDate: Date)
+    begin
+        ResultDate := JValue.AsDate();
     end;
     #endregion GetValueAsDate
 
@@ -813,60 +905,60 @@ codeunit 30157 "Shpfy Json Helper"
     /// </summary>
     /// <param name="JToken">Parameter of type JsonToken.</param>
     /// <param name="TokenPath">Parameter of type Text contains the path members combined with the .-char.</param>
-    /// <param name="RecRef">Parameter of type RecordRef.</param>
+    /// <param name="RecordRef">Parameter of type RecordRef.</param>
     /// <param name="FieldNo">Parameter of type Integer.</param>
-    internal procedure GetValueIntoField(JToken: JsonToken; TokenPath: Text; var RecRef: RecordRef; FieldNo: Integer)
+    internal procedure GetValueIntoField(JToken: JsonToken; TokenPath: Text; var RecordRef: RecordRef; FieldNo: Integer)
     var
         Base64Convert: Codeunit "Base64 Convert";
         Base64: Codeunit "Shpfy Base64";
         TempBlob: Codeunit "Temp Blob";
-        Field: FieldRef;
+        FieldRef: FieldRef;
         FieldType: FieldType;
         NotImplementedErr: Label 'No implementation for fieldtype: "%1".', Comment = '%1 = Field type';
-        Stream: OutStream;
+        OutStream: OutStream;
         Data: Text;
     begin
 
-        Field := RecRef.Field(FieldNo);
-        case Field.Type of
+        FieldRef := RecordRef.Field(FieldNo);
+        case FieldRef.Type of
             FieldType::BigInteger:
-                Field.Value := GetValueAsBigInteger(JToken, TokenPath);
+                FieldRef.Value := GetValueAsBigInteger(JToken, TokenPath);
             FieldType::Blob:
                 begin
                     Data := GetValueAsText(JToken, TokenPath);
                     if Base64.IsBase64String(Data) then begin
-                        TempBlob.CreateOutStream(Stream);
+                        TempBlob.CreateOutStream(OutStream);
                         Data := Base64Convert.FromBase64(Data);
-                        Stream.Write(Data);
+                        OutStream.Write(Data);
                     end else begin
-                        TempBlob.CreateOutStream(Stream, TextEncoding::UTF8);
-                        Stream.WriteText(Data);
+                        TempBlob.CreateOutStream(OutStream, TextEncoding::UTF8);
+                        OutStream.WriteText(Data);
                     end;
-                    TempBlob.ToRecordRef(RecRef, FieldNo);
+                    TempBlob.ToRecordRef(RecordRef, FieldNo);
                 end;
             FieldType::Boolean:
-                Field.Value := GetValueAsBoolean(JToken, TokenPath);
+                FieldRef.Value := GetValueAsBoolean(JToken, TokenPath);
             FieldType::Code,
             FieldType::Text:
-                Field.Value := GetValueAsText(JToken, TokenPath, Field.Length);
+                FieldRef.Value := GetValueAsText(JToken, TokenPath, FieldRef.Length);
             FieldType::Date:
-                Field.Value := GetValueAsDate(JToken, TokenPath);
+                FieldRef.Value := GetValueAsDate(JToken, TokenPath);
             FieldType::DateTime:
-                Field.Value := GetValueAsDateTime(JToken, TokenPath);
+                FieldRef.Value := GetValueAsDateTime(JToken, TokenPath);
             FieldType::Decimal:
-                Field.Value := GetValueAsDecimal(JToken, TokenPath);
+                FieldRef.Value := GetValueAsDecimal(JToken, TokenPath);
             FieldType::Duration:
-                Field.Value := GetValueAsDuration(JToken, TokenPath);
+                FieldRef.Value := GetValueAsDuration(JToken, TokenPath);
             FieldType::Guid:
-                Field.Value := GetValueAsText(JToken, TokenPath);
+                FieldRef.Value := GetValueAsText(JToken, TokenPath);
             FieldType::Integer:
-                Field.Value := GetValueAsInteger(JToken, TokenPath);
+                FieldRef.Value := GetValueAsInteger(JToken, TokenPath);
             FieldType::Option:
-                Field.Value := GetValueAsOption(JToken, TokenPath);
+                FieldRef.Value := GetValueAsOption(JToken, TokenPath);
             FieldType::Time:
-                Field.Value := GetValueAsTime(JToken, TokenPath);
+                FieldRef.Value := GetValueAsTime(JToken, TokenPath);
             else
-                Error(NotImplementedErr, Field.Type);
+                Error(NotImplementedErr, FieldRef.Type);
         end;
     end;
 
@@ -875,11 +967,11 @@ codeunit 30157 "Shpfy Json Helper"
     /// </summary>
     /// <param name="JObject">Parameter of type JsonObject.</param>
     /// <param name="TokenPath">Parameter of type Text contains the path members combined with the .-char.</param>
-    /// <param name="RecRef">Parameter of type RecordRef.</param>
+    /// <param name="RecordRef">Parameter of type RecordRef.</param>
     /// <param name="FieldNo">Parameter of type Integer.</param>
-    internal procedure GetValueIntoField(JObject: JsonObject; TokenPath: Text; var RecRef: RecordRef; FieldNo: Integer)
+    internal procedure GetValueIntoField(JObject: JsonObject; TokenPath: Text; var RecordRef: RecordRef; FieldNo: Integer)
     begin
-        GetValueIntoField(JObject.AsToken(), TokenPath, RecRef, FieldNo);
+        GetValueIntoField(JObject.AsToken(), TokenPath, RecordRef, FieldNo);
     end;
     #endregion GetValueIntoField
 
@@ -889,50 +981,50 @@ codeunit 30157 "Shpfy Json Helper"
     /// </summary>
     /// <param name="JToken">Parameter of type JsonToken.</param>
     /// <param name="TokenPath">Parameter of type Text contains the path members combined with the .-char.</param>
-    /// <param name="RecRef">Parameter of type RecordRef.</param>
+    /// <param name="RecordRef">Parameter of type RecordRef.</param>
     /// <param name="FieldNo">Parameter of type Integer.</param>
-    internal procedure GetValueIntoFieldWithValidation(JToken: JsonToken; TokenPath: Text; var RecRef: RecordRef; FieldNo: Integer)
+    internal procedure GetValueIntoFieldWithValidation(JToken: JsonToken; TokenPath: Text; var RecordRef: RecordRef; FieldNo: Integer)
     var
         TempBlob: Codeunit "Temp Blob";
-        Field: FieldRef;
+        FieldRef: FieldRef;
         FieldType: FieldType;
         NotImplementedErr: Label 'No implementation for fieldtype: "%1".', Comment = '%1 = TokenPath';
-        Stream: OutStream;
+        OutStream: OutStream;
     begin
 
-        Field := RecRef.Field(FieldNo);
-        case Field.Type of
+        FieldRef := RecordRef.Field(FieldNo);
+        case FieldRef.Type of
             FieldType::BigInteger:
-                Field.Validate(GetValueAsBigInteger(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsBigInteger(JToken, TokenPath));
             FieldType::Blob:
                 begin
-                    TempBlob.CreateOutStream(Stream);
-                    Stream.Write(GetValueAsText(JToken, TokenPath));
-                    TempBlob.ToRecordRef(RecRef, FieldNo);
+                    TempBlob.CreateOutStream(OutStream);
+                    OutStream.Write(GetValueAsText(JToken, TokenPath));
+                    TempBlob.ToRecordRef(RecordRef, FieldNo);
                 end;
             FieldType::Boolean:
-                Field.Validate(GetValueAsBoolean(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsBoolean(JToken, TokenPath));
             FieldType::Code,
             FieldType::Text:
-                Field.Validate(GetValueAsText(JToken, TokenPath, Field.Length));
+                FieldRef.Validate(GetValueAsText(JToken, TokenPath, FieldRef.Length));
             FieldType::Date:
-                Field.Validate(GetValueAsDate(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsDate(JToken, TokenPath));
             FieldType::DateTime:
-                Field.Validate(GetValueAsDateTime(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsDateTime(JToken, TokenPath));
             FieldType::Decimal:
-                Field.Validate(GetValueAsDecimal(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsDecimal(JToken, TokenPath));
             FieldType::Duration:
-                Field.Validate(GetValueAsDuration(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsDuration(JToken, TokenPath));
             FieldType::Guid:
-                Field.Validate(GetValueAsText(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsText(JToken, TokenPath));
             FieldType::Integer:
-                Field.Validate(GetValueAsInteger(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsInteger(JToken, TokenPath));
             FieldType::Option:
-                Field.Validate(GetValueAsOption(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsOption(JToken, TokenPath));
             FieldType::Time:
-                Field.Validate(GetValueAsTime(JToken, TokenPath));
+                FieldRef.Validate(GetValueAsTime(JToken, TokenPath));
             else
-                Error(NotImplementedErr, Field.Type);
+                Error(NotImplementedErr, FieldRef.Type);
         end;
     end;
 
@@ -941,11 +1033,11 @@ codeunit 30157 "Shpfy Json Helper"
     /// </summary>
     /// <param name="JObject">Parameter of type JsonObject.</param>
     /// <param name="TokenPath">Parameter of type Text contains the path members combined with the .-char.</param>
-    /// <param name="RecRef">Parameter of type RecordRef.</param>
+    /// <param name="RecordRef">Parameter of type RecordRef.</param>
     /// <param name="FieldNo">Parameter of type Integer.</param>
-    internal procedure GetValueIntoFieldWithValidation(JObject: JsonObject; TokenPath: Text; var RecRef: RecordRef; FieldNo: Integer)
+    internal procedure GetValueIntoFieldWithValidation(JObject: JsonObject; TokenPath: Text; var RecordRef: RecordRef; FieldNo: Integer)
     begin
-        GetValueIntoFieldWithValidation(JObject.AsToken(), TokenPath, RecRef, FieldNo);
+        GetValueIntoFieldWithValidation(JObject.AsToken(), TokenPath, RecordRef, FieldNo);
     end;
     #endregion GetValueIntoFieldWithValidation
 }

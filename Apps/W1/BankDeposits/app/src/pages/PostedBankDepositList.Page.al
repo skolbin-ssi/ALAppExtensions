@@ -1,3 +1,8 @@
+namespace Microsoft.Bank.Deposit;
+
+using Microsoft.Foundation.Reporting;
+using System.Telemetry;
+
 page 1696 "Posted Bank Deposit List"
 {
     ApplicationArea = Basic, Suite;
@@ -66,7 +71,7 @@ page 1696 "Posted Bank Deposit List"
                     ToolTip = 'Specifies the currency code of the bank account that the deposit was deposited in.';
                     Visible = false;
                 }
-                field(Reversed; GLRegisterReversed)
+                field(Reversed; Rec.IsReversed())
                 {
                     ApplicationArea = Suite;
                     Editable = false;
@@ -100,9 +105,9 @@ page 1696 "Posted Bank Deposit List"
                     PromotedCategory = Process;
                     PromotedIsBig = true;
                     RunObject = Page "Bank Acc. Comment Sheet";
-                    RunPageLink = "Bank Account No." = FIELD("Bank Account No."),
-                                  "No." = FIELD("No.");
-                    RunPageView = WHERE("Table Name" = CONST("Posted Bank Deposit Header"));
+                    RunPageLink = "Bank Account No." = field("Bank Account No."),
+                                  "No." = field("No.");
+                    RunPageView = where("Table Name" = const("Posted Bank Deposit Header"));
                     ToolTip = 'View a list of deposit comments.';
                 }
                 action(Undo)
@@ -185,37 +190,14 @@ page 1696 "Posted Bank Deposit List"
         }
     }
 
-    trigger OnAfterGetCurrRecord()
-    var
-        GLRegister: Record "G/L Register";
-        GLRegNo: Integer;
-    begin
-        GLRegisterReversed := false;
-
-        if Rec.FindGLRegisterNo(GLRegNo) then begin
-            GLRegister.Get(GLRegNo);
-            if GLRegister.Reversed then
-                GLRegisterReversed := true;
-        end;
-    end;
-
     trigger OnInit()
     var
         FeatureTelemetry: Codeunit "Feature Telemetry";
-#if not CLEAN21
-        FeatureBankDeposits: Codeunit "Feature Bank Deposits";
-#endif
     begin
         FeatureTelemetry.LogUptake('0000IG2', 'Bank Deposit', Enum::"Feature Uptake Status"::Discovered);
-#if not CLEAN21
-        if FeatureBankDeposits.ShouldSeePostedBankDeposits() then
-            exit;
-        FeatureBankDeposits.PromptFeatureBlockingOpen();
-#endif
     end;
 
     var
-        GLRegisterReversed: Boolean;
         BankDepositReportSelectionErr: Label 'Bank deposit report has not been set up.';
         UndoPostingQst: Label 'This will reverse all ledger entries that are related to the lines of the bank deposit. Do you want to continue?';
         BankDepositNonGUISessionErr: Label 'To undo the posting of a bank deposit, you must sign in to Business Central from a web browser.';

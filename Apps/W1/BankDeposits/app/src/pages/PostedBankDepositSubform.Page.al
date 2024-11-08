@@ -1,14 +1,13 @@
+namespace Microsoft.Bank.Deposit;
 page 1697 "Posted Bank Deposit Subform"
 {
     AutoSplitKey = true;
     Caption = 'Posted Bank Deposit Subform';
     Editable = false;
     PageType = ListPart;
-#pragma warning disable AL0729
-    PromotedActionCategories = 'New,Process,Report,Line,Functions';
-#pragma warning restore
     SourceTable = "Posted Bank Deposit Line";
-    Permissions = tabledata "Posted Bank Deposit Line" = r;
+    Permissions = tabledata "Posted Bank Deposit Header" = r,
+                  tabledata "Posted Bank Deposit Line" = r;
 
     layout
     {
@@ -46,6 +45,11 @@ page 1697 "Posted Bank Deposit Subform"
                 {
                     ApplicationArea = Basic, Suite;
                     ToolTip = 'Specifies the number of the document (usually a check) that was deposited.';
+                }
+                field("External Document No."; Rec."External Document No.")
+                {
+                    ApplicationArea = Basic, Suite;
+                    ToolTip = 'Specifies the external document number for this line, such as a check number.';
                 }
                 field(Amount; Rec.Amount)
                 {

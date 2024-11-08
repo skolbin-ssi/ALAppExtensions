@@ -1,3 +1,14 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Warehouse.GateEntry;
+
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Inventory.Location;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Inventory.Setup;
+
 table 18603 "Gate Entry Header"
 {
     Caption = 'Gate Entry Header';
@@ -142,6 +153,11 @@ table 18603 "Gate Entry Header"
     }
 
     trigger OnInsert()
+    var
+        NoSeries: Codeunit "No. Series";
+#if not CLEAN24
+        IsHandled: Boolean;
+#endif
     begin
         "Document Date" := WorkDate();
         "Document Time" := Time;
@@ -155,12 +171,36 @@ table 18603 "Gate Entry Header"
             "Entry Type"::Inward:
                 if "No." = '' then begin
                     InventorySetup.TestField("Inward Gate Entry Nos.");
-                    NoSeriesManagement.InitSeries(InventorySetup."Inward Gate Entry Nos.", xRec."No. Series", "Posting Date", "No.", "No. Series");
+#if not CLEAN24
+                    IsHandled := false;
+                    NoSeriesManagement.RaiseObsoleteOnBeforeInitSeries(InventorySetup."Inward Gate Entry Nos.", xRec."No. Series", "Posting Date", "No.", "No. Series", IsHandled);
+                    if not IsHandled then begin
+#endif
+                        "No. Series" := InventorySetup."Inward Gate Entry Nos.";
+                        if NoSeries.AreRelated("No. Series", xRec."No. Series") then
+                            "No. Series" := xRec."No. Series";
+                        "No." := NoSeries.GetNextNo("No. Series", "Posting Date");
+#if not CLEAN24
+                        NoSeriesManagement.RaiseObsoleteOnAfterInitSeries("No. Series", InventorySetup."Inward Gate Entry Nos.", "Posting Date", "No.");
+                    end;
+#endif
                 end;
             "Entry Type"::Outward:
                 if "No." = '' then begin
                     InventorySetup.TestField("Outward Gate Entry Nos.");
-                    NoSeriesManagement.InitSeries(InventorySetup."Outward Gate Entry Nos.", xRec."No. Series", "Posting Date", "No.", "No. Series");
+#if not CLEAN24
+                    IsHandled := false;
+                    NoSeriesManagement.RaiseObsoleteOnBeforeInitSeries(InventorySetup."Outward Gate Entry Nos.", xRec."No. Series", "Posting Date", "No.", "No. Series", IsHandled);
+                    if not IsHandled then begin
+#endif
+                        "No. Series" := InventorySetup."Outward Gate Entry Nos.";
+                        if NoSeries.AreRelated("No. Series", xRec."No. Series") then
+                            "No. Series" := xRec."No. Series";
+                        "No." := NoSeries.GetNextNo("No. Series", "Posting Date");
+#if not CLEAN24
+                        NoSeriesManagement.RaiseObsoleteOnAfterInitSeries("No. Series", InventorySetup."Outward Gate Entry Nos.", "Posting Date", "No.");
+                    end;
+#endif
                 end;
         end;
     end;
@@ -181,29 +221,29 @@ table 18603 "Gate Entry Header"
 
     var
         InventorySetup: Record "Inventory Setup";
+#if not CLEAN24
         NoSeriesManagement: Codeunit NoSeriesManagement;
+#endif
 
     procedure AssistEdit(OldGateEntryHeader: Record "Gate Entry Header"): Boolean
+    var
+        NoSeries: Codeunit "No. Series";
     begin
         InventorySetup.Get();
         case "Entry Type" of
             "Entry Type"::Inward:
                 begin
                     InventorySetup.TestField("Inward Gate Entry Nos.");
-                    if NoSeriesManagement.SelectSeries(InventorySetup."Inward Gate Entry Nos.", OldGateEntryHeader."No. Series", "No. Series") then begin
-                        InventorySetup.Get();
-                        InventorySetup.TestField("Inward Gate Entry Nos.");
-                        NoSeriesManagement.SetSeries("No.");
+                    if NoSeries.LookupRelatedNoSeries(InventorySetup."Inward Gate Entry Nos.", OldGateEntryHeader."No. Series", "No. Series") then begin
+                        "No." := NoSeries.GetNextNo("No. Series");
                         exit(true);
                     end;
                 end;
             "Entry Type"::Outward:
                 begin
                     InventorySetup.TestField("Outward Gate Entry Nos.");
-                    if NoSeriesManagement.SelectSeries(InventorySetup."Outward Gate Entry Nos.", OldGateEntryHeader."No. Series", "No. Series") then begin
-                        InventorySetup.Get();
-                        InventorySetup.TestField("Outward Gate Entry Nos.");
-                        NoSeriesManagement.SetSeries("No.");
+                    if NoSeries.LookupRelatedNoSeries(InventorySetup."Outward Gate Entry Nos.", OldGateEntryHeader."No. Series", "No. Series") then begin
+                        "No." := NoSeries.GetNextNo("No. Series");
                         exit(true);
                     end;
                 end;

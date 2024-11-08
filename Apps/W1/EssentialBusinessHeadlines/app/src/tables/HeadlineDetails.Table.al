@@ -1,7 +1,10 @@
+#if not CLEANSCHEMA18
 // ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
+
+namespace System.Visualization;
 
 table 1439 "Headline Details"
 {
@@ -55,3 +58,4 @@ table 1439 "Headline Details"
         }
     }
 }
+#endif

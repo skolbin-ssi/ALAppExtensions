@@ -1,36 +1,44 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.VAT.Setup;
+
+using Microsoft.Finance.VAT.Reporting;
+
 tableextension 10689 "Elec. VAT Posting Setup" extends "VAT Posting Setup"
 {
 
     fields
     {
-        modify("Sales SAF-T Standard Tax Code")
+        modify("Sale VAT Reporting Code")
         {
             trigger OnAfterValidate()
             begin
-                CheckVATRateMatch("Sales SAF-T Standard Tax Code");
+                CheckIfVATRateMatch("Sale VAT Reporting Code");
             end;
         }
-        modify("Purch. SAF-T Standard Tax Code")
+        modify("Purch. VAT Reporting Code")
         {
             trigger OnAfterValidate()
             begin
-                CheckVATRateMatch("Purch. SAF-T Standard Tax Code");
+                CheckIfVATRateMatch("Purch. VAT Reporting Code");
             end;
         }
     }
 
-    local procedure CheckVATRateMatch(VATCodeValue: Code[10])
+    local procedure CheckIfVATRateMatch(VATCodeValue: Code[20])
     var
-        VATCode: Record "VAT Code";
+        VATReportingCode: Record "VAT Reporting Code";
     begin
         if VATCodeValue = '' then
             exit;
-        if not VATCode.Get(VATCodeValue) then
+        if not VATReportingCode.Get(VATCodeValue) then
             exit;
-        if not VATCode."Report VAT Rate" then
+        if not VATReportingCode."Report VAT Rate" then
             exit;
-        if VATCode."VAT Rate For Reporting" <> "VAT %" then
-            Message(VATRateDoesNotMatchMsg, VATCode."VAT Rate For Reporting", "VAT %");
+        if VATReportingCode."VAT Rate For Reporting" <> "VAT %" then
+            Message(VATRateDoesNotMatchMsg, VATReportingCode."VAT Rate For Reporting", "VAT %");
     end;
 
     var

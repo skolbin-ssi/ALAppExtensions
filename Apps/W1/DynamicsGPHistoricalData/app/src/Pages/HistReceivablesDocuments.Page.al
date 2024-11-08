@@ -1,3 +1,5 @@
+namespace Microsoft.DataMigration.GP.HistoricalData;
+
 page 41016 "Hist. Receivables Documents"
 {
     ApplicationArea = All;
@@ -175,7 +177,7 @@ page 41016 "Hist. Receivables Documents"
     trigger OnOpenPage()
     begin
         if FilterCustomerNo <> '' then
-            Rec.SetFilter("Customer No.", FilterCustomerNo);
+            Rec.SetRange("Customer No.", FilterCustomerNo);
     end;
 
     procedure SetFilterCustomerNo(CustomerNo: Code[35])

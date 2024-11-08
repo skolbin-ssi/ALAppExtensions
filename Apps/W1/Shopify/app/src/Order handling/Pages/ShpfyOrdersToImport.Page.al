@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Page Shpfy Orders to Import (ID 30121).
 /// </summary>
@@ -10,7 +12,7 @@ page 30121 "Shpfy Orders to Import"
     SourceTable = "Shpfy Orders to Import";
     UsageCategory = Lists;
     InsertAllowed = false;
-    ModifyAllowed = false;
+    ModifyAllowed = true;
     DeleteAllowed = true;
 
     layout
@@ -28,6 +30,7 @@ page 30121 "Shpfy Orders to Import"
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the Shopify Shop from which the order originated.';
+                    Importance = Promoted;
                 }
                 field(OrderNo; Rec."Order No.")
                 {
@@ -38,6 +41,11 @@ page 30121 "Shpfy Orders to Import"
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the action to take for this order.';
+                }
+                field(PurchasingEntity; Rec."Purchasing Entity")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies the purchasing entity from Shopify.';
                 }
                 field(NumberOfItems; Rec."Total Quantity of Items")
                 {
@@ -69,15 +77,28 @@ page 30121 "Shpfy Orders to Import"
                     ApplicationArea = All;
                     ToolTip = 'Specifies the status of payments associated with the order. Valid values are: pending, authorized, partially_paid, paid, partially_refunded, refunded, voided.';
                 }
+#if not CLEAN25
                 field(RiskLevel; Rec."Risk Level")
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the risk level from the Shopify order.';
+                    Visible = false;
+                    ObsoleteReason = 'This field is not imported.';
+                    ObsoleteState = Pending;
+                    ObsoleteTag = '25.0';
                 }
+#endif
                 field(FulfillmentStatus; Rec."Fulfillment Status")
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the order''s status in terms of fulfilled line items. Valid values are: Fulfilled, null, partial, restocked.';
+                }
+                field(ChannelName; Rec."Channel Name")
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                    Importance = Additional;
+                    ToolTip = 'The name of the channel where you sell your products. A channel can be a platform or a marketplace such as an online store or POS.';
                 }
                 field(Confirmed; Rec.Confirmed)
                 {
@@ -177,10 +198,10 @@ page 30121 "Shpfy Orders to Import"
                 trigger OnAction()
                 var
                     SelectedRec: Record "Shpfy Orders to Import";
-                    Background: Codeunit "Shpfy Background Syncs";
+                    BackgroundSyncs: Codeunit "Shpfy Background Syncs";
                 begin
                     CurrPage.SetSelectionFilter(SelectedRec);
-                    Background.OrderSync(SelectedRec);
+                    BackgroundSyncs.OrderSync(SelectedRec);
                 end;
             }
         }

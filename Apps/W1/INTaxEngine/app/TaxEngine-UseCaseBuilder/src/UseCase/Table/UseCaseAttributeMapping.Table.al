@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TaxEngine.UseCaseBuilder;
+
+using Microsoft.Finance.TaxEngine.Core;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+
 table 20307 "Use Case Attribute Mapping"
 {
     Caption = 'Use Case Attribute Mapping';
@@ -77,7 +86,6 @@ table 20307 "Use Case Attribute Mapping"
     end;
 
     trigger OnDelete()
-    var
     begin
         SwitchStatementHelper.DeleteSwitchStatement("Case ID", "Switch Statement ID");
     end;

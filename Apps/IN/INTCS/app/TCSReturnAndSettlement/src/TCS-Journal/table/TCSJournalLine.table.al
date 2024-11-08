@@ -1,3 +1,26 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TCS.TCSReturnAndSettlement;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.TCS.TCSBase;
+using Microsoft.Finance.GeneralLedger.Account;
+using Microsoft.Sales.Customer;
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.Dimension;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Inventory.Location;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Foundation.AuditCodes;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Bank.BankAccount;
+using Microsoft.Projects.Project.Job;
+using Microsoft.CRM.Campaign;
+using Microsoft.CRM.Team;
+using Microsoft.Purchases.Vendor;
+
 table 18870 "TCS Journal Line"
 {
     Caption = 'TCS Journal Line';
@@ -654,7 +677,7 @@ table 18870 "TCS Journal Line"
     var
         TCSJournalLine: Record "TCS Journal Line";
         TCSJournalTemplate: Record "TCS Journal Template";
-        NoSeriesManagement: Codeunit NoSeriesManagement;
+        NoSeries: Codeunit "No. Series";
     begin
         TCSJournalTemplate.Get("Journal Template Name");
         TCSJournalBatch.Get("Journal Template Name", "Journal Batch Name");
@@ -672,10 +695,8 @@ table 18870 "TCS Journal Line"
         end else begin
             Validate("Posting Date", WorkDate());
             Validate("Document Date", WorkDate());
-            if TCSJournalBatch."No. Series" <> '' then begin
-                Clear(NoSeriesManagement);
-                "Document No." := NoSeriesManagement.GetNextNo(TCSJournalBatch."No. Series", "Posting Date", false);
-            end;
+            if TCSJournalBatch."No. Series" <> '' then
+                "Document No." := NoSeries.PeekNextNo(TCSJournalBatch."No. Series", "Posting Date");
         end;
 
         Validate("Account Type", LastTCSJournalLine."Account Type");

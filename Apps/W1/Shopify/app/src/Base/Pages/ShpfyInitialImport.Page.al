@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 page 30137 "Shpfy Initial Import"
 {
     Caption = 'Shopify Initial Import';
@@ -31,10 +33,10 @@ page 30137 "Shpfy Initial Import"
 
                     trigger OnDrillDown()
                     var
-                        ShpfyShop: Record "Shpfy Shop";
+                        Shop: Record "Shpfy Shop";
                     begin
-                        if ShpfyShop.Get(Rec."Shop Code") then
-                            Page.RunModal(Page::"Shpfy Shop Card", ShpfyShop);
+                        if Shop.Get(Rec."Shop Code") then
+                            Page.RunModal(Page::"Shpfy Shop Card", Shop);
                     end;
                 }
                 field("Job Status"; Rec."Job Status")
@@ -45,10 +47,10 @@ page 30137 "Shpfy Initial Import"
 
                     trigger OnDrillDown()
                     begin
-                        ShpfyInitialImport.ShowJobQueueLogEntry(Rec."Job Queue Entry ID");
+                        InitialImport.ShowJobQueueLogEntry(Rec."Job Queue Entry ID");
                     end;
                 }
-                field(ActiveSession; ShpfyInitialImport.IsActiveSession(Rec."Session ID"))
+                field(ActiveSession; InitialImport.IsActiveSession(Rec."Session ID"))
                 {
                     ApplicationArea = All;
                     Caption = 'Active Session';
@@ -60,11 +62,11 @@ page 30137 "Shpfy Initial Import"
 
     trigger OnAfterGetRecord()
     begin
-        JobStatusStyle := ShpfyInitialImport.GetStatusStyleExpression(Format(Rec."Job Status"));
+        JobStatusStyle := InitialImport.GetStatusStyleExpression(Format(Rec."Job Status"));
     end;
 
     var
-        ShpfyInitialImport: Codeunit "Shpfy Initial Import";
+        InitialImport: Codeunit "Shpfy Initial Import";
         [InDataSet]
         JobStatusStyle: Text;
 }

@@ -7,11 +7,13 @@ codeunit 130102 "Library - Payment AMC"
 
     var
         LocalhostURLTxt: Label 'https://localhost:8080/', Locked = true;
+    //LocalhostURLTxt: Label 'https://host.docker.internal:8088/', Locked = true; //AMC - Internal host at AMC for testing
 
     [Scope('OnPrem')]
-    procedure EnableTestServiceSetup(var TempAMCBankingSetup: Record "AMC Banking Setup" temporary) OldPassword: Text
+    procedure EnableTestServiceSetup(var TempAMCBankingSetup: Record "AMC Banking Setup" temporary) OldPassword: SecretText
     var
         AMCBankingSetup: Record "AMC Banking Setup";
+        NewTestPassword: Text;
     begin
         AMCBankingSetup.Get();
         OldPassword := AMCBankingSetup.GetPassword();
@@ -21,7 +23,8 @@ codeunit 130102 "Library - Payment AMC"
         TempAMCBankingSetup."Service URL" := AMCBankingSetup."Service URL";
 
         AMCBankingSetup."User Name" := 'demouser';
-        AMCBankingSetup.SavePassword('Demo Password');
+        NewTestPassword := 'Demo Password';
+        AMCBankingSetup.SavePassword(NewTestPassword);
         AMCBankingSetup."Service URL" := LocalhostURLTxt;
         AMCBankingSetup.Modify();
     end;

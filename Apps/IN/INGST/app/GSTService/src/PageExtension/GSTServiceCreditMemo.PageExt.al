@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Service.Document;
+
+using Microsoft.Finance.GST.Services;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+
 pageextension 18444 "GST Service Credit Memo" extends "Service Credit Memo"
 {
     layout
@@ -172,6 +181,19 @@ pageextension 18444 "GST Service Credit Memo" extends "Service Credit Memo"
                 }
             }
         }
+        addbefore("Ship-to Name")
+        {
+            field("Ship-to Code"; Rec."Ship-to Code")
+            {
+                ApplicationArea = Service;
+                ToolTip = 'Specifies a code for an alternate shipment address if you want to ship to another address than the one that has been defined automatically. This field is also used in case of drop shipment.';
+
+                trigger OnValidate()
+                begin
+                    ShiptoCodeOnAfterValidate();
+                end;
+            }
+        }
     }
     actions
     {
@@ -193,6 +215,11 @@ pageextension 18444 "GST Service Credit Memo" extends "Service Credit Memo"
             }
         }
     }
+
+    local procedure ShiptoCodeOnAfterValidate()
+    begin
+        CurrPage.Update();
+    end;
 
     var
         IsRateChangeEnabled: Boolean;

@@ -1,3 +1,18 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.VAT.Group;
+
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Account;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.VAT.Reporting;
+using Microsoft.Finance.VAT.Setup;
+using Microsoft.Foundation.AuditCodes;
+using Microsoft.Foundation.NoSeries;
+
 codeunit 4708 "VAT Group Settlement"
 {
     TableNo = "VAT Report Header";
@@ -25,13 +40,13 @@ codeunit 4708 "VAT Group Settlement"
     var
         VATGroupSubmissionHeader: Record "VAT Group Submission Header";
         GenJournalLine: Record "Gen. Journal Line";
-        NoSeriesManagement: Codeunit NoSeriesManagement;
+        NoSeries: Codeunit "No. Series";
         DocNo: Code[20];
         VATAmount: Decimal;
     begin
         VATGroupSubmissionHeader.SetRange("VAT Group Return No.", VATReportHeaderNo);
         if VATGroupSubmissionHeader.FindSet() then begin
-            DocNo := NoSeriesManagement.GetNextNo(GenJournalTemplate."No. Series", 0D, true);
+            DocNo := NoSeries.GetNextNo(GenJournalTemplate."No. Series");
             repeat
                 VATAmount := FindVATAmount(VATGroupSubmissionHeader);
 
@@ -78,6 +93,7 @@ codeunit 4708 "VAT Group Settlement"
         GenJournalLine."System-Created Entry" := true;
         GenJournalLine."Account Type" := GenJournalLine."Account Type"::"G/L Account";
         GenJournalLine."Posting Date" := WorkDate();
+        GenJournalLine."VAT Reporting Date" := WorkDate();
         GenJournalLine."Document Type" := GenJournalLine."Document Type"::" ";
         GenJournalLine."Document No." := DocNo;
         SourceCodeSetup.Get();

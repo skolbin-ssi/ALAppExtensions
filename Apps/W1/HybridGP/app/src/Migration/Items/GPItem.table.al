@@ -1,3 +1,5 @@
+namespace Microsoft.DataMigration.GP;
+
 table 4095 "GP Item"
 {
     ReplicateData = false;
@@ -98,4 +100,9 @@ table 4095 "GP Item"
     fieldgroups
     {
     }
+
+    internal procedure ShouldSetPostingGroup(): Boolean
+    begin
+        exit(Rec.ItemType in [0, 2]);
+    end;
 }

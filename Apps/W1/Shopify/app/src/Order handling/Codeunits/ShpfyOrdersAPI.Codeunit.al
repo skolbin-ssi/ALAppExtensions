@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Codeunit Shpfy Orders API (ID 30165).
 /// </summary>
@@ -10,7 +12,7 @@ codeunit 30165 "Shpfy Orders API"
         LocalShop: Record "Shpfy Shop";
     begin
         LocalShop.SetFilter("Shopify URL", '<>%1', '');
-        if LocalShop.FindSet(false, false) then
+        if LocalShop.FindSet(false) then
             repeat
                 SetShop(LocalShop);
                 GetOrdersToImport(LocalShop);
@@ -29,19 +31,23 @@ codeunit 30165 "Shpfy Orders API"
     /// <param name="ShopifyShop">Parameter of type Record "Shopify Shop".</param>
     internal procedure GetOrdersToImport(ShopifyShop: Record "Shpfy Shop")
     var
-        OrderToImport: Record "Shpfy Orders to Import";
+        OrdersToImport: Record "Shpfy Orders to Import";
         LastSyncTime: DateTime;
+        NewSyncTime: DateTime;
         Cursor: Text;
         Parameters: Dictionary of [Text, Text];
         JResponse: JsonToken;
     begin
         CommunicationMgt.SetShop(ShopifyShop);
 
-        Clear(OrderToImport);
+        Clear(OrdersToImport);
         LastSyncTime := ShopifyShop.GetLastSyncTime("Shpfy Synchronization Type"::Orders);
         Parameters.Add('Time', Format(LastSyncTime, 0, 9));
-        GraphQLType := GraphQLType::GetOrdersToImport;
-        LastSyncTime := CurrentDateTime;
+        if LastSyncTime = Shop.GetEmptySyncTime() then
+            GraphQLType := "Shpfy GraphQL Type"::GetOpenOrdersToImport
+        else
+            GraphQLType := "Shpfy GraphQL Type"::GetOrdersToImport;
+        NewSyncTime := CurrentDateTime;
         repeat
             JResponse := CommunicationMgt.ExecuteGraphQL(GraphQLType, Parameters);
             if JResponse.IsObject() then
@@ -50,11 +56,14 @@ codeunit 30165 "Shpfy Orders API"
                         Parameters.Set('After', Cursor)
                     else
                         Parameters.Add('After', Cursor);
-                    GraphQLType := GraphQLType::GetNextOrdersToImport;
+                    if LastSyncTime = Shop.GetEmptySyncTime() then
+                        GraphQLType := "Shpfy GraphQL Type"::GetNextOpenOrdersToImport
+                    else
+                        GraphQLType := "Shpfy GraphQL Type"::GetNextOrdersToImport;
                 end else
                     break;
         until not JsonHelper.GetValueAsBoolean(JResponse, 'data.orders.pageInfo.hasNextPage');
-        ShopifyShop.SetLastSyncTime("Shpfy Synchronization Type"::Orders, LastSyncTime);
+        ShopifyShop.SetLastSyncTime("Shpfy Synchronization Type"::Orders, NewSyncTime);
         Commit();
     end;
 
@@ -63,23 +72,33 @@ codeunit 30165 "Shpfy Orders API"
     /// </summary>
     /// <param name="OrderId">Parameter of type BigInteger.</param>
     /// <param name="JAttributes">Parameter of type JsonArray.</param>
+#if not CLEAN24
+    /// <param name="ShopifyShop">Parameter of type Record "Shpfy Shop".</param>
+    local procedure UpdateOrderAttributes(OrderId: BigInteger; JAttributes: JsonArray; ShopifyShop: Record "Shpfy Shop")
+#else
     local procedure UpdateOrderAttributes(OrderId: BigInteger; JAttributes: JsonArray)
+#endif
     var
-        OrderAttributte: Record "Shpfy Order Attribute";
+        OrderAttribute: Record "Shpfy Order Attribute";
         JItem: JsonToken;
     begin
-        OrderAttributte.SetRange("Order Id", OrderId);
-        if not OrderAttributte.IsEmpty then
-            OrderAttributte.DeleteAll();
+        OrderAttribute.SetRange("Order Id", OrderId);
+        if not OrderAttribute.IsEmpty then
+            OrderAttribute.DeleteAll();
 
         foreach JItem in JAttributes do begin
-            Clear(OrderAttributte);
-            OrderAttributte."Order Id" := OrderId;
+            Clear(OrderAttribute);
+            OrderAttribute."Order Id" := OrderId;
 #pragma warning disable AA0139
-            OrderAttributte."Key" := JsonHelper.GetValueAsText(JItem, 'key', MaxStrLen(OrderAttributte."Key"));
-            OrderAttributte.Value := JsonHelper.GetValueAsText(JItem, 'value', MaxStrLen(OrderAttributte.Value));
+            OrderAttribute."Key" := JsonHelper.GetValueAsText(JItem, 'key', MaxStrLen(OrderAttribute."Key"));
 #pragma warning restore AA0139
-            OrderAttributte.Insert();
+#if not CLEAN24
+            if not ShopifyShop."Replace Order Attribute Value" then
+                OrderAttribute.Value := CopyStr(JsonHelper.GetValueAsText(JItem, 'value').Replace('\\', '\').Replace('\"', '"'), 1, MaxStrLen(OrderAttribute.Value))
+            else
+#endif
+                OrderAttribute."Attribute Value" := CopyStr(JsonHelper.GetValueAsText(JItem, 'value').Replace('\\', '\').Replace('\"', '"'), 1, MaxStrLen(OrderAttribute."Attribute Value"));
+            OrderAttribute.Insert();
         end;
     end;
 
@@ -90,34 +109,50 @@ codeunit 30165 "Shpfy Orders API"
     /// <param name="OrderHeader">Parameter of type Record "Shopify Order Header".</param>
     /// <param name="KeyName">Parameter of type Text.</param>
     /// <param name="Value">Parameter of type Text.</param>
-    internal procedure AddOrderAttribute(OrderHeader: Record "Shpfy Order Header"; KeyName: Text; Value: Text)
+#if not CLEAN24
+    /// <param name="ShopifyShop">Parameter of type Record "Shpfy Shop".</param>
+    internal procedure AddOrderAttribute(OrderHeader: Record "Shpfy Order Header"; KeyName: Text; Value: Text; ShopifyShop: Record "Shpfy Shop")
+#else
+    internal procedure AddOrderAttribute(OrderHeader: Record "Shpfy Order Header"; KeyName: Text; Value: Text; ShopifyShop: Record "Shpfy Shop")
+#endif
     var
-        OrderAttributte: Record "Shpfy Order Attribute";
+        OrderAttribute: Record "Shpfy Order Attribute";
         Parameters: Dictionary of [Text, Text];
         JAttributes: JsonArray;
         JAttrib: JsonObject;
     begin
+        CommunicationMgt.SetShop(ShopifyShop);
         if CommunicationMgt.GetTestInProgress() then
             exit;
-        Clear(OrderAttributte);
-        OrderAttributte."Order Id" := OrderHeader."Shopify Order Id";
-        OrderAttributte."Key" := CopyStr(KeyName, 1, MaxStrLen(OrderAttributte."Key"));
-        OrderAttributte.Value := CopyStr(Value, 1, MaxStrLen(OrderAttributte.Value));
-        if not OrderAttributte.Insert() then
-            OrderAttributte.Modify();
+        Clear(OrderAttribute);
+        OrderAttribute."Order Id" := OrderHeader."Shopify Order Id";
+        OrderAttribute."Key" := CopyStr(KeyName, 1, MaxStrLen(OrderAttribute."Key"));
+#if not CLEAN24
+        if not ShopifyShop."Replace Order Attribute Value" then
+            OrderAttribute.Value := CopyStr(Value, 1, MaxStrLen(OrderAttribute.Value))
+        else
+#endif
+            OrderAttribute."Attribute Value" := CopyStr(Value, 1, MaxStrLen(OrderAttribute."Attribute Value"));
+        if not OrderAttribute.Insert() then
+            OrderAttribute.Modify();
 
-        Clear(OrderAttributte);
-        OrderAttributte.SetRange("Order Id", OrderHeader."Shopify Order Id");
-        if OrderAttributte.FindSet(false, false) then
+        Clear(OrderAttribute);
+        OrderAttribute.SetRange("Order Id", OrderHeader."Shopify Order Id");
+        if OrderAttribute.FindSet(false) then
             repeat
                 Clear(JAttrib);
-                JAttrib.Add('key', OrderAttributte."Key");
-                JAttrib.Add('value', OrderAttributte.Value.Replace('\', '\\').Replace('"', '\"'));
+                JAttrib.Add('key', OrderAttribute."Key");
+#if not CLEAN24
+                if not ShopifyShop."Replace Order Attribute Value" then
+                    JAttrib.Add('value', OrderAttribute.Value)
+                else
+#endif
+                    JAttrib.Add('value', OrderAttribute."Attribute Value");
                 JAttributes.Add(JAttrib);
-            until OrderAttributte.Next() = 0;
+            until OrderAttribute.Next() = 0;
 
         Parameters.Add('OrderId', Format(OrderHeader."Shopify Order Id"));
-        Parameters.add('CustomAttributes', Format(JAttributes).Replace('"key"', 'key').Replace('"value"', 'value').Replace('\', '\\').Replace('"', '\"'));
+        Parameters.Add('CustomAttributes', Format(JAttributes).Replace('"key"', 'key').Replace('"value"', 'value').Replace('\', '\\').Replace('"', '\"'));
         CommunicationMgt.ExecuteGraphQL(GraphQLType::UpdateOrderAttributes, Parameters);
     end;
 
@@ -163,62 +198,58 @@ codeunit 30165 "Shpfy Orders API"
             exit(Enum::"Shpfy Financial Status"::" ");
     end;
 
-    local procedure ConvertToRiskLevel(Value: Text): Enum "Shpfy Risk Level"
-    begin
-        Value := CommunicationMgt.ConvertToCleanOptionValue(Value);
-        if Enum::"Shpfy Risk Level".Names().Contains(Value) then
-            exit(Enum::"Shpfy Risk Level".FromInteger(Enum::"Shpfy Risk Level".Ordinals().Get(Enum::"Shpfy Risk Level".Names().IndexOf(Value))))
-        else
-            exit(Enum::"Shpfy Risk Level"::" ");
-    end;
-
     internal procedure ExtractShopifyOrdersToImport(var ShopifyShop: Record "Shpfy Shop"; JResponse: JsonObject; var Cursor: Text): Boolean
     var
-        OrderToImport: Record "Shpfy Orders to Import";
-        Orders: Record "Shpfy Order Header";
-        RecRef: RecordRef;
+        OrdersToImport: Record "Shpfy Orders to Import";
+        OrderHeader: Record "Shpfy Order Header";
+        RecordRef: RecordRef;
         Id: BigInteger;
         JArray: JsonArray;
         JOrders: JsonArray;
+        JObject: JsonObject;
         JNode: JsonObject;
         JItem: JsonToken;
         JLineItem: JsonToken;
         JValue: JsonValue;
         Tags: TextBuilder;
+        Closed: Boolean;
     begin
         if JsonHelper.GetJsonArray(JResponse, JOrders, 'data.orders.edges') then begin
             foreach JItem in JOrders do begin
                 Cursor := JsonHelper.GetValueAsText(JItem.AsObject(), 'cursor');
                 if JsonHelper.GetJsonObject(JItem.AsObject(), JNode, 'node') then begin
                     Id := JsonHelper.GetValueAsBigInteger(JNode, 'legacyResourceId');
-                    OrderToImport.SetCurrentKey(Id, "Shop Id");
-                    OrderToImport.SetRange(Id, Id);
-                    OrderToImport.SetRange("Shop Id", ShopifyShop."Shop Id");
-                    OrderToImport.SetRange("Shop Code", ShopifyShop.Code);
-
-                    if not OrderToImport.IsEmpty then
-                        OrderToImport.DeleteAll();
-
-                    Clear(OrderToImport);
-                    OrderToImport.Id := Id;
-                    OrderToImport."Shop Id" := ShopifyShop."Shop Id";
-                    OrderToImport."Shop Code" := ShopifyShop.Code;
-                    RecRef.GetTable(OrderToImport);
-                    JsonHelper.GetValueIntoField(JNode, 'name', RecRef, OrderToImport.FieldNo("Order No."));
-                    JsonHelper.GetValueIntoField(JNode, 'createdAt', RecRef, OrderToImport.FieldNo("Created At"));
-                    JsonHelper.GetValueIntoField(JNode, 'updatedAt', RecRef, OrderToImport.FieldNo("Updated At"));
-                    JsonHelper.GetValueIntoField(JNode, 'test', RecRef, OrderToImport.FieldNo(Test));
-                    JsonHelper.GetValueIntoField(JNode, 'fullyPaid', RecRef, OrderToImport.FieldNo("Fully Paid"));
-                    JsonHelper.GetValueIntoField(JNode, 'unpaid', RecRef, OrderToImport.FieldNo(Unpaid));
-                    JsonHelper.GetValueIntoField(JNode, 'subtotalLineItemsQuantity', RecRef, OrderToImport.FieldNo("Total Quantity of Items"));
-                    JsonHelper.GetValueIntoField(JNode, 'totalPriceSet.shopMoney.amount', RecRef, OrderToImport.FieldNo("Order Amount"));
-                    JsonHelper.GetValueIntoField(JNode, 'totalPriceSet.shopMoney.currencyCode', RecRef, OrderToImport.FieldNo("Currency Code"));
-                    RecRef.SetTable(OrderToImport);
-                    OrderToImport."Risk Level" := ConvertToRiskLevel(JsonHelper.GetValueAsText(JNode, 'riskLevel'));
-                    OrderToImport."Financial Status" := ConvertToFinancialStatus(JsonHelper.GetValueAsText(JNode, 'displayFinancialStatus'));
-                    OrderToImport."Fulfillment Status" := ConvertToFulfillmentStatus(JsonHelper.GetValueAsText(JNode, 'displayFulfillmentStatus'));
+                    Closed := JsonHelper.GetValueAsBoolean(JNode, 'closed');
+                    OrdersToImport.SetRange(Id, Id);
+                    if not OrdersToImport.FindFirst() then
+                        Clear(OrdersToImport);
+                    OrdersToImport.Id := Id;
+                    OrdersToImport."Shop Id" := ShopifyShop."Shop Id";
+                    RecordRef.GetTable(OrdersToImport);
+                    JsonHelper.GetValueIntoField(JNode, 'name', RecordRef, OrdersToImport.FieldNo("Order No."));
+                    JsonHelper.GetValueIntoField(JNode, 'createdAt', RecordRef, OrdersToImport.FieldNo("Created At"));
+                    JsonHelper.GetValueIntoField(JNode, 'updatedAt', RecordRef, OrdersToImport.FieldNo("Updated At"));
+                    JsonHelper.GetValueIntoField(JNode, 'test', RecordRef, OrdersToImport.FieldNo(Test));
+                    JsonHelper.GetValueIntoField(JNode, 'fullyPaid', RecordRef, OrdersToImport.FieldNo("Fully Paid"));
+                    JsonHelper.GetValueIntoField(JNode, 'unpaid', RecordRef, OrdersToImport.FieldNo(Unpaid));
+                    JsonHelper.GetValueIntoField(JNode, 'subtotalLineItemsQuantity', RecordRef, OrdersToImport.FieldNo("Total Quantity of Items"));
+                    JsonHelper.GetValueIntoField(JNode, 'totalPriceSet.shopMoney.amount', RecordRef, OrdersToImport.FieldNo("Order Amount"));
+                    JsonHelper.GetValueIntoField(JNode, 'totalPriceSet.shopMoney.currencyCode', RecordRef, OrdersToImport.FieldNo("Currency Code"));
+                    JsonHelper.GetValueIntoField(JNode, 'channel.name', RecordRef, OrdersToImport.FieldNo("Channel Name"));
+                    RecordRef.SetTable(OrdersToImport);
+                    OrdersToImport."Financial Status" := ConvertToFinancialStatus(JsonHelper.GetValueAsText(JNode, 'displayFinancialStatus'));
+                    OrdersToImport."Fulfillment Status" := ConvertToFulfillmentStatus(JsonHelper.GetValueAsText(JNode, 'displayFulfillmentStatus'));
+                    if JsonHelper.GetJsonObject(JNode, JObject, 'purchasingEntity') then
+                        if JsonHelper.GetJsonObject(JNode, JObject, 'purchasingEntity.company') then
+                            OrdersToImport."Purchasing Entity" := OrdersToImport."Purchasing Entity"::Company
+                        else
+                            OrdersToImport."Purchasing Entity" := OrdersToImport."Purchasing Entity"::Customer;
                     if JsonHelper.GetJsonArray(JNode, JArray, 'customAttributes') then
-                        UpdateOrderAttributes(OrderToImport.Id, JArray);
+#if not CLEAN24
+                        UpdateOrderAttributes(OrdersToImport.Id, JArray, ShopifyShop);
+#else
+                        UpdateOrderAttributes(OrdersToImport.Id, JArray);
+#endif
                     if JsonHelper.GetJsonArray(JNode, JArray, 'tags') then begin
                         Clear(Tags);
                         foreach JLineItem in JArray do begin
@@ -227,19 +258,54 @@ codeunit 30165 "Shpfy Orders API"
                             Tags.Append(JValue.AsText());
                             Tags.Append(']');
                         end;
-                        OrderToImport.Tags := CopyStr(Tags.ToText(), 2, MaxStrLen(OrderToImport.Tags));
+                        OrdersToImport.Tags := CopyStr(Tags.ToText(), 2, MaxStrLen(OrdersToImport.Tags));
                     end;
-                    Orders.SetRange("Shopify Order Id", Id);
-                    if Orders.IsEmpty then
-                        OrderToImport."Import Action" := OrderToImport."Import Action"::New
+                    OrderHeader.SetRange("Shopify Order Id", Id);
+                    if OrderHeader.IsEmpty then
+                        OrdersToImport."Import Action" := OrdersToImport."Import Action"::New
                     else
-                        OrderToImport."Import Action" := OrderToImport."Import Action"::Update;
+                        OrdersToImport."Import Action" := OrdersToImport."Import Action"::Update;
 
-                    if not OrderToImport.Insert() then
-                        OrderToImport.Modify();
+                    if (OrdersToImport."Import Action" = OrdersToImport."Import Action"::Update) or ((OrdersToImport."Import Action" = OrdersToImport."Import Action"::New) and not Closed) then
+                        if not OrdersToImport.Insert() then
+                            OrdersToImport.Modify();
                 end;
             end;
             exit(true);
         end;
+    end;
+
+    internal procedure MarkAsPaid(OrderId: BigInteger; ShopCode: Code[20]): Boolean
+    var
+        ShopifyShop: Record "Shpfy Shop";
+        JResponse: JsonToken;
+        Parameters: Dictionary of [Text, Text];
+    begin
+        ShopifyShop.Get(ShopCode);
+        CommunicationMgt.SetShop(ShopifyShop);
+        GraphQLType := "Shpfy GraphQL Type"::MarkOrderAsPaid;
+        Parameters.Add('OrderId', Format(OrderId));
+        JResponse := CommunicationMgt.ExecuteGraphQL(GraphQLType, Parameters);
+        exit(JsonHelper.GetValueAsBoolean(JResponse, 'data.orderMarkAsPaid.order.fullyPaid'));
+    end;
+
+    internal procedure CancelOrder(OrderId: BigInteger; ShopCode: Code[20]; NotifyCustomer: Boolean; CancelReason: Enum "Shpfy Cancel Reason"; Refund: Boolean; Restock: Boolean): Boolean
+    var
+        ShopifyShop: Record "Shpfy Shop";
+        JResponse: JsonToken;
+        Parameters: Dictionary of [Text, Text];
+    begin
+        ShopifyShop.Get(ShopCode);
+        CommunicationMgt.SetShop(ShopifyShop);
+        GraphQLType := "Shpfy GraphQL Type"::OrderCancel;
+        Parameters.Add('OrderId', Format(OrderId));
+        if CancelReason in [CancelReason::" ", CancelReason::Unknown] then
+            CancelReason := CancelReason::Other;
+        Parameters.Add('CancelReason', CancelReason.Names().Get(CancelReason.Ordinals().IndexOf(CancelReason.AsInteger())).ToUpper());
+        Parameters.Add('NotifyCustomer', CommunicationMgt.ConvertBooleanToText(NotifyCustomer));
+        Parameters.Add('Refund', CommunicationMgt.ConvertBooleanToText(Refund));
+        Parameters.Add('Restock', CommunicationMgt.ConvertBooleanToText(Restock));
+        JResponse := CommunicationMgt.ExecuteGraphQL(GraphQLType, Parameters);
+        exit(JsonHelper.GetJsonArray(JResponse, 'data.orderCancel.orderCancelUserErrors').Count() = 0);
     end;
 }

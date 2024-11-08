@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Purchases.Document;
+
+using Microsoft.Inventory.Item;
+using Microsoft.Service.Reports;
+
 tableextension 5017 "Serv. Decl. Purch. Line" extends "Purchase Line"
 {
     fields
@@ -26,7 +35,7 @@ tableextension 5017 "Serv. Decl. Purch. Line" extends "Purchase Line"
             var
                 PurchHeader: Record "Purchase Header";
             begin
-                PurchHeader.Get("Document Type", "Document No.");
+                PurchHeader := Rec.GetPurchHeader();
                 if "Applicable For Serv. Decl." then
                     PurchHeader.TestField("Applicable For Serv. Decl.");
             end;

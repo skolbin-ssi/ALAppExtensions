@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Payments;
+
+using System.Integration.Excel;
+
 page 18243 "Bank Charge Deemed Value Setup"
 {
     PageType = List;
@@ -76,12 +84,9 @@ page 18243 "Bank Charge Deemed Value Setup"
                 begin
                     EditinExcel.EditPageInExcel(
                         'Bank Charges',
-                        CurrPage.ObjectId(false),
-                        StrSubstNo(BankChargeMsg, Rec."Bank Charge Code"));
+                        Page::"Bank Charge Deemed Value Setup");
                 end;
             }
         }
     }
-    var
-        BankChargeMsg: Label '%1', Comment = '%1=Bank Charge Code';
 }

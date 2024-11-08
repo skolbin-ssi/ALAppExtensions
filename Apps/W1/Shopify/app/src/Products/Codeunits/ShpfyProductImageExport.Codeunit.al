@@ -1,3 +1,7 @@
+namespace Microsoft.Integration.Shopify;
+
+using Microsoft.Inventory.Item;
+
 /// <summary>
 /// Codeunit Shpfy Product Image Export (ID 30179).
 /// </summary>
@@ -13,6 +17,7 @@ codeunit 30179 "Shpfy Product Image Export"
         HashCalc: Codeunit "Shpfy Hash";
         NewImageId: BigInteger;
         Hash: Integer;
+        ImageExists: Boolean;
     begin
         if Shop."Sync Item Images" <> Shop."Sync Item Images"::"To Shopify" then
             exit;
@@ -20,10 +25,24 @@ codeunit 30179 "Shpfy Product Image Export"
         if Rec."Item SystemId" <> NullGuid then
             if Item.GetBySystemId(Rec."Item SystemId") then
                 Hash := HashCalc.CalcItemImageHash(Item);
-        if Hash <> Rec."Image Hash" then begin
+
+        if (Hash = Rec."Image Hash") then
+            exit;
+
+        if Rec."Image Id" <> 0 then begin
+            ImageExists := ProductApi.CheckShopifyProductImageExists(Rec.Id, Rec."Image Id");
+            if not ImageExists then
+                Rec."Image Id" := 0;
+        end;
+
+        if not ImageExists then begin
             NewImageId := ProductApi.CreateShopifyProductImage(Rec, Item);
             if NewImageId <> Rec."Image Id" then
-                Rec."Image Id" := Rec."Image Id";
+                Rec."Image Id" := NewImageId;
+            Rec."Image Hash" := Hash;
+            Rec.Modify();
+        end else begin
+            ProductApi.UpdateShopifyProductImage(Rec, Item, BulkOperationInput, ParametersList, CurrRecordCount);
             Rec."Image Hash" := Hash;
             Rec.Modify();
         end;
@@ -32,7 +51,10 @@ codeunit 30179 "Shpfy Product Image Export"
     var
         Shop: Record "Shpfy Shop";
         ProductApi: Codeunit "Shpfy Product API";
+        CurrRecordCount: Integer;
         NullGuid: Guid;
+        ParametersList: List of [Dictionary of [Text, Text]];
+        BulkOperationInput: TextBuilder;
 
     /// <summary> 
     /// Set Shop.
@@ -55,5 +77,20 @@ codeunit 30179 "Shpfy Product Image Export"
     begin
         Shop := ShopifyShop;
         ProductApi.SetShop(Shop);
+    end;
+
+    internal procedure SetRecordCount(RecordCount: Integer)
+    begin
+        CurrRecordCount := RecordCount;
+    end;
+
+    internal procedure GetBulkOperationInput(): TextBuilder
+    begin
+        exit(BulkOperationInput);
+    end;
+
+    internal procedure GetParametersList(): List of [Dictionary of [Text, Text]]
+    begin
+        exit(ParametersList);
     end;
 }

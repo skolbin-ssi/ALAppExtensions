@@ -1,3 +1,11 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Distribution;
+
+using System.Integration.Excel;
+
 page 18202 "GST Component Dist. List"
 {
     PageType = List;
@@ -58,13 +66,9 @@ page 18202 "GST Component Dist. List"
                 begin
                     EditinExcel.EditPageInExcel(
                         'GST Component Distribution',
-                        CurrPage.ObjectId(false),
-                        StrSubstNo(GstComponentCodeMsg, Rec."GST Component code"));
+                        Page::"GST Component Dist. List");
                 end;
             }
         }
     }
-
-    var
-        GstComponentCodeMsg: Label 'GST Component Code %1', Comment = '%1 =GST Component Code';
 }

@@ -1,10 +1,20 @@
+﻿#if not CLEANSCHEMA26
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Base;
+
+using Microsoft.Sales.Customer;
+
 table 18015 "E-Commerce Merchant"
 {
     Caption = 'E-Commerce Merchant';
     DataCaptionFields = "Customer No.", "Merchant Id";
-    ObsoleteState = Pending;
     ObsoleteReason = 'New table 18017 introduced as "E-Comm. Merchant" with customer No. field length as 20';
-    ObsoleteTag = '23.0';
+    ObsoleteState = Removed;
+    ObsoleteTag = '26.0';
+
     fields
     {
         field(1; "Customer No."; code[10])
@@ -36,3 +46,4 @@ table 18015 "E-Commerce Merchant"
         }
     }
 }
+#endif

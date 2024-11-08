@@ -1,3 +1,9 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Service.Reports;
+
 page 5024 "Service Declaration Subform"
 {
     AutoSplitKey = true;
@@ -45,17 +51,6 @@ page 5024 "Service Declaration Subform"
                     ApplicationArea = Basic, Suite;
                     ToolTip = 'Specifies the country/region code of the source entry.';
                 }
-#if not CLEAN22                
-                field("VAT Registration No."; Rec."VAT Registration No.")
-                {
-                    ApplicationArea = Basic, Suite;
-                    ToolTip = 'Specifies the VAT registration No. of the customer or vendor associated with a source entry.';
-                    ObsoleteReason = 'This relation is now stored in the field Financial Report Column Group of the table Financial Reports';
-                    ObsoleteState = Pending;
-                    ObsoleteTag = '22.0';
-                    Visible = false;
-                }
-#endif
                 field("VAT Reg. No."; Rec."VAT Reg. No.")
                 {
                     ApplicationArea = Basic, Suite;

@@ -1,3 +1,31 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TaxBase;
+
+using Microsoft.Bank.Reconciliation;
+using Microsoft.Bank.Statement;
+using Microsoft.EServices.EDocument;
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.Dimension;
+using Microsoft.Finance.GeneralLedger.Account;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.ReceivablesPayables;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Foundation.Reporting;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Sales.Customer;
+using System.Automation;
+using System.Environment;
+using System.Environment.Configuration;
+using System.Integration;
+using System.Threading;
+using System.Utilities;
+
 page 18555 "Cash Receipt Voucher"
 {
     ApplicationArea = Basic, Suite;
@@ -1370,32 +1398,6 @@ page 18555 "Cash Receipt Voucher"
                         end;
                     }
                 }
-                action(CreateFlow)
-                {
-                    ApplicationArea = Basic, Suite;
-                    Caption = 'Create a Flow';
-                    Image = Flow;
-                    ToolTip = 'Create a new Flow from a list of relevant Flow templates.';
-                    Visible = IsSaaS;
-
-                    trigger OnAction()
-                    var
-                        FlowServiceManagement: Codeunit "Flow Service Management";
-                        FlowTemplateSelector: Page "Flow Template Selector";
-                    begin
-                        // Opens page 6400 where the user can use filtered templates to create new flows.
-                        FlowTemplateSelector.SetSearchText(FlowServiceManagement.GetJournalTemplateFilter());
-                        FlowTemplateSelector.Run();
-                    end;
-                }
-                action(SeeFlows)
-                {
-                    ApplicationArea = Basic, Suite;
-                    Caption = 'See my Flows';
-                    Image = Flow;
-                    RunObject = Page "Flow Selector";
-                    ToolTip = 'View and configure Flows that you created.';
-                }
             }
             group(Approval)
             {
@@ -1865,7 +1867,7 @@ page 18555 "Cash Receipt Voucher"
     var
         GenJournalLine: Record "Gen. Journal Line";
         GenJnlBatch: Record "Gen. Journal Batch";
-        NoSeriesMgt: Codeunit NoSeriesManagement;
+        NoSeriesBatch: Codeunit "No. Series - Batch";
         LastDocNo: Code[20];
     begin
         if Count() = 0 then
@@ -1877,9 +1879,9 @@ page 18555 "Cash Receipt Voucher"
         GenJournalLine.SetRange("Journal Batch Name", "Journal Batch Name");
         if GenJournalLine.FindLast() then begin
             LastDocNo := GenJournalLine."Document No.";
-            IncrementDocumentNo(GenJnlBatch, LastDocNo);
+            LastDocNo := NoSeriesBatch.SimulateGetNextNo(GenJnlBatch."No. Series", GenJournalLine."Posting Date", LastDocNo)
         end else
-            LastDocNo := NoSeriesMgt.TryGetNextNo(GenJnlBatch."No. Series", "Posting Date");
+            LastDocNo := NoSeriesBatch.PeekNextNo(GenJnlBatch."No. Series", "Posting Date");
 
         CurrentDocNo := LastDocNo;
         SetDocumentNumberFilter(CurrentDocNo);

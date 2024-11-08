@@ -1,3 +1,19 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Base;
+
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.GeneralLedger.Preview;
+using Microsoft.Finance.GST.Payments;
+using Microsoft.Foundation.Navigate;
+using Microsoft.Inventory.Transfer;
+using Microsoft.Purchases.Posting;
+using Microsoft.Sales.Posting;
+using Microsoft.Sales.Receivables;
+using Microsoft.Service.Posting;
+
 codeunit 18003 "GST Preview Handler"
 {
     SingleInstance = true;
@@ -123,21 +139,22 @@ codeunit 18003 "GST Preview Handler"
         TempDetailedGSTLedgerEntryInfo.Insert();
     end;
 
-    [EventSubscriber(ObjectType::Page, Page::Navigate, 'OnAfterNavigateShowRecords', '', false, false)]
-    local procedure ShowEntries(TableID: Integer; DocNoFilter: Text; PostingDateFilter: Text; var TempDocumentEntry: Record "Document Entry")
+    [EventSubscriber(ObjectType::Page, Page::Navigate, 'OnBeforeShowRecords', '', false, false)]
+    local procedure ShowEntries(DocNoFilter: Text; PostingDateFilter: Text; var TempDocumentEntry: Record "Document Entry"; var IsHandled: Boolean)
     var
         GSTLedgerEntries: Record "GST Ledger Entry";
         DetailedGSTLedgerEntries: Record "Detailed GST Ledger Entry";
         GSTTDSTCSEntry: Record "GST TDS/TCS Entry";
         DetailedGSTLedgerEntryInfo: Record "Detailed GST Ledger Entry Info";
     begin
-        case TableID of
+        case TempDocumentEntry."Table ID" of
             Database::"GST Ledger Entry":
                 begin
                     GSTLedgerEntries.Reset();
                     GSTLedgerEntries.SetRange("Document No.", DocNoFilter);
                     GSTLedgerEntries.SetFilter("Posting Date", PostingDateFilter);
                     Page.Run(0, GSTLedgerEntries);
+                    IsHandled := true;
                 end;
             Database::"Detailed GST Ledger Entry":
                 begin
@@ -145,6 +162,7 @@ codeunit 18003 "GST Preview Handler"
                     DetailedGSTLedgerEntries.SetRange("Document No.", DocNoFilter);
                     DetailedGSTLedgerEntries.SetFilter("Posting Date", PostingDateFilter);
                     Page.Run(0, DetailedGSTLedgerEntries);
+                    IsHandled := true;
                 end;
             Database::"GST TDS/TCS Entry":
                 begin
@@ -152,11 +170,13 @@ codeunit 18003 "GST Preview Handler"
                     GSTTDSTCSEntry.SetRange("Document No.", DocNoFilter);
                     GSTTDSTCSEntry.SetFilter("Posting Date", PostingDateFilter);
                     Page.Run(0, GSTTDSTCSEntry);
+                    IsHandled := true;
                 end;
             Database::"Detailed GST Ledger Entry Info":
                 begin
                     DetailedGSTLedgerEntryInfo.SetRange("Entry No.", FromDetailedGSTLedgerEntryNo, ToDetailedGSTLedgerEntryNo);
                     Page.Run(0, DetailedGSTLedgerEntryInfo);
+                    IsHandled := true;
                 end;
         end;
     end;

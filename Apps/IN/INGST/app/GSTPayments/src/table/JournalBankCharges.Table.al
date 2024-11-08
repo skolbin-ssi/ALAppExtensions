@@ -1,3 +1,14 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Payments;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GST.Base;
+using Microsoft.Finance.TaxBase;
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+
 table 18247 "Journal Bank Charges"
 {
     Caption = 'Journal Bank Charges';
@@ -135,6 +146,7 @@ table 18247 "Journal Bank Charges"
             exit;
         GSTSetup.TestField("GST Tax Type");
         TaxTransactionValue.Reset();
+        TaxTransactionValue.SetCurrentKey("Tax Record ID", "Tax Type");
         TaxTransactionValue.SetRange("Tax Type", GSTSetup."GST Tax Type");
         TaxTransactionValue.SetRange("Tax Record ID", BankChargeRecordID);
         TaxTransactionValue.SetRange("Value ID", 10);

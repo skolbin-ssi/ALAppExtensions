@@ -1,3 +1,7 @@
+namespace System.Security.AccessControl;
+
+using Microsoft.Utility.ImageAnalysis;
+
 permissionsetextension 4209 "D365 TEAM MEMBERImage Analyzer" extends "D365 TEAM MEMBER"
 {
     Permissions = tabledata "MS - Image Analyzer Tags" = RIMD,

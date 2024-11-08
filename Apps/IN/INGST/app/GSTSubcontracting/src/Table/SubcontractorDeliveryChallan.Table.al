@@ -1,3 +1,15 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Subcontracting;
+
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Inventory.Location;
+using Microsoft.Purchases.Setup;
+using Microsoft.Purchases.Vendor;
+
 table 18477 "Subcontractor Delivery Challan"
 {
     Caption = 'Subcontractor Delivery Challan';
@@ -74,13 +86,13 @@ table 18477 "Subcontractor Delivery Challan"
     }
 
     procedure AssistEdit(OldDeliveryChallan: Record "Subcontractor Delivery Challan"): Boolean
+    var
+        NoSeries: Codeunit "No. Series";
     begin
         PurchSetup.Get();
         PurchSetup.TestField("Delivery Challan Nos.");
-        if NoSeriesMgt.SelectSeries(PurchSetup."Delivery Challan Nos.", OldDeliveryChallan."No. Series", "No. Series") then BEGIN
-            PurchSetup.Get();
-            PurchSetup.TestField("Delivery Challan Nos.");
-            NoSeriesMgt.SetSeries("No.");
+        if NoSeries.LookupRelatedNoSeries(PurchSetup."Delivery Challan Nos.", OldDeliveryChallan."No. Series", "No. Series") then BEGIN
+            "No." := NoSeries.GetNextNo("No. Series");
             exit(true);
         end;
     end;
@@ -100,5 +112,4 @@ table 18477 "Subcontractor Delivery Challan"
         PurchSetup: Record "Purchases & Payables Setup";
         Vendor: Record "Vendor";
         SubconDeliveryChallanLine: Record "Subcon. Delivery Challan Line";
-        NoSeriesMgt: Codeunit NoSeriesManagement;
 }

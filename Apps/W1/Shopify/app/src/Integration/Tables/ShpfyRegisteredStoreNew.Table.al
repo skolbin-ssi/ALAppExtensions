@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Table Shpfy Registered Store (ID 30136).
 /// </summary>
@@ -33,18 +35,15 @@ table 30138 "Shpfy Registered Store New"
         }
     }
 
-    [NonDebuggable]
     [Scope('OnPrem')]
-    internal procedure SetAccessToken(AccessToken: Text)
+    internal procedure SetAccessToken(AccessToken: SecretText)
     begin
         IsolatedStorage.Set('AccessToken(' + Rec.SystemId + ')', AccessToken, DataScope::Module);
     end;
 
-    [NonDebuggable]
     [Scope('OnPrem')]
-    internal procedure GetAccessToken() Result: Text
+    internal procedure GetAccessToken() Result: SecretText
     begin
-        if not IsolatedStorage.Get('AccessToken(' + Rec.SystemId + ')', DataScope::Module, Result) then
-            exit('');
+        if not IsolatedStorage.Get('AccessToken(' + Rec.SystemId + ')', DataScope::Module, Result) then;
     end;
 }

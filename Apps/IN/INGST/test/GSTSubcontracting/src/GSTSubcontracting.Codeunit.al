@@ -16,6 +16,7 @@ codeunit 18479 "GST Subcontracting"
         LibraryItemTracking: Codeunit "Library - Item Tracking";
         LibraryAssert: Codeunit "Library Assert";
         LibraryGST: Codeunit "Library GST";
+        LibraryWarehouse: Codeunit "Library - Warehouse";
         Assert: Codeunit Assert;
         UpdateSubcontractDetails: Codeunit "Update Subcontract Details";
         ComponentPerArray: array[20] of Decimal;
@@ -30,6 +31,7 @@ codeunit 18479 "GST Subcontracting"
         XVendorStateCodeTok: Label 'VendorStateCode', Locked = true;
         XVendorNoTok: Label 'VendorNo', Locked = true;
         WorkCenterNoTok: Label 'WorkCenterNo', Locked = true;
+        XBinCodeTok: Label 'BinCode', Locked = true;
         XMainItemNoTok: Label 'MainItemNo', Locked = true;
         XComponentItemNoTok: Label 'ComponentItemNo', Locked = true;
         XFromStateCodeTok: Label 'FromStateCode', Locked = true;
@@ -800,11 +802,134 @@ codeunit 18479 "GST Subcontracting"
         Assert.ExpectedError(StrSubstNo(DeliveryChallanLineExistsErr, PurchaseLine."Document No.", PurchaseLine."Line No."));
     end;
 
+    [Test]
+    [HandlerFunctions('TaxRatePageHandler,PostConfirmation,DeliveryChallanSentMsgHandler')]
+    procedure SubconOrderToCheckOutputDateInItemLedgerEntry()
+    var
+        ProductionOrderFirst: Record "Production Order";
+        ProductionOrderSecond: Record "Production Order";
+        PurchaseLineFirst: Record "Purchase Line";
+        PurchaseLineSecond: Record "Purchase Line";
+        PurchaseHeaderFirst: Record "Purchase Header";
+        PurchaseHeaderSecond: Record "Purchase Header";
+        GSTGroupType: Enum "GST Group Type";
+        GSTVendorType: Enum "GST Vendor Type";
+        MultipleSubconOrderDetailsNo: Code[20];
+        OutputQtyFirst: Decimal;
+        OutputDateFirst: Date;
+        OutputDateSecond: Date;
+        OutputQtySecond: Decimal;
+        DocumentNoFirst: Code[20];
+        DocumentNoSecond: Code[20];
+    begin
+        // [SCENARIO] [469048] Posting date of Purchase receipt and Order subcon receipt dfifers when Order subcon receipt has a different posting date
+        // [GIVEN] Setups created
+        CreateGSTSubconSetups(GSTVendorType::Registered, GSTGroupType::Goods, true);
+
+        // [WHEN] Create Multiple Subcontracting Order from Released Purchase Order, Send Subcon Components
+        CreateSubcontractingOrderFromReleasedProdOrder(ProductionOrderFirst, PurchaseLineFirst);
+        CreateSubcontractingOrderFromReleasedProdOrder(ProductionOrderSecond, PurchaseLineSecond);
+        DeliverSubconComponentsMultiple(PurchaseLineFirst, PurchaseLineSecond, MultipleSubconOrderDetailsNo);
+        ReceiptSubconItemMultipleWithOutputDate(PurchaseLineFirst, PurchaseLineSecond, MultipleSubconOrderDetailsNo, WorkDate(), OutputQtyFirst, OutputQtySecond, OutputDateFirst, OutputDateSecond);
+
+        PurchaseHeaderFirst.Get(PurchaseLineFirst."Document Type", PurchaseLineFirst."Document No.");
+        PurchaseHeaderFirst.Validate("Vendor Invoice No.", PurchaseHeaderFirst."No.");
+        PurchaseHeaderFirst.Modify(true);
+        DocumentNoFirst := LibraryPurchase.PostPurchaseDocument(PurchaseHeaderFirst, false, true);
+
+        PurchaseHeaderSecond.Get(PurchaseLineSecond."Document Type", PurchaseLineSecond."Document No.");
+        PurchaseHeaderSecond.Validate("Vendor Invoice No.", PurchaseHeaderSecond."No.");
+        PurchaseHeaderSecond.Modify(true);
+        DocumentNoSecond := LibraryPurchase.PostPurchaseDocument(PurchaseHeaderSecond, false, true);
+
+        // [THEN] Delivery Challan, Item ledger entries and G/L Entries are Verified
+        VerifyDeliveryChallanLine(PurchaseLineFirst);
+        VerifyItemLedgerEntryComponentTransfer(PurchaseLineFirst);
+        VerifyDeliveryChallanLine(PurchaseLineSecond);
+        VerifyItemLedgerEntryComponentTransfer(PurchaseLineSecond);
+        VerifyItemLedgerEntryComponentConsumption(PurchaseLineFirst);
+        VerifyItemLedgerEntryItemOutput(PurchaseLineFirst, OutputQtyFirst);
+        VerifyItemLedgerEntryOutputDate(PurchaseLineFirst, OutputDateFirst);
+        VerifyItemLedgerEntryComponentConsumption(PurchaseLineSecond);
+        VerifyItemLedgerEntryItemOutput(PurchaseLineSecond, OutputQtySecond);
+        VerifyItemLedgerEntryOutputDate(PurchaseLineSecond, OutputDateSecond);
+        LibraryGST.VerifyGLEntries(PurchaseHeaderFirst."Document Type"::Invoice, DocumentNoFirst, 4);
+        LibraryGST.VerifyGLEntries(PurchaseHeaderSecond."Document Type"::Invoice, DocumentNoSecond, 4);
+    end;
+
+    [Test]
+    [HandlerFunctions('TaxRatePageHandler,DeliveryChallanSentMsgHandler')]
+    procedure SubconOrderWithBinCodeVendIntraStateSendItem()
+    var
+        ProductionOrder: Record "Production Order";
+        PurchaseLine: Record "Purchase Line";
+        GSTGroupType: Enum "GST Group Type";
+        GSTVendorType: Enum "GST Vendor Type";
+    begin
+        // [SCENARIO] [487490] Check if the system create Subcontracting Order for Unregistered Vendor and send Raw Material to Subcon Vendor Location for Jobwork.
+        // [GIVEN] Setups created
+        CreateGSTSubconSetupsWithBinMandatory(GSTVendorType::Unregistered, GSTGroupType::Goods, true);
+
+        // [WHEN] Create Subcontracting Order from Released Purchase Order, Send Subcon Components
+        CreateSubcontractingOrderWithBinCodeFromReleasedProdOrder(ProductionOrder, PurchaseLine);
+        DeliverSubconComponents(PurchaseLine, 0);
+
+        // [THEN] Delivery Challan and Item ledger entries are Verified
+        VerifyDeliveryChallanLine(PurchaseLine);
+        VerifyItemLedgerEntryComponentTransfer(PurchaseLine);
+    end;
+
+    [Test]
+    [HandlerFunctions('TaxRatePageHandler,DeliveryChallanSentMsgHandler,PostConfirmation')]
+    procedure SubconOrderToRegVendInterStateReceiveItemCheckOutstandingQtyBase()
+    var
+        ProductionOrder: Record "Production Order";
+        PurchaseLine: Record "Purchase Line";
+        GSTGroupType: Enum "GST Group Type";
+        GSTVendorType: Enum "GST Vendor Type";
+        OutstandingQtyBase: Decimal;
+    begin
+        // [SCENARIO] [498150] Check if the system on subcontracting order for Registered Vendor and after Send and Receipt from Vendor have Outstanding base quantity field showes 0 in subcontracting order
+        // [GIVEN] Setups created
+        CreateGSTSubconSetups(GSTVendorType::Registered, GSTGroupType::Goods, false);
+
+        // [WHEN] Create Subcontracting Order from Released Purchase Order, Send Subcon Components, Receive Item
+        CreateSubcontractingOrderFromReleasedProdOrder(ProductionOrder, PurchaseLine);
+        DeliverSubconComponents(PurchaseLine, 0);
+        OutstandingQtyBase := ReceiptSubconItemForOutstandingQtyBase(PurchaseLine, false, false, false, WorkDate());
+
+        // [THEN] Purchase Line Outstanding Quantity Base Verfied for Zero value
+        Assert.Equal(OutstandingQtyBase, 0);
+    end;
+
+    [Test]
+    [HandlerFunctions('TaxRatePageHandler')]
+    procedure SubconOrderToRegVendInterStateWithCalcFormulaInProdBOM()
+    var
+        ProductionOrder: Record "Production Order";
+        PurchaseLine: Record "Purchase Line";
+        GSTGroupType: Enum "GST Group Type";
+        GSTVendorType: Enum "GST Vendor Type";
+    begin
+        // [SCENARIO] [535618] Check if the system on subcontracting order for Registered Vendor is calculating correct Qty. to send when Prod BOM Calculation Formula is Length * Width * Depth
+        // [GIVEN] Setups created
+        CreateGSTSubconSetups(GSTVendorType::Registered, GSTGroupType::Goods, false);
+
+        // [GIVEN] Update Production BOM with Calculation Formula as Length * Width * Depth
+        UpdateProductionBOM();
+
+        // [WHEN] Create Subcontracting Order from Released Purchase Order, Update Deliver Comp. For In Order Subcon. Details Delivery
+        CreateSubcontractingOrderFromReleasedProdOrder(ProductionOrder, PurchaseLine);
+        UpdateDeliverCompForFieldInPurchLine(PurchaseLine);
+
+        // [THEN] Verify Quantity To Send In Sub Order Component List
+        VerifyQuantityToSendInSubOrderComponentList(ProductionOrder);
+    end;
+
     local procedure CreateGSTSubconSetups(
         GSTVendorType: Enum "GST Vendor Type";
                            GSTGroupType: Enum "GST Group Type";
                            IntraState: Boolean)
-    var
     begin
         // Source Codes
         UpdateSourceCodes();
@@ -1197,6 +1322,47 @@ codeunit 18479 "GST Subcontracting"
         LibraryItemTracking.AddSerialNoTrackingInfo(MainItem);
     end;
 
+    local procedure UpdateProductionBOM()
+    var
+        MainItem: Record Item;
+        ProductionBOMHeader: Record "Production BOM Header";
+        MainItemNo: Code[20];
+    begin
+        MainItemNo := (Storage.Get(XMainItemNoTok));
+        MainItem.Get(MainItemNo);
+        ProductionBOMHeader.Get(MainItem."Production BOM No.");
+        LibraryMfg.UpdateProductionBOMStatus(ProductionBOMHeader, ProductionBOMHeader.Status::"Under Development");
+        UpdateProductionBOMLineWithCalculationFormula(ProductionBOMHeader);
+        LibraryMfg.UpdateProductionBOMStatus(ProductionBOMHeader, ProductionBOMHeader.Status::Certified);
+    end;
+
+    local procedure UpdateProductionBOMLineWithCalculationFormula(ProductionBOMHeader: Record "Production BOM Header")
+    var
+        ProductionBOMLine: Record "Production BOM Line";
+        ComponentItemNo: Code[20];
+    begin
+        ComponentItemNo := (Storage.Get(XComponentItemNoTok));
+
+        ProductionBOMLine.SetRange("Production BOM No.", ProductionBOMHeader."No.");
+        ProductionBOMLine.SetRange(Type, ProductionBOMLine.Type::Item);
+        ProductionBOMLine.SetRange("No.", ComponentItemNo);
+        ProductionBOMLine.FindFirst();
+
+        ProductionBOMLine.Length := LibraryRandom.RandDec(10, 0);
+        ProductionBOMLine.Width := LibraryRandom.RandDec(10, 0);
+        ProductionBOMLine.Depth := LibraryRandom.RandDec(10, 0);
+        ProductionBOMLine."Calculation Formula" := ProductionBOMLine."Calculation Formula"::"Length * Width * Depth";
+        ProductionBOMLine.Modify();
+    end;
+
+    local procedure UpdateDeliverCompForFieldInPurchLine(var PurchaseLine: Record "Purchase Line")
+    begin
+        PurchaseLine.FindFirst();
+
+        PurchaseLine.Validate("Deliver Comp. For", PurchaseLine.Quantity);
+        PurchaseLine.Modify();
+    end;
+
     local procedure CreateSubcontractingOrderFromReleasedProdOrder(var ProductionOrder: Record "Production Order"; var PurchaseLine: Record "Purchase Line")
     var
         ProdOrderLine: Record "Prod. Order Line";
@@ -1376,7 +1542,7 @@ codeunit 18479 "GST Subcontracting"
         ProdOrderLine: Record "Prod. Order Line";
         ReservationEntry: Record "Reservation Entry";
         MainItem: Record Item;
-        NoSeriesMgt: Codeunit NoSeriesManagement;
+        NoSeries: Codeunit "No. Series";
         SlNo: Code[20];
         i: Integer;
     begin
@@ -1386,7 +1552,7 @@ codeunit 18479 "GST Subcontracting"
         ProdOrderLine.SetRange(ProdOrderLine."Line No.", PurchaseLine."Prod. Order Line No.");
         ProdOrderLine.FindFirst();
         for i := 1 to ProdOrderLine.Quantity do begin
-            SlNo := NoSeriesMgt.GetNextNo(MainItem."Serial Nos.", 0D, true);
+            SlNo := NoSeries.GetNextNo(MainItem."Serial Nos.");
             LibraryItemTracking.CreateProdOrderItemTracking(ReservationEntry, ProdOrderLine, SlNo, '', 1);
         end;
     end;
@@ -1465,6 +1631,51 @@ codeunit 18479 "GST Subcontracting"
         PurchaseLineSecond.Validate("Applies-to ID (Receipt)", MultipleSubconOrderDetails."No.");
         PurchaseLineSecond.Modify();
         OutputQtySecond := PurchaseLineSecond."Qty. to Receive";
+
+        ApplyDeliveryChallan(PurchaseLineFirst);
+        ApplyDeliveryChallan(PurchaseLineSecond);
+
+        SubconPostBatch.PostPurchorder(MultipleSubconOrderDetails);
+    end;
+
+    local procedure ReceiptSubconItemMultipleWithOutputDate(var PurchaseLineFirst: Record "Purchase Line";
+        var PurchaseLineSecond: Record "Purchase Line";
+        MultipleSubconOrderDetailsNo: Code[20];
+        PostingDate: Date;
+        var OutputQtyFirst: Decimal;
+        var OutputQtySecond: Decimal;
+        var OutputDateFirst: Date;
+        var OutputDateSecond: Date)
+    var
+        MultipleSubconOrderDetails: Record "Multiple Subcon. Order Details";
+        SubconPostBatch: Codeunit "Subcontracting Post Batch";
+        VendorNo: Code[20];
+    begin
+        VendorNo := (Storage.Get(XVendorNoTok));
+
+        MultipleSubconOrderDetails.SetRange("No.", MultipleSubconOrderDetailsNo);
+        MultipleSubconOrderDetails.SetRange("Subcontractor No.", VendorNo);
+        MultipleSubconOrderDetails.FindFirst();
+        MultipleSubconOrderDetails.Validate("Posting Date", PostingDate);
+        MultipleSubconOrderDetails."Vendor Shipment No." :=
+            LibraryUtility.GenerateRandomCode(MultipleSubconOrderDetails.FieldNo("Vendor Shipment No."), Database::"Multiple Subcon. Order Details");
+        MultipleSubconOrderDetails.Modify();
+
+        PurchaseLineFirst.FindFirst();
+        PurchaseLineFirst.Validate("Posting Date", PostingDate);
+        PurchaseLineFirst.Validate("Qty. to Receive", PurchaseLineFirst.Quantity);
+        PurchaseLineFirst.Validate("Applies-to ID (Receipt)", MultipleSubconOrderDetails."No.");
+        PurchaseLineFirst.Modify();
+        OutputQtyFirst := PurchaseLineFirst."Qty. to Receive";
+        OutputDateFirst := PurchaseLineFirst."Posting Date";
+
+        PurchaseLineSecond.FindFirst();
+        PurchaseLineSecond.Validate("Posting Date", PostingDate);
+        PurchaseLineSecond.Validate("Qty. to Receive", PurchaseLineSecond.Quantity);
+        PurchaseLineSecond.Validate("Applies-to ID (Receipt)", MultipleSubconOrderDetails."No.");
+        PurchaseLineSecond.Modify();
+        OutputQtySecond := PurchaseLineSecond."Qty. to Receive";
+        OutputDateSecond := PurchaseLineSecond."Posting Date";
 
         ApplyDeliveryChallan(PurchaseLineFirst);
         ApplyDeliveryChallan(PurchaseLineSecond);
@@ -1612,7 +1823,6 @@ codeunit 18479 "GST Subcontracting"
     end;
 
     local procedure CreateDebitNoteRejectVE(var PurchaseLine: Record "Purchase Line")
-    var
     begin
         Report.Run(Report::"Create Vendor Exp. Debit Note", false, true, PurchaseLine);
     end;
@@ -1702,6 +1912,21 @@ codeunit 18479 "GST Subcontracting"
         LibraryAssert.AreEqual(OutputQty, ExpectedOutputQty, StrSubstNo(FieldVerifyErr, ItemLedgerEntry.FieldCaption(Quantity), ItemLedgerEntry.TableCaption));
     end;
 
+    local procedure VerifyItemLedgerEntryOutputDate(PurchaseLine: Record "Purchase Line"; ExpectedOutputPostingDate: Date)
+    var
+        ItemLedgerEntry: Record "Item Ledger Entry";
+        OutputDate: Date;
+    begin
+        ItemLedgerEntry.SetRange("Document No.", PurchaseLine."Prod. Order No.");
+        ItemLedgerEntry.SetRange("Entry Type", ItemLedgerEntry."Entry Type"::Output);
+        ItemLedgerEntry.SetRange("Item No.", PurchaseLine."No.");
+        ItemLedgerEntry.SetRange("Location Code", PurchaseLine."Location Code");
+        ItemLedgerEntry.FindSet();
+        ItemLedgerEntry.CalcSums(Quantity);
+        OutputDate := ItemLedgerEntry."Posting Date";
+        LibraryAssert.AreEqual(OutputDate, ExpectedOutputPostingDate, StrSubstNo(FieldVerifyErr, ItemLedgerEntry.FieldCaption("Posting Date"), ItemLedgerEntry.TableCaption));
+    end;
+
     local procedure VerifyDimensionsOnItemLedgerEntry(var ProductionOrder: Record "Production Order")
     var
         ItemLedgerEntry: Record "Item Ledger Entry";
@@ -1747,6 +1972,27 @@ codeunit 18479 "GST Subcontracting"
         PurchaseHeader.SetRange("Subcon. Order Line No.", PurchaseLine."Line No.");
         PurchaseHeader.FindFirst();
         PurchaseHeader.TestField("Buy-from Vendor No.", PurchaseLine."Buy-from Vendor No.");
+    end;
+
+    local procedure VerifyQuantityToSendInSubOrderComponentList(ProductionOrder: Record "Production Order")
+    var
+        ProdOrderComponent: Record "Prod. Order Component";
+        SubOrderComponentList: Record "Sub Order Component List";
+        ComponentItemNo: Code[20];
+    begin
+        ComponentItemNo := (Storage.Get(XComponentItemNoTok));
+
+        ProdOrderComponent.SetRange(Status, ProductionOrder.Status);
+        ProdOrderComponent.SetRange("Prod. Order No.", ProductionOrder."No.");
+        ProdOrderComponent.SetRange("Item No.", ComponentItemNo);
+        ProdOrderComponent.FindFirst();
+
+        SubOrderComponentList.SetRange("Production Order No.", ProductionOrder."No.");
+        SubOrderComponentList.SetRange("Parent Item No.", ProductionOrder."Source No.");
+        SubOrderComponentList.SetRange("Item No.", ComponentItemNo);
+        SubOrderComponentList.FindFirst();
+
+        Assert.Equal(SubOrderComponentList."Quantity To Send", ProdOrderComponent."Expected Quantity");
     end;
 
     local procedure CreateAndInsertPurchaseLineForSubContractingOrder(ProductionOrder: Record "Production Order"; var PurchaseLine: Record "Purchase Line"; MainItemNo: Code[20])
@@ -1796,6 +2042,181 @@ codeunit 18479 "GST Subcontracting"
         end;
     end;
 
+    local procedure CreateGSTSubconSetupsWithBinMandatory(
+        GSTVendorType: Enum "GST Vendor Type";
+                           GSTGroupType: Enum "GST Group Type";
+                           IntraState: Boolean)
+    begin
+        // Source Codes
+        UpdateSourceCodes();
+
+        // General Ledger Setup
+        UpdateGLSetup();
+
+        // Purchases and Payables Setup
+        UpdatePurchSetup();
+
+        // Company Information
+        UpdateCompanyInformation();
+
+        //Update Company Location with Bin Mandatory
+        UpdateLocationWithBinMandatory();
+
+        // Inventory Setup
+        UpdateInventorySetup();
+
+        // GST Group and HSN Code
+        CreateGSTGroupHSNCode(GSTGroupType);
+
+        // Subcontracting Vendor
+        CreateSubconVendor(GSTVendorType, IntraState);
+
+        // Work Center
+        CreateWorkCenter();
+
+        // Main Item with Production BOM and Routing
+        CreateItemWithProdBOMAndRouting();
+
+        // Create Inventory for Components
+        CreateComponentItemInventory();
+
+        // Tax Rate and Posting Setup
+        CreateTaxRateAndPostingSetup(IntraState);
+    end;
+
+    local procedure UpdateLocationWithBinMandatory()
+    var
+        Location: Record Location;
+    begin
+        Location.Get((Storage.Get(XCompanyLocationCodeTok)));
+        Location."Bin Mandatory" := true;
+        Location.Modify();
+    end;
+
+    local procedure CreateItemWithProdBOMAndRouting()
+    var
+        Item: Record Item;
+        Bin: Record Bin;
+        CompItemBinContent: Record "Bin Content";
+        MainItemBinContent: Record "Bin Content";
+        VATPostingSetup: Record "VAT Posting Setup";
+        GenProdPostingGroup: Record "Gen. Product Posting Group";
+        CompLocationCode: Code[10];
+        MainItemNo: Code[20];
+        ComponentItemNo: Code[20];
+        ProductionBOMNo: Code[20];
+        RoutingNo: Code[20];
+    begin
+        MainItemNo := LibraryGST.CreateItemWithGSTDetails(VATPostingSetup, (Storage.Get(XGSTGroupCodeTok)), (Storage.Get(XHSNSACCodeTok)), true, false);
+        ComponentItemNo := LibraryGST.CreateItemWithGSTDetails(VATPostingSetup, (Storage.Get(XGSTGroupCodeTok)), (Storage.Get(XHSNSACCodeTok)), true, false);
+        CompLocationCode := (Storage.Get(XCompanyLocationCodeTok));
+        ProductionBOMNo := CreateProdBOM(ComponentItemNo);
+        RoutingNo := CreateRouting(Storage.Get(WorkCenterNoTok));
+
+        Item.Get(MainItemNo);
+        Item."Replenishment System" := Item."Replenishment System"::"Prod. Order";
+        Item."Production BOM No." := ProductionBOMNo;
+        Item."Routing No." := RoutingNo;
+        Item.Modify();
+
+        LibraryWarehouse.CreateBin(Bin, CompLocationCode, '', '', '');
+        LibraryWarehouse.CreateBinContent(MainItemBinContent, CompLocationCode, '', Bin.Code, Item."No.", '', Item."Base Unit of Measure");
+
+        Item.Get(ComponentItemNo);
+        LibraryGST.CreateGeneralPostingSetup('', Item."Gen. Prod. Posting Group");
+        GenProdPostingGroup.Get(Item."Gen. Prod. Posting Group");
+        GenProdPostingGroup."Auto Insert Default" := false;
+        GenProdPostingGroup.Modify();
+
+        LibraryWarehouse.CreateBinContent(CompItemBinContent, CompLocationCode, '', Bin.Code, Item."No.", '', Item."Base Unit of Measure");
+
+        Storage.Set(XMainItemNoTok, MainItemNo);
+        Storage.Set(XComponentItemNoTok, ComponentItemNo);
+        Storage.Set(XBinCodeTok, Bin.Code);
+    end;
+
+    local procedure CreateComponentItemInventory()
+    var
+        ItemJournalLine: Record "Item Journal Line";
+        BinCode: Code[20];
+        ComponentItemNo: Code[20];
+        CompanyLocationCode: Code[10];
+    begin
+        ComponentItemNo := (Storage.Get(XComponentItemNoTok));
+        CompanyLocationCode := (Storage.Get(XCompanyLocationCodeTok));
+        BinCode := (Storage.Get(XBinCodeTok));
+        LibraryInventory.CreateItemJournalLineInItemTemplate(ItemJournalLine, ComponentItemNo, CompanyLocationCode, BinCode, 100);
+        LibraryInventory.PostItemJournalLine(ItemJournalLine."Journal Template Name", ItemJournalLine."Journal Batch Name");
+    end;
+
+    local procedure CreateSubcontractingOrderWithBinCodeFromReleasedProdOrder(var ProductionOrder: Record "Production Order"; var PurchaseLine: Record "Purchase Line")
+    var
+        ProdOrderLine: Record "Prod. Order Line";
+        ProdOrderRoutingLine: Record "Prod. Order Routing Line";
+        ProdOrderComponent: Record "Prod. Order Component";
+        RequisitionLine: Record "Requisition Line";
+        Item: Record Item;
+        SubOrderComponentList: Record "Sub Order Component List";
+        ProdOrderStatus: Enum "Production order Status";
+        ProdOrderSourceType: Enum "Prod. Order Source Type";
+        MainItemNo: Code[20];
+        CompanyLocationCode: Code[10];
+        BinCode: Code[20];
+    begin
+        MainItemNo := (Storage.Get(XMainItemNoTok));
+        CompanyLocationCode := (Storage.Get(XCompanyLocationCodeTok));
+        BinCode := (Storage.Get(XBinCodeTok));
+
+        LibraryMfg.CreateProductionOrder(ProductionOrder, ProdOrderStatus::Released, ProdOrderSourceType::Item, MainItemNo, 10);
+        ProductionOrder.Validate("Location Code", CompanyLocationCode);
+        ProductionOrder.Validate("Bin Code", BinCode);
+        ProductionOrder.Modify();
+        LibraryMfg.RefreshProdOrder(ProductionOrder, false, true, true, true, false);
+
+        ProdOrderLine.Reset();
+        ProdOrderLine.SetRange(Status, ProdOrderStatus::Released);
+        ProdOrderLine.SetRange("Prod. Order No.", ProductionOrder."No.");
+        if ProdOrderLine.FindFirst() then begin
+            ProdOrderComponent.SetRange(Status, ProdOrderLine.Status);
+            ProdOrderComponent.SetRange("Prod. Order No.", ProdOrderLine."Prod. Order No.");
+            ProdOrderComponent.SetRange("Prod. Order Line No.", ProdOrderLine."Line No.");
+            if ProdOrderComponent.FindSet() then
+                repeat
+                    ProdOrderComponent.Validate("Unit Cost", LibraryRandom.RandInt(100));
+                    ProdOrderComponent.Modify();
+                until ProdOrderComponent.Next() = 0;
+
+            ProdOrderRoutingLine.SetRange(Status, ProdOrderLine.Status);
+            ProdOrderRoutingLine.SetRange("Prod. Order No.", ProdOrderLine."Prod. Order No.");
+            ProdOrderRoutingLine.SetRange("Routing Reference No.", ProdOrderLine."Routing Reference No.");
+            ProdOrderRoutingLine.SetRange("Routing No.", ProdOrderLine."Routing No.");
+            if ProdOrderRoutingLine.FindSet() then
+                LibraryMfg.CalculateSubcontractOrderWithProdOrderRoutingLine(ProdOrderRoutingLine);
+        end;
+
+        FindRequisitionLineForProductionOrder(RequisitionLine, ProductionOrder);
+        LibraryPlanning.CarryOutAMSubcontractWksh(RequisitionLine);
+
+        Item.Get(MainItemNo);
+        PurchaseLine.SetRange("No.", MainItemNo);
+        PurchaseLine.SetRange("Prod. Order No.", ProductionOrder."No.");
+        PurchaseLine.FindFirst();
+        PurchaseLine.Validate("Gen. Prod. Posting Group", Item."Gen. Prod. Posting Group");
+        PurchaseLine.Validate("VAT Prod. Posting Group", Item."VAT Prod. Posting Group");
+        PurchaseLine.Validate("Qty. per Unit of Measure", 1);
+        PurchaseLine.Validate(Quantity, PurchaseLine.Quantity);
+        PurchaseLine.Validate(PurchaseLine."Qty. to Receive", PurchaseLine.Quantity);
+        PurchaseLine.Validate(PurchaseLine."Qty. to Invoice", PurchaseLine.Quantity);
+        PurchaseLine.Modify();
+        Storage.Set(DeliveryChallanNoLbl, PurchaseLine."Document No.");
+
+        SubOrderComponentList.Reset();
+        SubOrderComponentList.SetRange("Document No.", PurchaseLine."Document No.");
+        SubOrderComponentList.SetRange("Document Line No.", PurchaseLine."Line No.");
+        SubOrderComponentList.ModifyAll("Company Location", CompanyLocationCode);
+        SubOrderComponentList.ModifyAll("Bin Code", BinCode);
+    end;
+
     local procedure Initialize()
     begin
         StorageBoolean.Set(WithDimensionLbl, true);
@@ -1804,6 +2225,46 @@ codeunit 18479 "GST Subcontracting"
     local procedure Dispose()
     begin
         StorageBoolean.Set(WithDimensionLbl, false);
+    end;
+
+    local procedure ReceiptSubconItemForOutstandingQtyBase(var PurchaseLine: Record "Purchase Line"; PartialReceipt: Boolean; RejectVE: Boolean; RejectCE: Boolean; PostingDate: Date): Decimal
+    var
+        SubConPost: Codeunit "Subcontracting Post";
+        QtyToReceive: Decimal;
+        QtyRejectVE: Decimal;
+        QtyRejectCE: Decimal;
+    begin
+        PurchaseLine.FindFirst();
+        PurchaseLine."Vendor Shipment No." := LibraryUtility.GenerateRandomCode(PurchaseLine.FieldNo("Vendor Shipment No."), Database::"Purchase Line");
+        PurchaseLine.Validate("Posting Date", PostingDate);
+
+        QtyToReceive := PurchaseLine.Quantity;
+        if PartialReceipt then
+            QtyToReceive := QtyToReceive div 2;
+
+        if PartialReceipt and RejectVE then
+            QtyRejectVE := PurchaseLine.Quantity - QtyToReceive;
+
+        if PartialReceipt and RejectCE then
+            QtyRejectCE := PurchaseLine.Quantity - QtyToReceive;
+
+        PurchaseLine.Validate("Qty. to Receive", QtyToReceive);
+        if QtyRejectVE > 0 then
+            PurchaseLine.Validate("Qty. to Reject (V.E.)", QtyRejectVE);
+
+        if QtyRejectCE > 0 then
+            PurchaseLine.Validate("Qty. to Reject (C.E.)", QtyRejectCE);
+
+        PurchaseLine.Modify();
+
+        // Apply Delivery Challan
+        ApplyDeliveryChallan(PurchaseLine);
+
+        // Post Receipt        
+        PurchaseLine.SubConReceive := true;
+        SubConPost.PostPurchOrder(PurchaseLine);
+
+        exit(PurchaseLine."Outstanding Qty. (Base)");
     end;
 
     [PageHandler]

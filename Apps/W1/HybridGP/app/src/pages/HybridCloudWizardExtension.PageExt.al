@@ -1,55 +1,36 @@
+namespace Microsoft.DataMigration.GP;
+
+using Microsoft.DataMigration;
+
 pageextension 4014 "Hybrid Cloud Wizard Extension" extends "Hybrid Cloud Setup Wizard"
 {
     layout
     {
-#if not CLEAN22
-        addafter(Step5)
+        addafter(SelectedProductDescription)
         {
-            group(GPSpecificSettingsStep)
+            group("AssessmentGroup")
             {
-                ShowCaption = false;
-                Visible = false;
-                ObsoleteState = Pending;
-                ObsoleteReason = 'Replaced by page GP Migration Configuration';
-                ObsoleteTag = '22.0';
+                Visible = Rec."Product ID" = 'DynamicsGP';
+                Caption = 'Have you ran the assessment tool?';
 
-                group("GPMigrationSettings.1.0")
+                field(AssessmentIntro; AssessmentIntroTxt)
                 {
+                    ApplicationArea = All;
+                    Editable = false;
+                    MultiLine = true;
                     ShowCaption = false;
-                    Visible = false;
-                    ObsoleteState = Pending;
-                    ObsoleteReason = 'Replaced by page GP Migration Configuration';
-                    ObsoleteTag = '22.0';
-
-                    part(pageGPMigrationSettings; "GP Migration Settings List")
-                    {
-                        ApplicationArea = Basic, Suite;
-                        Caption = '';
-                        UpdatePropagation = Both;
-                    }
                 }
-                group("GPMigrationSettings.2.0")
-                {
-                    ShowCaption = false;
-                    Visible = false;
-                    ObsoleteState = Pending;
-                    ObsoleteReason = 'Replaced by page GP Migration Configuration';
-                    ObsoleteTag = '22.0';
 
-                    group("GPMigrationSettings.2.1")
-                    {
-                        ShowCaption = false;
-                        InstructionalText = 'Select the two segments from Dynamics GP you would like as the global dimensions. The remaining segments will automatically be set up as shortcut dimensions.';
-                    }
-                    group("GPMigrationSettings.2.2")
-                    {
-                        ShowCaption = false;
-                        InstructionalText = 'Choose whether to migrate inactive customers, vendors and checkbooks, or uncheck the boxes to only migrate those that are active.';
-                    }
+                field(AssessmentLink; AssessmentLinkTxt)
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                    MultiLine = true;
+                    ShowCaption = false;
+                    ExtendedDatatype = URL;
                 }
             }
         }
-#endif
 
         modify(AllDone)
         {
@@ -73,28 +54,13 @@ pageextension 4014 "Hybrid Cloud Wizard Extension" extends "Hybrid Cloud Setup W
         {
             trigger OnAfterAction()
             begin
-                if Rec."Product ID" = 'DynamicsGP' then begin
-                    CleanupSettingsForCompaniesPreviouslyMigrated();
+                if Rec."Product ID" = 'DynamicsGP' then
                     Page.Run(Page::"GP Migration Configuration");
-                end;
             end;
-
         }
     }
 
-    local procedure CleanupSettingsForCompaniesPreviouslyMigrated()
     var
-        GPCompanyAdditionalSettings: Record "GP Company Additional Settings";
-        HybridCompany: Record "Hybrid Company";
-    begin
-        GPCompanyAdditionalSettings.SetFilter("Name", '<>%1', '');
-        if GPCompanyAdditionalSettings.FindSet() then
-            repeat
-                HybridCompany.SetRange(Name, GPCompanyAdditionalSettings.Name);
-                HybridCompany.SetRange(Replicate, false);
-
-                if not HybridCompany.IsEmpty() then
-                    GPCompanyAdditionalSettings.Delete();
-            until GPCompanyAdditionalSettings.Next() = 0;
-    end;
+        AssessmentIntroTxt: Label 'Prior to starting your GP migration, consider utilizing the cloud migration assessment tool. This tool will help identify potential migration issues allowing you to proactively resolve them before initiating the migration process. To learn more, click the link below.';
+        AssessmentLinkTxt: Label 'https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/administration/migrate-gp-overview#end-to-end-process', Locked = true;
 }

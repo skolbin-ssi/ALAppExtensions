@@ -1,3 +1,12 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.TCS.TCSBase;
+
+using Microsoft.Finance.TaxEngine.TaxTypeHandler;
+using System.Integration.Excel;
+
 page 18811 "TCS Nature Of Collections"
 {
     PageType = List;
@@ -60,9 +69,10 @@ page 18811 "TCS Nature Of Collections"
                 trigger OnAction()
                 var
                     EditinExcel: Codeunit "Edit in Excel";
-                    TCSNatureofCollectionLbl: Label 'Code eq %1', Comment = '%1 = TCS Nature of Collection';
+                    EditinExcelFilters: Codeunit "Edit in Excel Filters";
                 begin
-                    EditinExcel.EditPageInExcel('TCS Nature of Collection', CurrPage.ObjectId(false), StrSubstNo(TCSNatureofCollectionLbl, Rec.Code));
+                    EditinExcelFilters.AddFieldV2('Code', Enum::"Edit in Excel Filter Type"::Equal, Rec.Code, Enum::"Edit in Excel Edm Type"::"Edm.String");
+                    EditinExcel.EditPageInExcel('TCS Nature of Collection', Page::"TCS Nature Of Collections", EditinExcelFilters);
                 end;
             }
             action(ClearFilter)

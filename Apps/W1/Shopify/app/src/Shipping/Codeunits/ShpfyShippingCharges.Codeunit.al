@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Codeunit Shpfy Shipping Charges (ID 30191).
 /// </summary>
@@ -7,110 +9,112 @@ codeunit 30191 "Shpfy Shipping Charges"
 
     var
         CommunicationMgt: Codeunit "Shpfy Communication Mgt.";
-        JHelper: Codeunit "Shpfy Json Helper";
-
-    /// <summary> 
-    /// Description for UpdateShippingCostInfos.
-    /// </summary>
-    /// <param name="OrderId">Parameter of type BigInteger.</param>
-    internal procedure UpdateShippingCostInfos(OrderId: BigInteger)
-    var
-        OrderHeader: Record "Shpfy Order Header";
-    begin
-        if OrderHeader.Get(OrderId) then
-            UpdateShippingCostInfos(OrderHeader);
-    end;
-
-    /// <summary> 
-    /// Description for UpdateShippingCostInfos.
-    /// </summary>
-    /// <param name="OrderId">Parameter of type BigInteger.</param>
-    /// <param name="JShippingLines">Parameter of type JsonArray.</param>
-    internal procedure UpdateShippingCostInfos(OrderId: BigInteger; JShippingLines: JsonArray)
-    var
-        OrderHeader: Record "Shpfy Order Header";
-    begin
-        if OrderHeader.Get(OrderId) then
-            UpdateShippingCostInfos(OrderHeader, JShippingLines);
-    end;
+        JsonHelper: Codeunit "Shpfy Json Helper";
 
     /// <summary> 
     /// Description for UpdateShippingCostInfos.
     /// </summary>
     /// <param name="OrderHeader">Parameter of type Record "Shopify Order Header".</param>
-    internal procedure UpdateShippingCostInfos(OrderHeader: Record "Shpfy Order Header")
+    internal procedure UpdateShippingCostInfos(var OrderHeader: Record "Shpfy Order Header")
     var
-        Url: Text;
+        Parameters: Dictionary of [Text, Text];
+        GraphQLType: Enum "Shpfy GraphQL Type";
+        JOrder: JsonObject;
+        JShipmentLines: JsonArray;
         JResponse: JsonToken;
-        JShippingCosts: JsonArray;
-        ORderShippingLinesUrlTxt: Label 'orders/%1.json?fields=shipping_lines', Comment = '%1 = Shopify order id', Locked = true;
     begin
+        if CommunicationMgt.GetTestInProgress() then
+            exit;
         CommunicationMgt.SetShop(OrderHeader."Shop Code");
-        Url := CommunicationMgt.CreateWebRequestURL(StrSubstNo(OrderShippingLinesUrlTxt, OrderHeader."Shopify Order Id"));
-        JResponse := CommunicationMgt.ExecuteWebRequest(Url, 'GET', JResponse);
-        if JHelper.GetJsonArray(JResponse, JShippingCosts, 'order.shipping_lines') then
-            UpdateShippingCostInfos(OrderHeader, JShippingCosts);
-    end;
-
-    /// <summary> 
-    /// Description for UpdateShippingCostInfos.
-    /// </summary>
-    /// <param name="OrderHeader">Parameter of type Record "Shopify Order Header".</param>
-    /// <param name="JShippingLines">Parameter of type JsonArray.</param>
-    internal procedure UpdateShippingCostInfos(OrderHeader: Record "Shpfy Order Header"; JShippingLines: JsonArray)
-    var
-        ShippingCost: Record "Shpfy Order Shipping Charges";
-        ShippingMethod: Record "Shpfy Shipment Method Mapping";
-        DataCapture: Record "Shpfy Data Capture";
-        RecRef: RecordRef;
-        Id: BigInteger;
-        JDiscounts: JsonArray;
-        JToken: JsonToken;
-        IsNew: Boolean;
-    begin
-        foreach JToken in JShippingLines do begin
-            Id := JHelper.GetValueAsBigInteger(JToken, 'id');
-            IsNew := not ShippingCost.Get(Id);
-            if IsNew then begin
-                Clear(ShippingCost);
-                ShippingCost."Shopify Shipping Line Id" := Id;
-                ShippingCost."Shopify Order Id" := OrderHeader."Shopify Order Id";
-            end;
-            if JHelper.GetJsonArray(JToken, JDiscounts, 'discount_allocations') then
-                ShippingCost."Discount Amount" := GetDiscountAmount(JDiscounts)
-            else
-                ShippingCost."Discount Amount" := 0;
-            RecRef.GetTable(ShippingCost);
-            JHelper.GetValueIntoField(JToken, 'title', RecRef, ShippingCost.FieldNo(Title));
-            JHelper.GetValueIntoField(JToken, 'code', RecRef, ShippingCost.FieldNo(Code));
-            JHelper.GetValueIntoField(JToken, 'source', RecRef, ShippingCost.FieldNo(Source));
-            JHelper.GetValueIntoField(JToken, 'price_set.shop_money.amount', RecRef, ShippingCost.FieldNo(Amount));
-            if IsNew then
-                RecRef.Insert()
-            else
-                RecRef.Modify();
-            RecRef.SetTable(ShippingCost);
-            RecRef.Close();
-            DataCapture.Add(Database::"Shpfy Order Shipping Charges", ShippingCost.SystemId, JToken);
-            if not ShippingMethod.Get(OrderHeader."Shop Code", ShippingCost.Title) then begin
-                Clear(ShippingMethod);
-                ShippingMethod."Shop Code" := OrderHeader."Shop Code";
-                ShippingMethod.Name := ShippingCost.Title;
-                ShippingMethod.Insert();
-            end;
+        Parameters.Add('OrderId', Format(OrderHeader."Shopify Order Id"));
+        GraphQLType := "Shpfy GraphQL Type"::GetShipmentLines;
+        JResponse := CommunicationMgt.ExecuteGraphQL(GraphQLType, Parameters);
+        if JsonHelper.GetJsonObject(JResponse, JOrder, 'data.order') then begin
+            GraphQLType := "Shpfy GraphQL Type"::GetNextShipmentLines;
+            repeat
+                JShipmentLines := JsonHelper.GetJsonArray(JOrder, 'shippingLines.nodes');
+                UpdateShippingCostInfos(OrderHeader, JShipmentLines);
+                if Parameters.ContainsKey('After') then
+                    Parameters.Set('After', JsonHelper.GetValueAsText(JOrder, 'shippingLines.pageInfo.endCursor'));
+            until not JsonHelper.GetValueAsBoolean(JOrder, 'shippingLines.pageInfo.hasNextPage')
         end;
     end;
 
     /// <summary> 
-    /// Description for GetDiscountAmount.
+    /// Description for UpdateShippingCostInfos.
     /// </summary>
-    /// <param name="JDiscounts">Parameter of type JsonArray.</param>
-    /// <returns>Return variable "Decimal".</returns>
-    local procedure GetDiscountAmount(JDiscounts: JsonArray) Result: Decimal
+    /// <param name="OrderHeader">Parameter of type Record "Shopify Order Header".</param>
+    /// <param name="JShippingLines">Parameter of type JsonArray.</param>
+    internal procedure UpdateShippingCostInfos(var OrderHeader: Record "Shpfy Order Header"; JShippingLines: JsonArray)
     var
+        OrderShippingCharges: Record "Shpfy Order Shipping Charges";
+        ShipmentMethodMapping: Record "Shpfy Shipment Method Mapping";
+        DataCapture: Record "Shpfy Data Capture";
+        RecordRef: RecordRef;
+        Id: BigInteger;
         JToken: JsonToken;
+        IsNew: Boolean;
+        ShippingLineIds: List of [BigInteger];
     begin
-        foreach JToken in JDiscounts do
-            Result += JHelper.GetValueAsDecimal(JToken, 'amount_set.shop_money.amount')
+        foreach JToken in JShippingLines do begin
+            Id := CommunicationMgt.GetIdOfGId(JsonHelper.GetValueAsText(JToken, 'id'));
+            ShippingLineIds.Add(Id);
+            IsNew := not OrderShippingCharges.Get(Id);
+            if IsNew then begin
+                Clear(OrderShippingCharges);
+                OrderShippingCharges."Shopify Shipping Line Id" := Id;
+                OrderShippingCharges."Shopify Order Id" := OrderHeader."Shopify Order Id";
+            end;
+            RecordRef.GetTable(OrderShippingCharges);
+            JsonHelper.GetValueIntoField(JToken, 'title', RecordRef, OrderShippingCharges.FieldNo(Title));
+            JsonHelper.GetValueIntoField(JToken, 'code', RecordRef, OrderShippingCharges.FieldNo(Code));
+            JsonHelper.GetValueIntoField(JToken, 'code', RecordRef, OrderShippingCharges.FieldNo("Code Value"));
+            JsonHelper.GetValueIntoField(JToken, 'source', RecordRef, OrderShippingCharges.FieldNo(Source));
+            JsonHelper.GetValueIntoField(JToken, 'originalPriceSet.shopMoney.amount', RecordRef, OrderShippingCharges.FieldNo(Amount));
+            JsonHelper.GetValueIntoField(JToken, 'originalPriceSet.presentmentMoney.amount', RecordRef, OrderShippingCharges.FieldNo("Presentment Amount"));
+            RecordRef.SetTable(OrderShippingCharges);
+            OrderShippingCharges."Discount Amount" := GetShippingDiscountAmount(JsonHelper.GetJsonArray(JToken, 'discountAllocations'), 'shopMoney');
+            OrderShippingCharges."Presentment Discount Amount" := GetShippingDiscountAmount(JsonHelper.GetJsonArray(JToken, 'discountAllocations'), 'presentmentMoney');
+            if IsNew then
+                OrderShippingCharges.Insert()
+            else
+                OrderShippingCharges.Modify();
+            RecordRef.Close();
+            DataCapture.Add(Database::"Shpfy Order Shipping Charges", OrderShippingCharges.SystemId, JToken);
+            if not ShipmentMethodMapping.Get(OrderHeader."Shop Code", OrderShippingCharges.Title) then begin
+                Clear(ShipmentMethodMapping);
+                ShipmentMethodMapping."Shop Code" := OrderHeader."Shop Code";
+                ShipmentMethodMapping.Name := OrderShippingCharges.Title;
+                ShipmentMethodMapping.Insert();
+            end;
+        end;
+
+        if ShippingLineIds.Count() > 0 then
+            DeleteRemovedShippingLines(OrderHeader, ShippingLineIds);
+    end;
+
+    local procedure DeleteRemovedShippingLines(var OrderHeader: Record "Shpfy Order Header"; ShippingLineIds: List of [BigInteger])
+    var
+        OrderShippingCharges: Record "Shpfy Order Shipping Charges";
+    begin
+        OrderShippingCharges.SetRange("Shopify Order Id", OrderHeader."Shopify Order Id");
+        if OrderShippingCharges.FindSet() then
+            repeat
+                if not ShippingLineIds.Contains(OrderShippingCharges."Shopify Shipping Line Id") then begin
+                    OrderHeader."Shipping Charges Amount" -= OrderShippingCharges.Amount - OrderShippingCharges."Discount Amount";
+                    OrderHeader."Total Amount" -= OrderShippingCharges.Amount - OrderShippingCharges."Discount Amount";
+                    OrderShippingCharges.Delete(true);
+                end;
+            until OrderShippingCharges.Next() = 0;
+    end;
+
+    local procedure GetShippingDiscountAmount(JDiscountAllocations: JsonArray; MoneyType: Text) Result: Decimal
+    var
+        JAllocationAmountSet: JsonToken;
+        amountLbl: Label 'allocatedAmountSet.%1.amount', Locked = true, Comment = '%1 = MoneyType (shopMoney or presentmentMoney)';
+    begin
+        Result := 0;
+        foreach JAllocationAmountSet in JDiscountAllocations do
+            Result += JsonHelper.GetValueAsDecimal(JAllocationAmountSet, StrSubstNo(amountLbl, MoneyType));
     end;
 }

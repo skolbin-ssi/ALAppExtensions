@@ -1,3 +1,13 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.GST.Payments;
+
+using Microsoft.Finance.GeneralLedger.Account;
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Posting;
+
 codeunit 18248 "GST Bank Charge Session Mgt."
 {
     SingleInstance = true;
@@ -118,5 +128,11 @@ codeunit 18248 "GST Bank Charge Session Mgt."
     begin
         if GLAcc.Get(GLAccCode) then
             exit(GLAcc.Name);
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Gen. Jnl.-Post Line", 'OnBeforePostBankAcc', '', false, false)]
+    local procedure DeleteAllTempVariables()
+    begin
+        TempGenJournalLine.DeleteAll();
     end;
 }

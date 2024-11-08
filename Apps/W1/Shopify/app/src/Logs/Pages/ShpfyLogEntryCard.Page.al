@@ -1,3 +1,7 @@
+namespace Microsoft.Integration.Shopify;
+
+using System.Utilities;
+
 /// <summary>
 /// Page Shpfy Log Entry Card (ID 30120).
 /// </summary>
@@ -58,6 +62,26 @@ page 30120 "Shpfy Log Entry Card"
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the description of the HTTP result status of the entry in the log.';
+                }
+                field(HasError; Rec."Has Error")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies if the request has errors.';
+                }
+                field(RequestId; Rec."Shpfy Request Id")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies the request ID.';
+                }
+                field(RetryCount; Rec."Retry Count")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies number of retries.';
+                }
+                field(QueryCost; Rec."Query Cost")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies the query cost.';
                 }
             }
             group(JsonData)
@@ -134,7 +158,7 @@ page 30120 "Shpfy Log Entry Card"
         TempBlob.CreateInStream(InStream);
         TempBlob.CreateOutStream(OutStream);
         OutStream.Write(Rec.GetRequest());
-        ToFile := 'Request_' + format(Rec."Entry No.") + '.txt';
+        ToFile := 'Request_' + format(Rec."Entry No.") + '.json';
         File.DownloadFromStream(InStream, TitleLbl, '', '(*.*)|*.*', ToFile);
     end;
 
@@ -149,7 +173,7 @@ page 30120 "Shpfy Log Entry Card"
         TempBlob.CreateInStream(InStream);
         TempBlob.CreateOutStream(OutStream);
         OutStream.Write(Rec.GetResponse());
-        ToFile := 'Response_' + format(Rec."Entry No.") + '.txt';
+        ToFile := 'Response_' + format(Rec."Entry No.") + '.json';
         File.DownloadFromStream(InStream, TitleLbl, '', '(*.*)|*.*', ToFile);
     end;
 }

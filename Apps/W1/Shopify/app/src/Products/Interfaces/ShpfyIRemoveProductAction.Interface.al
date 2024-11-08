@@ -1,3 +1,5 @@
+namespace Microsoft.Integration.Shopify;
+
 /// <summary>
 /// Interface "Shpfy IRemoveProductAction."
 /// </summary>
@@ -9,5 +11,5 @@ interface "Shpfy IRemoveProductAction"
     /// RemoveProductAction.
     /// </summary>
     /// <param name="Product">VAR Record "Shopify Product".</param>
-    internal procedure RemoveProductAction(var Product: Record "Shpfy Product");
+    procedure RemoveProductAction(var Product: Record "Shpfy Product");
 }

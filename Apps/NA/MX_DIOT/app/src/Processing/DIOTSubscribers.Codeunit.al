@@ -1,3 +1,21 @@
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+namespace Microsoft.Finance.VAT.Reporting;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.VAT.Ledger;
+using Microsoft.Finance.VAT.Setup;
+using Microsoft.Purchases.Document;
+using Microsoft.Purchases.Posting;
+using Microsoft.Purchases.Setup;
+using Microsoft.Purchases.Vendor;
+using System.Environment.Configuration;
+using System.Globalization;
+using System.Media;
+
 codeunit 27022 "DIOT Subscribers"
 {
     trigger OnRun()
@@ -50,12 +68,6 @@ codeunit 27022 "DIOT Subscribers"
     local procedure TransferDIOTTypeOfOperationOnBeforeInsertVATEntry(var VATEntry: Record "VAT Entry"; GenJournalLine: Record "Gen. Journal Line")
     begin
         VATEntry."DIOT Type of Operation" := GenJournalLine."DIOT Type of Operation";
-    end;
-
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnBeforePostInvPostBuffer', '', false, false)]
-    local procedure TransferDIOTTypeOfOperationOnBeforePostInvPostBuffer(var GenJnlLine: Record "Gen. Journal Line"; var PurchHeader: Record "Purchase Header");
-    begin
-        GenJnlLine."DIOT Type of Operation" := PurchHeader."DIOT Type of Operation";
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch. Post Invoice Events", 'OnPostLinesOnBeforeGenJnlLinePost', '', false, false)]
