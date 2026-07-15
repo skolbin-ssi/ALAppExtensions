@@ -9,10 +9,10 @@ using System.Azure.Identity;
 using System.Text;
 using System.Utilities;
 
-#if not CLEAN24
-codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Client", "Email - Outlook API Client v2", "Email - Outlook API Client v3"
+#if not CLEAN28
+codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Client v2", "Email - Outlook API Client v4", "Email - Outlook API Client v5", "Email - Outlook API Client v6"
 #else
-codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Client v2", "Email - Outlook API Client v3"
+codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Client v5", "Email - Outlook API Client v6"
 #endif
 {
     var
@@ -33,18 +33,19 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         AttachmentRangeUploadErr: Label 'Failed to upload attachment byte range: %1-%2/%3', Comment = '%1 - From byte, %2 - To byte, %3 - Total bytes', Locked = true;
         ContentRangeLbl: Label 'bytes %1-%2/%3', Comment = '%1 - From byte, %2 - To byte, %3 - Total bytes', Locked = true;
         RestAPINotSupportedErr: Label 'REST API is not yet supported for this mailbox', Locked = true;
+        ErrorWithStatusCodeErr: Label '%1%2Status code: %3', Comment = '%1 - Error message, %2 - New line, %3 - Status code', Locked = true;
         TokenExpiredErr: Label 'token is expired', Locked = true;
         AccessTokenExpiredErr: Label 'The access token used has expired.', Locked = true;
         TheMailboxIsNotValidErr: Label 'The mailbox is not valid.\\A likely cause is that the user does not have a valid license for Office 365. To read about other potential causes, visit https://go.microsoft.com/fwlink/?linkid=2206177';
         ExternalSecurityChallengeNotSatisfiedMsg: Label 'Multi-Factor Authentication is enabled on this account but the user did not complete the setup. Please sign in to the account and try again.';
         EnvironmentBlocksErr: Label 'The request to send email has been blocked. To resolve the problem, enable outgoing HTTP requests for the Email - Outlook REST API app on the Extension Management page.';
         ConnectionErr: Label 'Could not establish the connection to the remote service for sending email. Try again later.';
-        RetrieveEmailSelectedFieldsTxt: Label 'id,conversationId,sentDateTime,receivedDateTime,subject,webLink,sender,toRecipients,ccRecipients,body,hasAttachments', Locked = true;
+        RetrieveEmailSelectedFieldsTxt: Label 'id,conversationId,sentDateTime,receivedDateTime,subject,webLink,sender,toRecipients,ccRecipients,body,hasAttachments,isRead,isDraft', Locked = true;
         RetrieveEmailsUriTxt: Label '/v1.0/users/%1/messages', Locked = true;
-        RetrieveEmailsFiltersTxt: Label '?$expand=attachments&$filter=isRead ne true&isDraft ne true&$count=true&$top=%1&$select=%2', Locked = true;
         RetrieveEmailsMessageErr: Label 'Failed to retrieve emails. Error:\\%1', Comment = '%1 = Error message';
         MarkAsReadUriTxt: Label '/v1.0/users/%1/messages/%2', Locked = true;
         RetrieveEmailUriTxt: Label '/v1.0/users/%1/messages/%2', Locked = true;
+        RetrieveEmailFolderUriTxt: Label '/v1.0/users/%1/mailFolders/%2/messages', Locked = true;
         UpdateDraftUriTxt: Label '/v1.0/users/%1/messages/%2', Locked = true;
         CreateDraftReplyAllUriTxt: Label '/v1.0/users/%1/messages/%2/createReplyAll', Locked = true;
         SendDraftUriTxt: Label '/v1.0/users/%1/messages/%2/send', Locked = true;
@@ -62,16 +63,10 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         TelemetryRetrievingAnEmailTxt: Label 'Retrieving an email.', Locked = true;
         TelemetryReplyingToEmailTxt: Label 'Replying to email.', Locked = true;
         TelemetryMarkingEmailAsReadTxt: Label 'Marking email as read.', Locked = true;
+        TelemetryFailedToDeleteDraftEmailTxt: Label 'Failed to delete draft message.', Locked = true;
         TelemetryFailedStatusCodeTxt: Label 'Failed with status code %1.', Comment = '%1 - Http status code', Locked = true;
+        GetEmailCategoriesUriTxt: Label '/v1.0/users/%1/outlook/masterCategories', Locked = true;
 
-#if not CLEAN24
-    [NonDebuggable]
-    [Obsolete('Replaced by GetAccountInformation with SecretText data type for AccessToken parameter.', '24.0')]
-    procedure GetAccountInformation(AccessToken: Text; var Email: Text[250]; var Name: Text[250]): Boolean
-    begin
-        exit(TryGetAccountInformation(AccessToken, Email, Name));
-    end;
-#endif
 
     [NonDebuggable]
     procedure GetAccountInformation(AccessToken: SecretText; var Email: Text[250]; var Name: Text[250]): Boolean
@@ -79,35 +74,6 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         exit(TryGetAccountInformation(AccessToken, Email, Name));
     end;
 
-#if not CLEAN24
-    [NonDebuggable]
-    [TryFunction]
-    [Obsolete('Replaced by TryGetAccountInformation with SecretText data type for AccessToken parameter.', '24.0')]
-    procedure TryGetAccountInformation(AccessToken: Text; var Email: Text[250]; var Name: Text[250])
-    var
-        AccountHttpClient: HttpClient;
-        AccountRequestHeaders: HttpHeaders;
-        AccountResponseMessage: HttpResponseMessage;
-        ResponseContent: Text;
-        JObject: JsonObject;
-        JToken: JsonToken;
-    begin
-        AccountRequestHeaders := AccountHttpClient.DefaultRequestHeaders();
-        AccountRequestHeaders.Add('Authorization', 'Bearer ' + AccessToken);
-
-        if not AccountHttpClient.Get(GraphURLTxt + '/v1.0/me', AccountResponseMessage) then
-            exit;
-
-        AccountResponseMessage.Content().ReadAs(ResponseContent);
-        JObject.ReadFrom(ResponseContent);
-
-        JObject.Get('userPrincipalName', JToken);
-        Email := CopyStr(JToken.AsValue().AsText(), 1, 250);
-
-        JObject.Get('displayName', JToken);
-        Name := CopyStr(JToken.AsValue().AsText(), 1, 250);
-    end;
-#endif
 
     [NonDebuggable]
     [TryFunction]
@@ -136,23 +102,6 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         Name := CopyStr(JToken.AsValue().AsText(), 1, 250);
     end;
 
-#if not CLEAN24
-    /// <summary>
-    /// Send email using Outlook API. If the message json parameter &lt;= 4 mb and wrapped in a message object it is sent in a single request, otherwise it is sent it in multiple requests.
-    /// </summary>
-    /// <error>User is external and cannot authenticate to the exchange server.</error>
-    /// <param name="AccessToken">Access token of the account.</param>
-    /// <param name="MessageJson">The JSON representing the email message.</param>
-    [NonDebuggable]
-    [Obsolete('Replaced by SendEmail with SecretText data type for AccessToken parameter.', '24.0')]
-    procedure SendEmail(AccessToken: Text; MessageJson: JsonObject)
-    var
-        AT: SecretText;
-    begin
-        AT := AccessToken;
-        SendEmail(AT, MessageJson);
-    end;
-#endif
 
     /// <summary>
     /// Send email using Outlook API. If the message json parameter &lt;= 4 mb and wrapped in a message object it is sent in a single request, otherwise it is sent it in multiple requests.
@@ -192,7 +141,90 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         end;
     end;
 
-    procedure RetrieveEmails(AccessToken: SecretText; MarkAsRead: Boolean; OutlookAccount: Record "Email - Outlook Account"): JsonArray
+    procedure GetMailboxFolders(AccessToken: SecretText; OutlookAccount: Record "Email - Outlook Account"): JsonArray
+    var
+        MailHttpRequestMessage: HttpRequestMessage;
+        MailHttpResponseMessage: HttpResponseMessage;
+        HttpErrorMessage: Text;
+        RequestUri: Text;
+        JsonContent: Text;
+        ResponseJsonObject: JsonObject;
+        EmailsArray: JsonArray;
+        JsonToken: JsonToken;
+    begin
+        RequestUri := GraphURLTxt + StrSubstNo('/v1.0/users/%1/mailFolders/', OutlookAccount."Email Address");
+
+        CreateRequest('GET', RequestUri, AccessToken, MailHttpRequestMessage);
+
+        SendRequest(MailHttpRequestMessage, MailHttpResponseMessage);
+
+        if MailHttpResponseMessage.HttpStatusCode <> 200 then begin
+            HttpErrorMessage := GetHttpErrorMessageAsText(MailHttpResponseMessage);
+            Session.LogMessage('0000Q7U', StrSubstNo(TelemetryFailedStatusCodeTxt, Format(MailHttpResponseMessage.HttpStatusCode)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            ProcessRetrieveErrorMessageResponse(HttpErrorMessage, Format(MailHttpResponseMessage.HttpStatusCode));
+        end;
+
+        if not MailHttpResponseMessage.Content.ReadAs(JsonContent) then begin
+            Session.LogMessage('0000Q7W', FailedToReadResponseContentErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            exit;
+        end;
+
+        if not ResponseJsonObject.ReadFrom(JsonContent) then begin
+            Session.LogMessage('0000Q7X', FailedToReadResponseContentErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            exit;
+        end;
+
+        Session.LogMessage('0000Q7V', EmailsRetrievedTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+
+        ResponseJsonObject.Get('value', JsonToken);
+        EmailsArray := JsonToken.AsArray();
+
+        exit(EmailsArray);
+    end;
+
+    procedure GetChildMailboxFolders(AccessToken: SecretText; OutlookAccount: Record "Email - Outlook Account"; ParentFolderId: Text): JsonArray
+    var
+        MailHttpRequestMessage: HttpRequestMessage;
+        MailHttpResponseMessage: HttpResponseMessage;
+        HttpErrorMessage: Text;
+        RequestUri: Text;
+        JsonContent: Text;
+        ResponseJsonObject: JsonObject;
+        EmailsArray: JsonArray;
+        JsonToken: JsonToken;
+    begin
+        RequestUri := GraphURLTxt + StrSubstNo('/v1.0/users/%1/mailFolders/%2/childFolders', OutlookAccount."Email Address", ParentFolderId);
+
+        CreateRequest('GET', RequestUri, AccessToken, MailHttpRequestMessage);
+
+        SendRequest(MailHttpRequestMessage, MailHttpResponseMessage);
+
+        if MailHttpResponseMessage.HttpStatusCode <> 200 then begin
+            HttpErrorMessage := GetHttpErrorMessageAsText(MailHttpResponseMessage);
+            Session.LogMessage('0000Q7Y', StrSubstNo(TelemetryFailedStatusCodeTxt, Format(MailHttpResponseMessage.HttpStatusCode)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            ProcessRetrieveErrorMessageResponse(HttpErrorMessage, Format(MailHttpResponseMessage.HttpStatusCode));
+        end;
+
+        if not MailHttpResponseMessage.Content.ReadAs(JsonContent) then begin
+            Session.LogMessage('0000Q80', FailedToReadResponseContentErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            exit;
+        end;
+
+        if not ResponseJsonObject.ReadFrom(JsonContent) then begin
+            Session.LogMessage('0000Q81', FailedToReadResponseContentErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            exit;
+        end;
+
+        Session.LogMessage('0000Q7Z', EmailsRetrievedTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+
+        ResponseJsonObject.Get('value', JsonToken);
+        EmailsArray := JsonToken.AsArray();
+
+        exit(EmailsArray);
+
+    end;
+
+    procedure RetrieveEmails(AccessToken: SecretText; OutlookAccount: Record "Email - Outlook Account"; var Filters: Record "Email Retrieval Filters" temporary): JsonArray
     var
         EmailsObject: JsonObject;
         EmailsArray: JsonArray;
@@ -201,7 +233,7 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
     begin
         Session.LogMessage('0000NCA', TelemetryRetrievingEmailsTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
 
-        SendRetrieveEmailsRequest(AccessToken, OutlookAccount."Email Address", EmailsObject);
+        SendRetrieveEmailsRequest(AccessToken, OutlookAccount."Email Address", Filters, EmailsObject);
 
         if not EmailsObject.Get('@odata.count', JsonToken) then begin
             Session.LogMessage('0000NCB', FailedToRetrieveEmailsErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
@@ -228,6 +260,17 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
 
     procedure RetrieveEmail(AccessToken: SecretText; EmailAddress: Text[250]; ExternalMessageId: Text; AsHtml: Boolean): JsonObject
     var
+        Filters: Record "Email Retrieval Filters";
+    begin
+        if AsHtml then
+            Filters."Body Type" := Filters."Body Type"::HTML
+        else
+            Filters."Body Type" := Filters."Body Type"::Text;
+        exit(RetrieveEmail(AccessToken, EmailAddress, ExternalMessageId, Filters));
+    end;
+
+    procedure RetrieveEmail(AccessToken: SecretText; EmailAddress: Text[250]; ExternalMessageId: Text; var Filters: Record "Email Retrieval Filters" temporary): JsonObject
+    var
         MailHttpRequestMessage: HttpRequestMessage;
         MailHttpResponseMessage: HttpResponseMessage;
         MailRequestHeaders: HttpHeaders;
@@ -240,7 +283,7 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         RequestUri := GraphURLTxt + StrSubstNo(RetrieveEmailUriTxt, EmailAddress, ExternalMessageId);
         CreateRequest('GET', RequestUri, AccessToken, MailHttpRequestMessage);
         MailHttpRequestMessage.GetHeaders(MailRequestHeaders);
-        if not AsHtml then
+        if Filters."Body Type" = Filters."Body Type"::Text then
             MailRequestHeaders.Add('Prefer', 'outlook.body-content-type="text"');
         SendRequest(MailHttpRequestMessage, MailHttpResponseMessage);
 
@@ -283,7 +326,7 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
                 Error(ConnectionErr);
     end;
 
-    local procedure SendRetrieveEmailsRequest(AccessToken: SecretText; EmailAddress: Text; var ResponseJsonObject: JsonObject): Boolean
+    local procedure SendRetrieveEmailsRequest(AccessToken: SecretText; EmailAddress: Text; var Filters: Record "Email Retrieval Filters" temporary; var ResponseJsonObject: JsonObject): Boolean
     var
         MailHttpRequestMessage: HttpRequestMessage;
         MailHttpResponseMessage: HttpResponseMessage;
@@ -291,18 +334,55 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         HttpErrorMessage: Text;
         RequestUri: Text;
         JsonContent: Text;
+        QueryParameters: Text;
+        FilterParameters: Text;
     begin
-        RequestUri := GraphURLTxt + StrSubstNo(RetrieveEmailsUriTxt, EmailAddress) + StrSubstNo(RetrieveEmailsFiltersTxt, Format(GetMaxNumberOfEmailsToRetrieve()), RetrieveEmailSelectedFieldsTxt);
+        if Filters."Folder Id" = '' then
+            RequestUri := GraphURLTxt + StrSubstNo(RetrieveEmailsUriTxt, EmailAddress) + '?'
+        else
+            RequestUri := GraphURLTxt + StrSubstNo(RetrieveEmailFolderUriTxt, EmailAddress, Filters."Folder Id") + '?';
+
+        if Filters."Load Attachments" then
+            QueryParameters := QueryParameters + '$expand=attachments&';
+
+        QueryParameters := QueryParameters + '$top=' + Format(Filters."Max No. of Emails") + '&';
+        QueryParameters := QueryParameters + '$select=' + RetrieveEmailSelectedFieldsTxt + '&';
+        QueryParameters := QueryParameters + '$count=true&';
+        QueryParameters := QueryParameters + '$orderby=receivedDateTime asc&';
+
+        FilterParameters := '$filter=';
+        if Filters."Unread Emails" then
+            FilterParameters := FilterParameters + 'isRead ne true and ';
+        if Filters."Draft Emails" then
+            FilterParameters := FilterParameters + 'isDraft eq true and '
+        else
+            FilterParameters := FilterParameters + 'isDraft ne true and ';
+        if Filters."Earliest Email" <> 0DT then
+            FilterParameters := FilterParameters + 'receivedDateTime ge ' + Format(Filters."Earliest Email", 0, 9) + ' and ';
+        if Filters.GetCategoryFilters().Count() > 0 then
+            FilterParameters := FilterParameters + GetCategoryFilter(Filters.GetCategoryFilters(), Filters."Category Filter Type" = Filters."Category Filter Type"::Exclude) + ' and ';
+
+        if FilterParameters <> '$filter=' then begin
+            QueryParameters := QueryParameters + FilterParameters;
+            QueryParameters := CopyStr(QueryParameters, 1, StrLen(QueryParameters) - 5);
+        end;
+
+        RequestUri := RequestUri + QueryParameters;
 
         CreateRequest('GET', RequestUri, AccessToken, MailHttpRequestMessage);
+
         MailHttpRequestMessage.GetHeaders(MailRequestHeaders);
-        MailRequestHeaders.Add('Prefer', 'outlook.body-content-type="text"');
+        if Filters."Body Type" = Filters."Body Type"::HTML then
+            MailRequestHeaders.Add('Prefer', 'outlook.body-content-type="html"')
+        else
+            MailRequestHeaders.Add('Prefer', 'outlook.body-content-type="text"');
+
         SendRequest(MailHttpRequestMessage, MailHttpResponseMessage);
 
         if MailHttpResponseMessage.HttpStatusCode <> 200 then begin
             HttpErrorMessage := GetHttpErrorMessageAsText(MailHttpResponseMessage);
             Session.LogMessage('0000NBB', StrSubstNo(TelemetryFailedStatusCodeTxt, Format(MailHttpResponseMessage.HttpStatusCode)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
-            ProcessRetrieveErrorMessageResponse(HttpErrorMessage);
+            ProcessRetrieveErrorMessageResponse(HttpErrorMessage, Format(MailHttpResponseMessage.HttpStatusCode));
         end else
             Session.LogMessage('0000NBC', EmailsRetrievedTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
 
@@ -319,9 +399,25 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         exit(true);
     end;
 
-    local procedure GetMaxNumberOfEmailsToRetrieve(): Integer
+    local procedure GetCategoryFilter(CategoryFilters: List of [Text]; Exclude: Boolean): Text
+    var
+        CategoryFilter: Text;
+        FilterText: Text;
     begin
-        exit(50);
+        // Build filter: categories/any(c:c eq 'cat1' or c eq 'cat2' or c eq 'cat3')
+        // Or for exclude: not(categories/any(c:c eq 'cat1' or c eq 'cat2' or c eq 'cat3'))
+        foreach CategoryFilter in CategoryFilters do begin
+            if FilterText <> '' then
+                if Exclude then
+                    FilterText := FilterText + ' and '
+                else
+                    FilterText := FilterText + ' or ';
+            if Exclude then
+                FilterText := FilterText + 'not(categories/any(c:c eq ''' + CategoryFilter + '''))'
+            else
+                FilterText := FilterText + 'categories/any(c:c eq ''' + CategoryFilter + ''')';
+        end;
+        exit(FilterText);
     end;
 
     local procedure SendReplyEmailRequest(AccessToken: SecretText; EmailAddress: Text[250]; ExternalMessageId: Text; MessageJsonText: Text): Boolean
@@ -339,6 +435,7 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
             AddAttachmentsToDraft(AccessToken, EmailAddress, ExternalMessageId, AttachmentsJsonArray);
         end;
 
+        MessageJson.WriteTo(MessageJsonText);
         UpdateDraftMessage(AccessToken, EmailAddress, ExternalMessageId, MessageJsonText);
         SendDraftMail(AccessToken, EmailAddress, ExternalMessageId);
     end;
@@ -413,6 +510,7 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
 
         if MailHttpResponseMessage.HttpStatusCode <> 200 then begin
             Session.LogMessage('0000NBI', FailedToUpdateDraftMessageErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            DeleteDraftMessage(AccessToken, EmailAddress, MessageId);
             Error(FailedToUpdateDraftMessageErr);
         end;
 
@@ -445,9 +543,29 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         if MailHttpResponseMessage.HttpStatusCode <> 202 then begin
             HttpErrorMessage := GetHttpErrorMessageAsText(MailHttpResponseMessage);
             Session.LogMessage('0000EA2', HttpErrorMessage, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            DeleteDraftMessage(AccessToken, EmailAddress, MessageId);
             Error(HttpErrorMessage);
         end else
             Session.LogMessage('0000EA3', EmailSentTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+    end;
+
+    local procedure DeleteDraftMessage(AccessToken: SecretText; EmailAddress: Text[250]; MessageId: Text): Boolean
+    var
+        MailHttpRequestMessage: HttpRequestMessage;
+        MailHttpResponseMessage: HttpResponseMessage;
+        RequestUri: Text;
+    begin
+        RequestUri := GraphURLTxt + StrSubstNo(UpdateDraftUriTxt, EmailAddress, MessageId);
+        CreateRequest('DELETE', RequestUri, AccessToken, MailHttpRequestMessage);
+
+        SendRequest(MailHttpRequestMessage, MailHttpResponseMessage);
+
+        if MailHttpResponseMessage.HttpStatusCode <> 204 then begin
+            Session.LogMessage('0000QFI', TelemetryFailedToDeleteDraftEmailTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            exit(false);
+        end;
+
+        exit(true);
     end;
 
     [NonDebuggable]
@@ -515,35 +633,38 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
         if MailHttpResponseMessage.HttpStatusCode <> 202 then begin
             HttpErrorMessage := GetHttpErrorMessageAsText(MailHttpResponseMessage);
             Session.LogMessage('0000D1Q', StrSubstNo(TelemetryFailedStatusCodeTxt, Format(MailHttpResponseMessage.HttpStatusCode)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
-            ProcessSendErrorMessageResponse(HttpErrorMessage);
+            ProcessSendErrorMessageResponse(HttpErrorMessage, Format(MailHttpResponseMessage.HttpStatusCode));
         end else
             Session.LogMessage('0000D1R', EmailSentTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
     end;
 
-    local procedure ProcessRetrieveErrorMessageResponse(ErrorMessage: Text)
+    local procedure ProcessRetrieveErrorMessageResponse(ErrorMessage: Text; StatusCode: Text)
     begin
-        ProcessGenericErrorMessageResponse(ErrorMessage);
+        ProcessGenericErrorMessageResponse(ErrorMessage, StatusCode);
         Error(RetrieveEmailsMessageErr, ErrorMessage);
     end;
 
-    local procedure ProcessSendErrorMessageResponse(ErrorMessage: Text)
+    local procedure ProcessSendErrorMessageResponse(ErrorMessage: Text; StatusCode: Text)
     begin
-        ProcessGenericErrorMessageResponse(ErrorMessage);
+        ProcessGenericErrorMessageResponse(ErrorMessage, StatusCode);
         Error(SendEmailMessageErr, ErrorMessage);
     end;
 
-    local procedure ProcessGenericErrorMessageResponse(ErrorMessage: Text)
+    local procedure ProcessGenericErrorMessageResponse(ErrorMessage: Text; StatusCode: Text)
+    var
+        NewLine: Char;
     begin
+        NewLine := 10;
         if ErrorMessage.Contains(RestAPINotSupportedErr) then
-            Error(TheMailboxIsNotValidErr);
+            Error(ErrorWithStatusCodeErr, TheMailboxIsNotValidErr, NewLine, StatusCode);
 
         // AADSTS50158 - External security challenge not satisfied. MFA was enabled for tenant but user did not enable it yet.
         // https://learn.microsoft.com/azure/active-directory/develop/reference-aadsts-error-codes
         if ErrorMessage.Contains('AADSTS50158') then
-            Error(ExternalSecurityChallengeNotSatisfiedMsg);
+            Error(ErrorWithStatusCodeErr, ExternalSecurityChallengeNotSatisfiedMsg, NewLine, StatusCode);
 
         if ErrorMessage.Contains(TokenExpiredErr) then
-            Error(AccessTokenExpiredErr);
+            Error(ErrorWithStatusCodeErr, AccessTokenExpiredErr, NewLine, StatusCode);
     end;
 
     [NonDebuggable]
@@ -806,11 +927,15 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
     local procedure GetHttpErrorMessageAsText(MailHttpResponseMessage: HttpResponseMessage): Text
     var
         ErrorMessage: Text;
+        NewLine: Char;
     begin
         if not TryGetErrorMessage(MailHttpResponseMessage, ErrorMessage) then begin
             ErrorMessage := SendEmailErr;
             Session.LogMessage('0000EZA', StrSubstNo(SendEmailCodeErr, MailHttpResponseMessage.HttpStatusCode), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
         end;
+
+        NewLine := 10;
+        ErrorMessage := StrSubstNo(ErrorWithStatusCodeErr, ErrorMessage, NewLine, Format(MailHttpResponseMessage.HttpStatusCode));
 
         exit(ErrorMessage);
     end;
@@ -869,5 +994,181 @@ codeunit 4508 "Email - Outlook API Client" implements "Email - Outlook API Clien
     local procedure MaximumAttachmentSizeInBytes(): Integer
     begin
         exit(3145728); // 3 mb
+    end;
+
+    procedure GetEmailCategories(AccessToken: SecretText; OutlookAccount: Record "Email - Outlook Account"): JsonArray
+    var
+        MailHttpRequestMessage: HttpRequestMessage;
+        MailHttpResponseMessage: HttpResponseMessage;
+        HttpErrorMessage: Text;
+        RequestUri: Text;
+        JsonContent: Text;
+        ResponseJsonObject: JsonObject;
+        CategoriesArray: JsonArray;
+        JsonToken: JsonToken;
+    begin
+        RequestUri := GraphURLTxt + StrSubstNo(GetEmailCategoriesUriTxt, OutlookAccount."Email Address");
+
+        CreateRequest('GET', RequestUri, AccessToken, MailHttpRequestMessage);
+
+        SendRequest(MailHttpRequestMessage, MailHttpResponseMessage);
+
+        if MailHttpResponseMessage.HttpStatusCode <> 200 then begin
+            HttpErrorMessage := GetHttpErrorMessageAsText(MailHttpResponseMessage);
+            Session.LogMessage('0000RHR', StrSubstNo(TelemetryFailedStatusCodeTxt, Format(MailHttpResponseMessage.HttpStatusCode)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            ProcessRetrieveErrorMessageResponse(HttpErrorMessage, Format(MailHttpResponseMessage.HttpStatusCode));
+        end;
+
+        if not MailHttpResponseMessage.Content.ReadAs(JsonContent) then begin
+            Session.LogMessage('0000RHS', FailedToReadResponseContentErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            exit;
+        end;
+
+        if not ResponseJsonObject.ReadFrom(JsonContent) then begin
+            Session.LogMessage('0000RHT', FailedToReadResponseContentErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            exit;
+        end;
+
+        ResponseJsonObject.Get('value', JsonToken);
+        CategoriesArray := JsonToken.AsArray();
+
+        exit(CategoriesArray);
+    end;
+
+    procedure CreateEmailCategory(AccessToken: SecretText; OutlookAccount: Record "Email - Outlook Account"; CategoryDisplayName: Text; CategoryColor: Text): Text
+    var
+        MailHttpRequestMessage: HttpRequestMessage;
+        MailHttpResponseMessage: HttpResponseMessage;
+        MailContent: HttpContent;
+        MailContentHeaders: HttpHeaders;
+        HttpErrorMessage: Text;
+        RequestUri: Text;
+        JsonContent: Text;
+        ResponseJsonObject: JsonObject;
+        RequestJsonObject: JsonObject;
+        JsonToken: JsonToken;
+    begin
+        RequestUri := GraphURLTxt + StrSubstNo(GetEmailCategoriesUriTxt, OutlookAccount."Email Address");
+
+        RequestJsonObject.Add('displayName', CategoryDisplayName);
+        if CategoryColor <> '' then
+            RequestJsonObject.Add('color', CategoryColor);
+        RequestJsonObject.WriteTo(JsonContent);
+
+        MailContent.WriteFrom(JsonContent);
+        MailContent.GetHeaders(MailContentHeaders);
+        MailContentHeaders.Remove('Content-Type');
+        MailContentHeaders.Add('Content-Type', 'application/json');
+
+        CreateRequest('POST', RequestUri, AccessToken, MailHttpRequestMessage);
+        MailHttpRequestMessage.Content := MailContent;
+
+        SendRequest(MailHttpRequestMessage, MailHttpResponseMessage);
+
+        if MailHttpResponseMessage.HttpStatusCode <> 201 then begin
+            HttpErrorMessage := GetHttpErrorMessageAsText(MailHttpResponseMessage);
+            Session.LogMessage('0000RHU', StrSubstNo(TelemetryFailedStatusCodeTxt, Format(MailHttpResponseMessage.HttpStatusCode)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            Error(HttpErrorMessage);
+        end;
+
+        if not MailHttpResponseMessage.Content.ReadAs(JsonContent) then begin
+            Session.LogMessage('0000RHV', FailedToReadResponseContentErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            exit('');
+        end;
+
+        if not ResponseJsonObject.ReadFrom(JsonContent) then begin
+            Session.LogMessage('0000RHW', FailedToReadResponseContentErr, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            exit('');
+        end;
+
+        ResponseJsonObject.Get('id', JsonToken);
+        exit(JsonToken.AsValue().AsText());
+    end;
+
+    procedure ApplyEmailCategory(AccessToken: SecretText; OutlookAccount: Record "Email - Outlook Account"; ExternalMessageId: Text; Categories: List of [Text])
+    var
+        MailHttpRequestMessage: HttpRequestMessage;
+        MailHttpResponseMessage: HttpResponseMessage;
+        MailContent: HttpContent;
+        MailContentHeaders: HttpHeaders;
+        HttpErrorMessage: Text;
+        RequestUri: Text;
+        JsonContent: Text;
+        RequestJsonObject: JsonObject;
+        CategoriesArray: JsonArray;
+        ExistingCategories: List of [Text];
+        Category: Text;
+    begin
+        RequestUri := GraphURLTxt + StrSubstNo(MarkAsReadUriTxt, OutlookAccount."Email Address", ExternalMessageId);
+
+        // Get existing categories from the email first
+        ExistingCategories := GetEmailMessageCategories(AccessToken, OutlookAccount, ExternalMessageId);
+
+        // Add existing categories to the array
+        foreach Category in ExistingCategories do
+            CategoriesArray.Add(Category);
+
+        // Add new categories if they don't already exist
+        foreach Category in Categories do
+            if not ExistingCategories.Contains(Category) then
+                CategoriesArray.Add(Category);
+
+        RequestJsonObject.Add('categories', CategoriesArray);
+        RequestJsonObject.WriteTo(JsonContent);
+
+        MailContent.WriteFrom(JsonContent);
+        MailContent.GetHeaders(MailContentHeaders);
+        MailContentHeaders.Remove('Content-Type');
+        MailContentHeaders.Add('Content-Type', 'application/json');
+
+        CreateRequest('PATCH', RequestUri, AccessToken, MailHttpRequestMessage);
+        MailHttpRequestMessage.Content := MailContent;
+
+        SendRequest(MailHttpRequestMessage, MailHttpResponseMessage);
+
+        if MailHttpResponseMessage.HttpStatusCode <> 200 then begin
+            HttpErrorMessage := GetHttpErrorMessageAsText(MailHttpResponseMessage);
+            Session.LogMessage('0000RHX', StrSubstNo(TelemetryFailedStatusCodeTxt, Format(MailHttpResponseMessage.HttpStatusCode)), Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', OutlookCategoryLbl);
+            Error(HttpErrorMessage);
+        end;
+    end;
+
+    local procedure GetEmailMessageCategories(AccessToken: SecretText; OutlookAccount: Record "Email - Outlook Account"; ExternalMessageId: Text): List of [Text]
+    var
+        MailHttpRequestMessage: HttpRequestMessage;
+        MailHttpResponseMessage: HttpResponseMessage;
+        RequestUri: Text;
+        JsonContent: Text;
+        ResponseJsonObject: JsonObject;
+        CategoriesArray: JsonArray;
+        JsonToken: JsonToken;
+        CategoryToken: JsonToken;
+        Categories: List of [Text];
+        i: Integer;
+    begin
+        // Request only the categories field to minimize data transfer
+        RequestUri := GraphURLTxt + StrSubstNo(MarkAsReadUriTxt, OutlookAccount."Email Address", ExternalMessageId) + '?$select=categories';
+
+        CreateRequest('GET', RequestUri, AccessToken, MailHttpRequestMessage);
+        SendRequest(MailHttpRequestMessage, MailHttpResponseMessage);
+
+        if MailHttpResponseMessage.HttpStatusCode <> 200 then
+            exit(Categories);
+
+        if not MailHttpResponseMessage.Content.ReadAs(JsonContent) then
+            exit(Categories);
+
+        if not ResponseJsonObject.ReadFrom(JsonContent) then
+            exit(Categories);
+
+        if ResponseJsonObject.Get('categories', JsonToken) then begin
+            CategoriesArray := JsonToken.AsArray();
+            for i := 0 to CategoriesArray.Count() - 1 do begin
+                CategoriesArray.Get(i, CategoryToken);
+                Categories.Add(CategoryToken.AsValue().AsText());
+            end;
+        end;
+
+        exit(Categories);
     end;
 }

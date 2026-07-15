@@ -5,9 +5,10 @@ using Microsoft.Sales.Customer;
 using Microsoft.Sales.Document;
 using System.TestLibraries.Utilities;
 
-codeunit 139783 "Document Lookup Test"
+codeunit 133510 "Document Lookup Test"
 {
     Subtype = Test;
+    TestType = AITest;
     TestPermissions = Disabled;
     EventSubscriberInstance = Manual;
 

@@ -70,6 +70,8 @@ table 31007 "Advance Letter Application CZZ"
         }
         field(8; Amount; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             Caption = 'Amount';
             DataClassification = CustomerContent;
 
@@ -84,16 +86,22 @@ table 31007 "Advance Letter Application CZZ"
         }
         field(9; "Amount (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Amount (LCY)';
             DataClassification = CustomerContent;
         }
         field(11; "Amount to Use"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             Caption = 'Amount to Use';
             DataClassification = CustomerContent;
         }
         field(12; "Amount to Use (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Amount to Use (LCY)';
             DataClassification = CustomerContent;
         }
@@ -106,6 +114,7 @@ table 31007 "Advance Letter Application CZZ"
         }
         field(21; "Currency Factor"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Currency Factor';
             DataClassification = CustomerContent;
             DecimalPlaces = 0 : 15;
@@ -211,8 +220,10 @@ table 31007 "Advance Letter Application CZZ"
                 NewAdvanceLetterApplicationCZZ."Amount (LCY)" -= AdvanceLetterApplicationCZZ."Amount (LCY)";
                 NewAdvanceLetterApplicationCZZ."Document Type" := NewFromAdvLetterUsageDocTypeCZZ;
                 NewAdvanceLetterApplicationCZZ."Document No." := NewFromDocumentNo;
-                if NewAdvanceLetterApplicationCZZ.Amount > 0 then
+                if NewAdvanceLetterApplicationCZZ.Amount > 0 then begin
+                    OnGetPossibleSalesAdvanceOnBeforeInsertNewAdvanceLetterApplication(NewAdvanceLetterApplicationCZZ, AdvanceLetterApplicationCZZ);
                     NewAdvanceLetterApplicationCZZ.Insert();
+                end;
             until SalesAdvLetterHeaderCZZ.Next() = 0;
     end;
 
@@ -501,8 +512,36 @@ table 31007 "Advance Letter Application CZZ"
         end;
     end;
 
+    procedure CheckVATRegistrationNoDifference()
+    var
+        SalesAdvLetterHeaderCZZ: Record "Sales Adv. Letter Header CZZ";
+        SalesHeader: Record "Sales Header";
+        AltCustVATRegImplCZZ: Codeunit "Alt. Cust. VAT Reg. Impl. CZZ";
+    begin
+        if "Advance Letter Type" <> "Advance Letter Type"::Sales then
+            exit;
+
+        SalesAdvLetterHeaderCZZ.Get("Advance Letter No.");
+        case "Document Type" of
+            "Adv. Letter Usage Doc.Type CZZ"::"Sales Order":
+                SalesHeader.Get(SalesHeader."Document Type"::Order, "Document No.");
+            "Adv. Letter Usage Doc.Type CZZ"::"Sales Invoice":
+                SalesHeader.Get(SalesHeader."Document Type"::Invoice, "Document No.");
+            else
+                exit;
+        end;
+
+        if SalesAdvLetterHeaderCZZ."VAT Registration No." <> SalesHeader."VAT Registration No." then
+            AltCustVATRegImplCZZ.ThrowDiffVATRegNoNotification();
+    end;
+
     [IntegrationEvent(false, false)]
     local procedure OnGetPossiblePurchAdvanceOnBeforeInsertNewAdvanceLetterApplication(var NewAdvanceLetterApplicationCZZ: Record "Advance Letter Application CZZ"; AdvanceLetterApplicationCZZ: Record "Advance Letter Application CZZ")
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnGetPossibleSalesAdvanceOnBeforeInsertNewAdvanceLetterApplication(var NewAdvanceLetterApplicationCZZ: Record "Advance Letter Application CZZ"; AdvanceLetterApplicationCZZ: Record "Advance Letter Application CZZ")
     begin
     end;
 

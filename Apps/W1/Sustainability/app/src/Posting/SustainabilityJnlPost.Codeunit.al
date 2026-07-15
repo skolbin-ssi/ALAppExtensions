@@ -1,7 +1,7 @@
 namespace Microsoft.Sustainability.Posting;
 
-using Microsoft.Sustainability.Journal;
 using Microsoft.Foundation.NoSeries;
+using Microsoft.Sustainability.Journal;
 using System.Utilities;
 
 codeunit 6213 "Sustainability Jnl.-Post"
@@ -78,6 +78,8 @@ codeunit 6213 "Sustainability Jnl.-Post"
                         NoSeriesBatch.TestManual(SustainabilityJnlBatch."No Series", SustainabilityJnlLine."Document No.");
 
                 PreviousDocumentNo := SustainabilityJnlLine."Document No.";
+
+                SustainabilityJnlLine.UpdateSustainabilityJnlLineWithPostingSign(SustainabilityJnlLine, SustainabilityJnlLine.GetPostingSign(SustainabilityJnlLine));
 
                 SustainabilityPostMgt.InsertLedgerEntry(SustainabilityJnlLine);
             until SustainabilityJnlLine.Next() = 0;

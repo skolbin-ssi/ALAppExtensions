@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ pageextension 11717 "General Ledger Setup CZL" extends "General Ledger Setup"
             field("Acc. Schedule Results Nos. CZL"; Rec."Acc. Schedule Results Nos. CZL")
             {
                 ApplicationArea = Basic, Suite;
-                ToolTip = 'Specifies the code for the number series that will be used to assign numbers to account schedule results.';
+                ToolTip = 'Specifies the code for the number series that will be used to assign numbers to financial report results.';
             }
         }
         addlast(content)
@@ -45,28 +45,6 @@ pageextension 11717 "General Ledger Setup CZL" extends "General Ledger Setup"
                     ApplicationArea = Basic, Suite;
                     ToolTip = 'Specifies the default original document VAT date type for purchase document (posting date, document date, VAT date or blank).';
                 }
-#if not CLEAN24
-                field("Allow VAT Posting From CZL"; Rec."Allow VAT Posting From CZL")
-                {
-                    ApplicationArea = Basic, Suite;
-                    Caption = 'Allow VAT Posting From (Obsolete)';
-                    ToolTip = 'Specifies the earliest VAT date on which posting to the company is allowed.';
-                    ObsoleteState = Pending;
-                    ObsoleteTag = '24.0';
-                    ObsoleteReason = 'Replaced by "Allow VAT Date From" field from "VAT Setup" table.';
-                    Visible = false;
-                }
-                field("Allow VAT Posting To CZL"; Rec."Allow VAT Posting To CZL")
-                {
-                    ApplicationArea = Basic, Suite;
-                    Caption = 'Allow VAT Posting To (Obsolete)';
-                    ToolTip = 'Specifies the latest VAT date on which posting to the company is allowed.';
-                    ObsoleteState = Pending;
-                    ObsoleteTag = '24.0';
-                    ObsoleteReason = 'Replaced by "Allow VAT Date To" field from "VAT Setup" table.';
-                    Visible = false;
-                }
-#endif
                 field("Allow VAT Date From CZL"; VATSetup."Allow VAT Date From")
                 {
                     ApplicationArea = VAT;
@@ -123,12 +101,15 @@ pageextension 11717 "General Ledger Setup CZL" extends "General Ledger Setup"
             field("Functional Currency CZL"; Rec."Functional Currency CZL")
             {
                 ApplicationArea = Basic, Suite;
-                ToolTip = 'Specifies enables of the functional currency.';
+                ToolTip = 'Specifies enables the Functional Currency. Functionality requiring the setting of Additional Reporting Currency, which is used to set the local currency for tax reporting (VAT). This ensures that the VAT specification on documents is printed in the local tax reporting currency (VAT).';
 
                 trigger OnValidate()
+                var
+                    FunctionalcurrencyErr: Label 'For the Functional Currency functionality to work correctly, the Additional Reporting Currency field must be set. The Additional Reporting Currency is used within the Functional Currency functionality to set the local currency for tax reporting (VAT).';
                 begin
                     if Rec."Functional Currency CZL" then
-                        Rec.TestField("Additional Reporting Currency");
+                        if Rec."Additional Reporting Currency" = '' then
+                            Error(FunctionalcurrencyErr);
                 end;
             }
         }
@@ -137,7 +118,7 @@ pageextension 11717 "General Ledger Setup CZL" extends "General Ledger Setup"
             field("Shared Account Schedule CZL"; Rec."Shared Account Schedule CZL")
             {
                 ApplicationArea = Basic, Suite;
-                ToolTip = 'Specifies to share the account schedule in general ledger setup.';
+                ToolTip = 'Specifies to share the financial report in general ledger setup.';
             }
         }
         movefirst(VatCZL; "VAT Reporting Date Usage", "Default VAT Reporting Date")

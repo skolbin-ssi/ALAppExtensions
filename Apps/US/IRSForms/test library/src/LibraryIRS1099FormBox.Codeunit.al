@@ -23,12 +23,20 @@ codeunit 148004 "Library IRS 1099 Form Box"
 
     procedure CreateSingleFormInReportingPeriod(StartingDate: Date; EndingDate: Date): Code[20]
     var
+        FormNo: Code[20];
+    begin
+        FormNo := LibraryUtility.GenerateGUID();
+        CreateSpecificFormInReportingPeriod(StartingDate, EndingDate, FormNo);
+        exit(FormNo);
+    end;
+
+    procedure CreateSpecificFormInReportingPeriod(StartingDate: Date; EndingDate: Date; FormNo: Code[20])
+    var
         IRS1099Form: Record "IRS 1099 Form";
     begin
         IRS1099Form.Validate("Period No.", LibraryIRSReportingPeriod.GetReportingPeriod(StartingDate, EndingDate));
-        IRS1099Form.Validate("No.", LibraryUtility.GenerateGUID());
+        IRS1099Form.Validate("No.", FormNo);
         IRS1099Form.Insert(true);
-        exit(IRS1099Form."No.");
     end;
 
     procedure CreateSingleFormBoxInReportingPeriod(ReportingDate: Date; FormNo: Code[20]): Code[20]
@@ -38,13 +46,48 @@ codeunit 148004 "Library IRS 1099 Form Box"
 
     procedure CreateSingleFormBoxInReportingPeriod(StartingDate: Date; EndingDate: Date; FormNo: Code[20]): Code[20]
     var
+        FormBoxNo: Code[20];
+    begin
+        FormBoxNo := LibraryUtility.GenerateGUID();
+        CreateSpecificFormBoxInReportingPeriod(StartingDate, EndingDate, FormNo, FormBoxNo);
+        exit(FormBoxNo);
+    end;
+
+    procedure CreateSpecificFormBoxInReportingPeriod(StartingDate: Date; EndingDate: Date; FormNo: Code[20]; FormBoxNo: Code[20])
+    var
         IRS1099FormBox: Record "IRS 1099 Form Box";
     begin
         IRS1099FormBox.Validate("Period No.", LibraryIRSReportingPeriod.GetReportingPeriod(StartingDate, EndingDate));
         IRS1099FormBox.Validate("Form No.", FormNo);
-        IRS1099FormBox.Validate("No.", LibraryUtility.GenerateGUID());
+        IRS1099FormBox.Validate("No.", FormBoxNo);
         IRS1099FormBox.Insert(true);
-        exit(IRS1099FormBox."No.");
+    end;
+
+    procedure CreateSingleFormStatementLine(ReportingDate: Date; FormNo: Code[20]; FormBoxNo: Code[20])
+    begin
+        CreateSpecificFormStatementLine(ReportingDate, ReportingDate, FormNo, FormBoxNo, LibraryUtility.GenerateGUID());
+    end;
+
+    procedure CreateSpecificFormStatementLine(StartingDate: Date; EndingDate: Date; FormNo: Code[20]; FormBoxNo: Code[20]; Description: Text)
+    var
+        IRS1099FormStatementLine: Record "IRS 1099 Form Statement Line";
+        PeriodNo: Code[20];
+        StatementLineNo: Integer;
+    begin
+        PeriodNo := LibraryIRSReportingPeriod.GetReportingPeriod(StartingDate, EndingDate);
+        IRS1099FormStatementLine.SetRange("Period No.", PeriodNo);
+        IRS1099FormStatementLine.SetRange("Form No.", FormNo);
+        if IRS1099FormStatementLine.FindLast() then
+            StatementLineNo := IRS1099FormStatementLine."Line No.";
+
+        StatementLineNo += 10000;
+        IRS1099FormStatementLine.Validate("Period No.", PeriodNo);
+        IRS1099FormStatementLine.Validate("Form No.", FormNo);
+        IRS1099FormStatementLine.Validate("Line No.", StatementLineNo);
+        IRS1099FormStatementLine.Validate("Print Value Type", Enum::"IRS 1099 Print Value Type"::Amount);
+        IRS1099FormStatementLine.Validate("Row No.", FormBoxNo);
+        IRS1099FormStatementLine.Validate("Description", Description);
+        IRS1099FormStatementLine.Insert(true);
     end;
 
     procedure CreateVendorNoWithFormBox(ReportingDate: Date; FormNo: Code[20]; FormBoxNo: Code[20]): Code[20]
@@ -80,13 +123,13 @@ codeunit 148004 "Library IRS 1099 Form Box"
 
     procedure GetVendorFormBoxAmount(var TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary; PeriodNo: Code[20]; FormNo: Code[20]; VendorNo: Code[20])
     var
-        IRS1099CalcParameters: Record "IRS 1099 Calc. Params";
+        TempIRS1099CalcParameters: Record "IRS 1099 Calc. Params";
         IRSFormsFacade: Codeunit "IRS Forms Facade";
     begin
-        IRS1099CalcParameters."Period No." := PeriodNo;
-        IRS1099CalcParameters."Form No." := FormNo;
-        IRS1099CalcParameters."Vendor No." := VendorNo;
-        IRSFormsFacade.GetVendorFormBoxAmount(TempVendFormBoxBuffer, IRS1099CalcParameters);
+        TempIRS1099CalcParameters."Period No." := PeriodNo;
+        TempIRS1099CalcParameters."Form No." := FormNo;
+        TempIRS1099CalcParameters."Vendor No." := VendorNo;
+        IRSFormsFacade.GetVendorFormBoxAmount(TempVendFormBoxBuffer, TempIRS1099CalcParameters);
     end;
 
     procedure AssignFormBoxForVendorInPeriod(VendNo: Code[20]; StartingDate: Date; EndingDate: Date; FormNo: Code[20]; FormBoxNo: Code[20])
@@ -108,21 +151,21 @@ codeunit 148004 "Library IRS 1099 Form Box"
 
     procedure MockConnectedEntryForVendFormBoxBuffer(var TempIRS1099VendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary) VendLedgEntryNo: Integer
     var
-        CurrIRS1099VendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer";
+        TempCurrIRS1099VendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer";
         EntryNo: Integer;
     begin
-        CurrIRS1099VendFormBoxBuffer.Copy(TempIRS1099VendFormBoxBuffer);
+        TempCurrIRS1099VendFormBoxBuffer.Copy(TempIRS1099VendFormBoxBuffer);
         TempIRS1099VendFormBoxBuffer.Reset();
         if TempIRS1099VendFormBoxBuffer.FindLast() then
             EntryNo := TempIRS1099VendFormBoxBuffer."Entry No.";
         EntryNo += 1;
         TempIRS1099VendFormBoxBuffer."Entry No." := EntryNo;
-        TempIRS1099VendFormBoxBuffer."Parent Entry No." := CurrIRS1099VendFormBoxBuffer."Entry No.";
+        TempIRS1099VendFormBoxBuffer."Parent Entry No." := TempCurrIRS1099VendFormBoxBuffer."Entry No.";
         TempIRS1099VendFormBoxBuffer."Buffer Type" := TempIRS1099VendFormBoxBuffer."Buffer Type"::"Ledger Entry";
         TempIRS1099VendFormBoxBuffer."Vendor Ledger Entry No." := LibraryRandom.RandInt(100);
         TempIRS1099VendFormBoxBuffer.Insert();
         VendLedgEntryNo := TempIRS1099VendFormBoxBuffer."Vendor Ledger Entry No.";
-        TempIRS1099VendFormBoxBuffer.Copy(CurrIRS1099VendFormBoxBuffer);
+        TempIRS1099VendFormBoxBuffer.Copy(TempCurrIRS1099VendFormBoxBuffer);
         exit(VendLedgEntryNo);
     end;
 
@@ -137,6 +180,16 @@ codeunit 148004 "Library IRS 1099 Form Box"
     begin
         IRS1099VendorFormBoxSetup.Get(LibraryIRSReportingPeriod.GetReportingPeriod(StartingDate, EndingDate), VendorNo);
         IRS1099VendorFormBox.PropagateVendorFormBoxSetupToExistingEntries(IRS1099VendorFormBoxSetup);
+    end;
+
+    procedure PropagateVendorFormBoxSetupToVendorLedgerEntries(StartingDate: Date; EndingDate: Date; PeriodNo: Code[20]; VendorNoFilter: Text)
+    var
+        IRS1099VendorFormBoxSetup: Record "IRS 1099 Vendor Form Box Setup";
+    begin
+        IRS1099VendorFormBoxSetup.SetRange("Period No.", PeriodNo);
+        IRS1099VendorFormBoxSetup.SetFilter("Vendor No.", VendorNoFilter);
+        IRS1099VendorFormBoxSetup.FindSet();
+        IRS1099VendorFormBox.PropagateVendorsFormBoxSetupToExistingEntries(IRS1099VendorFormBoxSetup);
     end;
 
     procedure VerifyFormBoxSetupCountForVendors(StartingDate: Date; EndingDate: Date; ExpectedCount: Integer)
@@ -178,5 +231,10 @@ codeunit 148004 "Library IRS 1099 Form Box"
         TempVendFormBoxBuffer.FindFirst();
         TempVendFormBoxBuffer.TestField("Vendor Ledger Entry No.", ExpectedEntryNo);
         TempVendFormBoxBuffer.Reset();
+    end;
+
+    procedure ShowNotificationIfVendorHas1099CodePrevPeriodButNotCurr(VendNo: Code[20]; PostingDate: Date)
+    begin
+        IRS1099VendorFormBox.ShowNotificationIfVendorHas1099CodePrevPeriodButNotCurr(VendNo, PostingDate);
     end;
 }

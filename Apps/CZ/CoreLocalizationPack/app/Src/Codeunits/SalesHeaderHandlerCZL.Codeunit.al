@@ -21,7 +21,6 @@ codeunit 11743 "Sales Header Handler CZL"
     [EventSubscriber(ObjectType::Table, Database::"Sales Header", 'OnUpdateBillToCustOnAfterSalesQuote', '', false, false)]
     local procedure UpdateRegNoOnUpdateBillToCustOnAfterSalesQuote(var SalesHeader: Record "Sales Header"; Contact: Record Contact)
     begin
-        SalesHeader."Registration No. CZL" := Contact.GetRegistrationNoTrimmedCZL();
         SalesHeader."Tax Registration No. CZL" := Contact."Tax Registration No. CZL";
     end;
 
@@ -32,14 +31,12 @@ codeunit 11743 "Sales Header Handler CZL"
             SalesHeader.Validate("Bank Account Code CZL", SalesHeader.GetDefaulBankAccountNoCZL())
         else
             SalesHeader.Validate("Bank Account Code CZL", Customer."Preferred Bank Account Code");
-        SalesHeader."Registration No. CZL" := Customer.GetRegistrationNoTrimmedCZL();
         SalesHeader."Tax Registration No. CZL" := Customer."Tax Registration No. CZL";
     end;
 
     [EventSubscriber(ObjectType::Table, Database::"Sales Header", 'OnAfterCopySellToCustomerAddressFieldsFromCustomer', '', false, false)]
     local procedure UpdateOnAfterCopySellToCustomerAddressFieldsFromCustomer(var SalesHeader: Record "Sales Header"; SellToCustomer: Record Customer)
     begin
-        SalesHeader."Registration No. CZL" := SellToCustomer.GetRegistrationNoTrimmedCZL();
         SalesHeader."Tax Registration No. CZL" := SellToCustomer."Tax Registration No. CZL";
         if SalesHeader.IsCreditDocType() then
             SalesHeader.Validate("Shipment Method Code", SellToCustomer."Shipment Method Code");
@@ -76,6 +73,14 @@ codeunit 11743 "Sales Header Handler CZL"
         SalesHeader.UpdateVATCurrencyFactorCZLByCurrencyFactorCZL()
     end;
 
+    [EventSubscriber(ObjectType::Table, Database::"Sales Header", 'OnBeforeUpdateVATReportingDate', '', false, false)]
+    local procedure OnBeforeUpdateVATReportingDate(var SalesHeader: Record "Sales Header"; CalledByFieldNo: Integer; var IsHandled: Boolean)
+    begin
+        if IsHandled then
+            exit;
+        IsHandled := SalesHeader.IsVATReportingDateChanged() and (CalledByFieldNo = SalesHeader.FieldNo("Document Date"));
+    end;
+
     [EventSubscriber(ObjectType::Table, Database::"Sales Header", 'OnAfterInitFromSalesHeader', '', false, false)]
     local procedure UpdateBankAccountOnAfterInitFromSalesHeader(var SalesHeader: Record "Sales Header"; SourceSalesHeader: Record "Sales Header")
     begin
@@ -91,7 +96,7 @@ codeunit 11743 "Sales Header Handler CZL"
     [EventSubscriber(ObjectType::Table, Database::"Sales Header", 'OnAfterUpdateShipToAddress', '', false, false)]
     local procedure UpdateVATCountryRegionCodeOnAfterUpdateShipToAddress(var SalesHeader: Record "Sales Header")
     begin
-        if SalesHeader.IsCreditDocType() then
+        if SalesHeader.IsCreditDocType() and (SalesHeader."No." <> '') then
             SalesHeader.Validate("VAT Country/Region Code", SalesHeader."Sell-to Country/Region Code");
     end;
 }

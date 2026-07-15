@@ -6,9 +6,6 @@ namespace Microsoft.Finance;
 
 using Microsoft.Finance.GeneralLedger.Account;
 using System.Utilities;
-#if not CLEAN24
-using Microsoft.Finance.GeneralLedger.Reports;
-#endif
 
 report 14605 "IS Trial Balance - IRS Number"
 {
@@ -27,13 +24,13 @@ report 14605 "IS Trial Balance - IRS Number"
             column(TodayFormatted; Format(Today, 0, 4))
             {
             }
-            column(PeriodText; 'Period:  ' + PeriodText)
+            column(PeriodText; PeriodCaptionLbl + ':  ' + PeriodText)
             {
             }
             column(CompanyName; COMPANYPROPERTY.DisplayName())
             {
             }
-            column(GLFilter; "G/L Account".TableName + ': ' + GLFilter)
+            column(GLFilter; GLAccountCaptionLbl + ': ' + GLFilter)
             {
             }
             column(EmptyString; '')
@@ -130,17 +127,6 @@ report 14605 "IS Trial Balance - IRS Number"
         PeriodText := "G/L Account".GetFilter("Date Filter");
     end;
 
-#if not CLEAN24
-    trigger OnInitReport()
-    var
-        ISCoreAppSetup: Record "IS Core App Setup";
-    begin
-        if not ISCoreAppSetup.IsEnabled() then begin
-            Report.Run(Report::"Trial Balance - IRS Number");
-            Error('');
-        end;
-    end;
-#endif
 
     var
         GLFilter: Text[250];
@@ -153,5 +139,6 @@ report 14605 "IS Trial Balance - IRS Number"
         DebitCaptionLbl: Label 'Debit';
         CreditCaptionLbl: Label 'Credit';
         IRSNumberCaptionLbl: Label 'IRS Number';
+        PeriodCaptionLbl: Label 'Period';
+        GLAccountCaptionLbl: Label 'G/L Account';
 }
-

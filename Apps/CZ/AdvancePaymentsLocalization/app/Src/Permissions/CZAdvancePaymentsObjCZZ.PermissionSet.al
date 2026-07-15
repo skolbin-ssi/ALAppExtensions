@@ -1,4 +1,5 @@
-﻿permissionset 11752 "CZ Advance Payments - Obj. CZZ"
+#pragma warning disable AA0247
+permissionset 11752 "CZ Advance Payments - Obj. CZZ"
 {
     Access = Public;
     Assignable = false;
@@ -48,6 +49,7 @@
                   Codeunit "Sales Post Advance Letter CZZ" = X,
                   Codeunit "Show Preview Handler CZZ" = X,
                   Codeunit "Sugg. Wksh. Lines Handler CZZ" = X,
+                  Codeunit "Purch. Inv. Header - Edit CZZ" = X,
                   Codeunit "Upgrade Application CZZ" = X,
                   Codeunit "Upgrade Tag Definitions CZZ" = X,
                   Codeunit "VAT Entry Handler CZZ" = X,
@@ -69,11 +71,6 @@
                   Page "Purch. Advance Letters CZZ" = X,
                   Page "Purch. Adv. Letter Entries CZZ" = X,
                   Page "Purch. Adv. Letter FactBox CZZ" = X,
-#if not CLEAN25
-#pragma warning disable AL0432
-                  Page "Purch. Adv. Usage FactBox CZZ" = X,
-#pragma warning restore AL0432
-#endif
                   Page "Sal. Adv. Letter Ent.Prev. CZZ" = X,
                   Page "Sales Advance Letter CZZ" = X,
                   Page "Sales Advance Letter Line CZZ" = X,
@@ -81,11 +78,6 @@
                   Page "Sales Advance Letters CZZ" = X,
                   Page "Sales Adv. Letter Entries CZZ" = X,
                   Page "Sales Adv. Letter FactBox CZZ" = X,
-#if not CLEAN25
-#pragma warning disable AL0432
-                  Page "Sales Adv. Usage FactBox CZZ" = X,
-#pragma warning restore AL0432
-#endif
                   Page "Suggested Usage CZZ" = X,
                   Page "VAT Document CZZ" = X,
                   Page "VAT Document Line CZZ" = X,

@@ -1,4 +1,17 @@
+#pragma warning disable AA0247
 #if not CLEANSCHEMA26
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
+namespace Microsoft.DemoData.Manufacturing;
+
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.VAT.Setup;
+using Microsoft.Inventory.Item;
+using Microsoft.Inventory.Location;
+
 table 4760 "Manufacturing Demo Data Setup"
 {
     ObsoleteReason = 'The table is moved to "Manufacturing Module Setup" table';
@@ -6,6 +19,7 @@ table 4760 "Manufacturing Demo Data Setup"
     InherentPermissions = rimdX;
     ObsoleteState = Removed;
     ObsoleteTag = '26.0';
+    ReplicateData = false;
 
     fields
     {
@@ -83,11 +97,13 @@ table 4760 "Manufacturing Demo Data Setup"
         }
         field(38; "Price Factor"; Decimal)
         {
+            AutoFormatType = 0;
             DataClassification = CustomerContent;
             InitValue = 1;
         }
         field(39; "Rounding Precision"; Decimal)
         {
+            AutoFormatType = 0;
             DataClassification = CustomerContent;
             Caption = 'Rounding Precision';
             InitValue = 0.01;

@@ -5,8 +5,10 @@
 
 namespace System.Email;
 
-using System.Environment;
 using System.DataAdministration;
+using System.Environment;
+using System.Text;
+using System.Utilities;
 
 codeunit 4509 "Email - Outlook API Helper"
 {
@@ -14,6 +16,7 @@ codeunit 4509 "Email - Outlook API Helper"
                     tabledata "Email - Outlook Account" = rimd;
 
     var
+        EmailAccount: Codeunit "Email Account";
         CannotConnectToMailServerErr: Label 'Client ID or Client secret is not set up on the Email Microsoft Entra application registration page.';
         SetupOutlookAPIQst: Label 'To connect to your email account you must create an App registration in Microsoft Entra and then enter information about the registration on the Email Microsoft Entra application registration page in Business Central. Do you want to do that now?';
         OnPremOnlyErr: Label 'Authentication using the Client ID and secret should only be used for Business Central on-premises.';
@@ -194,18 +197,6 @@ codeunit 4509 "Email - Outlook API Helper"
         exit(RecipientsJson);
     end;
 
-#if not CLEAN25
-    [NonDebuggable]
-    [Obsolete('Replaced by an overload that takes in SecretText data type for ClientSecret', '25.0')]
-    procedure GetClientIDAndSecret(var ClientId: Text; var ClientSecret: Text)
-    var
-        Secret: SecretText;
-    begin
-        GetClientIDAndSecret(ClientId, Secret);
-        ClientSecret := Secret.Unwrap();
-    end;
-#endif
-
     procedure GetClientIDAndSecret(var ClientId: Text; var ClientSecret: SecretText)
     var
         Setup: Record "Email - Outlook API Setup";
@@ -270,18 +261,9 @@ codeunit 4509 "Email - Outlook API Helper"
             IsolatedStorage.Delete(Rec.ClientSecret, DataScope::Module);
     end;
 
-#if not CLEAN24
-    [Obsolete('Replaced by InitializeClients with v2 interfaces.', '24.0')]
-    procedure InitializeClients(var OutlookAPIClient: interface "Email - Outlook API Client"; var OAuthClient: interface "Email - OAuth Client")
-    var
-        DefaultAPIClient: Codeunit "Email - Outlook API Client";
-        DefaultOAuthClient: Codeunit "Email - OAuth Client";
-    begin
-        OutlookAPIClient := DefaultAPIClient;
-        OAuthClient := DefaultOAuthClient;
-        OnAfterInitializeClients(OutlookAPIClient, OAuthClient);
-    end;
-#endif
+#if not CLEAN28
+#pragma warning disable AL0432
+    [Obsolete('Update OutlookAPIClient to v5.', '28.0')]
     procedure InitializeClients(var OutlookAPIClient: interface "Email - Outlook API Client v2"; var OAuthClient: interface "Email - OAuth Client v2")
     var
         DefaultAPIClient: Codeunit "Email - Outlook API Client";
@@ -291,21 +273,47 @@ codeunit 4509 "Email - Outlook API Helper"
         OAuthClient := DefaultOAuthClient;
         OnAfterInitializeClientsV2(OutlookAPIClient, OAuthClient);
     end;
-
-    procedure InitializeClients(var OutlookAPIClient: interface "Email - Outlook API Client v3"; var OAuthClient: interface "Email - OAuth Client v2")
+#pragma warning restore AL0432
+#endif
+#if not CLEAN28
+#pragma warning disable AL0432
+    [Obsolete('Update OutlookAPIClient to v5.', '28.0')]
+    procedure InitializeClients(var OutlookAPIClient: interface "Email - Outlook API Client v4"; var OAuthClient: interface "Email - OAuth Client v2")
     var
         DefaultAPIClient: Codeunit "Email - Outlook API Client";
         DefaultOAuthClient: Codeunit "Email - OAuth Client";
     begin
         OutlookAPIClient := DefaultAPIClient;
         OAuthClient := DefaultOAuthClient;
-        OnAfterInitializeClientsV3(OutlookAPIClient, OAuthClient);
+        OnAfterInitializeClientsV4(OutlookAPIClient, OAuthClient);
+    end;
+#pragma warning restore AL0432
+#endif
+
+    procedure InitializeClients(var OutlookAPIClient: interface "Email - Outlook API Client v5"; var OAuthClient: interface "Email - OAuth Client v2")
+    var
+        DefaultAPIClient: Codeunit "Email - Outlook API Client";
+        DefaultOAuthClient: Codeunit "Email - OAuth Client";
+    begin
+        OutlookAPIClient := DefaultAPIClient;
+        OAuthClient := DefaultOAuthClient;
+        OnAfterInitializeClientsV5(OutlookAPIClient, OAuthClient);
+    end;
+
+    procedure InitializeClients(var OutlookAPIClient: interface "Email - Outlook API Client v6"; var OAuthClient: interface "Email - OAuth Client v2")
+    var
+        DefaultAPIClient: Codeunit "Email - Outlook API Client";
+        DefaultOAuthClient: Codeunit "Email - OAuth Client";
+    begin
+        OutlookAPIClient := DefaultAPIClient;
+        OAuthClient := DefaultOAuthClient;
+        OnAfterInitializeClientsV6(OutlookAPIClient, OAuthClient);
     end;
 
     procedure Send(EmailMessage: Codeunit "Email Message"; AccountId: Guid)
     var
         EmailOutlookAccount: Record "Email - Outlook Account";
-        APIClient: interface "Email - Outlook API Client v2";
+        APIClient: interface "Email - Outlook API Client v5";
         OAuthClient: interface "Email - OAuth Client v2";
         AccessToken: SecretText;
     begin
@@ -319,7 +327,7 @@ codeunit 4509 "Email - Outlook API Helper"
 
     procedure Send(EmailMessage: Codeunit "Email Message")
     var
-        APIClient: interface "Email - Outlook API Client v2";
+        APIClient: interface "Email - Outlook API Client v5";
         OAuthClient: interface "Email - OAuth Client v2";
         AccessToken: SecretText;
     begin
@@ -329,10 +337,18 @@ codeunit 4509 "Email - Outlook API Helper"
         APIClient.SendEmail(AccessToken, EmailMessageToJson(EmailMessage));
     end;
 
-    procedure RetrieveEmails(AccountId: Guid; MarkEmailsAsRead: Boolean; var EmailInbox: Record "Email Inbox")
+    procedure RetrieveEmails(AccountId: Guid; var EmailInbox: Record "Email Inbox")
+    var
+        TempFilters: Record "Email Retrieval Filters" temporary;
+    begin
+        TempFilters.Init();
+        RetrieveEmails(AccountId, EmailInbox, TempFilters);
+    end;
+
+    procedure RetrieveEmails(AccountId: Guid; var EmailInbox: Record "Email Inbox"; var Filters: Record "Email Retrieval Filters")
     var
         EmailOutlookAccount: Record "Email - Outlook Account";
-        APIClient: interface "Email - Outlook API Client v3";
+        APIClient: interface "Email - Outlook API Client v5";
         OAuthClient: interface "Email - OAuth Client v2";
         AccessToken: SecretText;
         EmailsArray: JsonArray;
@@ -344,22 +360,43 @@ codeunit 4509 "Email - Outlook API Helper"
         if not EmailOutlookAccount.Get(AccountId) then
             Error(AccountNotFoundErr);
 
+        EmailOutlookAccountAddressValidation(EmailOutlookAccount);
+
         OAuthClient.GetAccessToken(AccessToken);
 
-        EmailsArray := APIClient.RetrieveEmails(AccessToken, MarkEmailsAsRead, EmailOutlookAccount);
+        EmailsArray := APIClient.RetrieveEmails(AccessToken, EmailOutlookAccount, Filters);
 
         for Counter := 0 to EmailsArray.Count() - 1 do begin
             EmailsArray.Get(Counter, JsonToken);
             EmailObject := JsonToken.AsObject();
-            CreateEmailInboxFromJsonObject(EmailInbox, EmailOutlookAccount, EmailObject);
-            if MarkEmailsAsRead then
-                MarkEmailAsRead(EmailOutlookAccount.Id, EmailInbox."External Message Id");
+            CreateEmailInboxFromJsonObject(EmailInbox, EmailOutlookAccount, Filters, EmailObject);
         end;
     end;
 
-    local procedure CreateEmailInboxFromJsonObject(var EmailInbox: Record "Email Inbox"; OutlookAccount: Record "Email - Outlook Account"; EmailJsonObject: JsonObject)
+    /// <summary>
+    /// The current user connector does not store the actual email address but can be retrieved from the email accounts as it subsitutes the placeholder value.
+    /// The email address is validated and if it is not valid, the email address is replaced with the proper one from calling GetAllAccounts in EmailAccount codeunit.
+    /// </summary>
+    /// <param name="EmailOutlookAccount">The retrieved email outlook account.</param>
+    local procedure EmailOutlookAccountAddressValidation(var EmailOutlookAccount: Record "Email - Outlook Account")
+    begin
+        if not EmailAccount.ValidateEmailAddress(EmailOutlookAccount."Email Address") then
+            EmailOutlookAccount."Email Address" := CopyStr(GetEmailAddressFromEmailAccounts(EmailOutlookAccount.Id), 1, MaxStrLen(EmailOutlookAccount."Email Address"));
+    end;
+
+    local procedure GetEmailAddressFromEmailAccounts(AccountId: Guid): Text
     var
-        EmailInboxDelete: Record "Email Inbox";
+        TempEmailAccounts: Record "Email Account";
+    begin
+        EmailAccount.GetAllAccounts(TempEmailAccounts);
+        TempEmailAccounts.SetRange("Account Id", AccountId);
+        TempEmailAccounts.FindFirst();
+
+        exit(TempEmailAccounts."Email Address");
+    end;
+
+    local procedure CreateEmailInboxFromJsonObject(var EmailInbox: Record "Email Inbox"; OutlookAccount: Record "Email - Outlook Account"; var Filters: Record "Email Retrieval Filters"; EmailJsonObject: JsonObject)
+    var
         EmailMessage: Codeunit "Email Message";
         BodyObject: JsonObject;
         SenderObject: JsonObject;
@@ -372,6 +409,9 @@ codeunit 4509 "Email - Outlook API Helper"
         SenderName: Text;
         SenderEmail: Text;
         HasAttachments: Boolean;
+        HTMLBody: Boolean;
+        IsRead: Boolean;
+        IsDraft: Boolean;
     begin
         ReceivedDateTime := GetDateTimeFromJsonObject(EmailJsonObject, 'receivedDateTime');
         SentDateTime := GetDateTimeFromJsonObject(EmailJsonObject, 'sentDateTime');
@@ -379,6 +419,8 @@ codeunit 4509 "Email - Outlook API Helper"
         ConversationId := GetTextFromJsonObject(EmailJsonObject, 'conversationId');
         Subject := GetTextFromJsonObject(EmailJsonObject, 'subject');
         HasAttachments := GetBooleanFromJsonObject(EmailJsonObject, 'hasAttachments');
+        IsRead := GetBooleanFromJsonObject(EmailJsonObject, 'isRead');
+        IsDraft := GetBooleanFromJsonObject(EmailJsonObject, 'isDraft');
 
         BodyObject := GetJsonObjectFromJsonObject(EmailJsonObject, 'body');
         Body := GetTextFromJsonObject(BodyObject, 'content');
@@ -388,17 +430,14 @@ codeunit 4509 "Email - Outlook API Helper"
         SenderName := GetTextFromJsonObject(SenderObject, 'name');
         SenderEmail := GetTextFromJsonObject(SenderObject, 'address');
 
-        if DoesExternalMessageIdExist(ExternalMessageId) then begin
-            EmailInboxDelete.SetRange("External Message Id", ExternalMessageId);
-            EmailInboxDelete.DeleteAll();
-        end;
-
-        EmailMessage.Create('', Subject, Body, false);
+        HTMLBody := Filters."Body Type" = Filters."Body Type"::HTML;
+        if Filters."Last Message Only" then
+            Body := KeepLastMessageOnly(Body);
+        EmailMessage.Create('', Subject, Body, HTMLBody, true);
 
         if HasAttachments then
             AddAttachmentsToMessage(EmailJsonObject, EmailMessage);
 
-        EmailInbox.Init();
         EmailInbox.Id := 0;
         EmailInbox."External Message Id" := CopyStr(ExternalMessageId, 1, MaxStrLen(EmailInbox."External Message Id"));
         EmailInbox."Conversation Id" := CopyStr(ConversationId, 1, MaxStrLen(EmailInbox."Conversation Id"));
@@ -410,29 +449,146 @@ codeunit 4509 "Email - Outlook API Helper"
         EmailInbox."Sent DateTime" := SentDateTime;
         EmailInbox."Sender Name" := CopyStr(SenderName, 1, MaxStrLen(EmailInbox."Sender Name"));
         EmailInbox."Sender Address" := CopyStr(SenderEmail, 1, MaxStrLen(EmailInbox."Sender Address"));
+        EmailInbox."Is Read" := IsRead;
+        EmailInbox."Is Draft" := IsDraft;
         EmailInbox.Insert();
         EmailInbox.Mark(true);
     end;
 
-    local procedure DoesExternalMessageIdExist(ExternalMessageId: Text): Boolean
+    procedure GetEmailFolders(AccountId: Guid; var EmailFolders: Record "Email Folders")
     var
-        EmailInbox: Record "Email Inbox";
+        EmailOutlookAccount: Record "Email - Outlook Account";
+        APIClient: interface "Email - Outlook API Client v5";
+        OAuthClient: interface "Email - OAuth Client v2";
+        AccessToken: SecretText;
+        EmailFoldersJsonArray: JsonArray;
     begin
-        EmailInbox.SetRange("External Message Id", ExternalMessageId);
-        exit(not EmailInbox.IsEmpty());
+        InitializeClients(APIClient, OAuthClient);
+        if not EmailOutlookAccount.Get(AccountId) then
+            Error(AccountNotFoundErr);
+
+        EmailOutlookAccountAddressValidation(EmailOutlookAccount);
+
+        OAuthClient.GetAccessToken(AccessToken);
+
+        EmailFoldersJsonArray := APIClient.GetMailboxFolders(AccessToken, EmailOutlookAccount);
+
+        ParseEmailFoldersFromJsonArray(APIClient, AccessToken, EmailOutlookAccount, EmailFoldersJsonArray, '', 0, EmailFolders);
+    end;
+
+    local procedure ParseEmailFoldersFromJsonArray(APIClient: interface "Email - Outlook API Client v5"; AccessToken: SecretText; OutlookAccount: Record "Email - Outlook Account"; EmailFoldersJsonArray: JsonArray; ParentFolderId: Text; ParentIndent: Integer; var EmailFolders: Record "Email Folders")
+    var
+        EmailFolderObject: JsonObject;
+        JsonToken: JsonToken;
+        NextEmailFoldersJsonArray: JsonArray;
+        Counter: Integer;
+        FolderId: Text;
+        DisplayName: Text;
+        ChildrenCount: Integer;
+        Previous: Integer;
+    begin
+        for Counter := 0 to EmailFoldersJsonArray.Count() - 1 do begin
+            Previous := EmailFolders.Ordering;
+            EmailFoldersJsonArray.Get(Counter, JsonToken);
+            EmailFolderObject := JsonToken.AsObject();
+
+            FolderId := GetTextFromJsonObject(EmailFolderObject, 'id');
+            DisplayName := GetTextFromJsonObject(EmailFolderObject, 'displayName');
+            ChildrenCount := GetIntegerFromJsonObject(EmailFolderObject, 'childFolderCount');
+
+            EmailFolders.Init();
+            EmailFolders.Id := CopyStr(FolderId, 1, MaxStrLen(EmailFolders.Id));
+            EmailFolders."Folder Name" := CopyStr(DisplayName, 1, MaxStrLen(EmailFolders."Folder Name"));
+            EmailFolders."Has Children" := ChildrenCount > 0;
+            EmailFolders."Parent Folder Id" := CopyStr(ParentFolderId, 1, MaxStrLen(EmailFolders."Parent Folder Id"));
+            EmailFolders.Indent := ParentIndent + 1;
+            EmailFolders.Ordering := Previous + 1;
+            EmailFolders.Insert();
+
+            if EmailFolders."Has Children" then begin
+                NextEmailFoldersJsonArray := APIClient.GetChildMailboxFolders(AccessToken, OutlookAccount, EmailFolders.Id);
+                ParseEmailFoldersFromJsonArray(APIClient, AccessToken, OutlookAccount, NextEmailFoldersJsonArray, EmailFolders.Id, EmailFolders.Indent + 1, EmailFolders);
+            end;
+        end;
+    end;
+
+    /// <summary>
+    /// Keep only the last message in the email body.
+    /// </summary>
+    /// <param name="Value">Email body.</param>
+    /// <returns>Cleaned email body.</returns>
+    /// <remarks>The last message is the message that is the reply to the email. The history of the email is removed.</remarks>
+    local procedure KeepLastMessageOnly(Value: Text): Text
+    begin
+        Value := RemoveOldOutlookHistory(Value);
+        Value := RemoveOutlookHistory(Value);
+        Value := RemoveGmailHistory(Value);
+        Value := RemoveYahooHistory(Value);
+        exit(Value);
+    end;
+
+    /// <summary>
+    /// Removes the history from emails that are sent from new Outlook client.
+    /// </summary>
+    local procedure RemoveOutlookHistory(Value: Text): Text
+    var
+        RemoveFromLbl: Label '<div id="appendonsend">', Locked = true;
+    begin
+        exit(RemoveHistory(Value, RemoveFromLbl));
+    end;
+
+    /// <summary>
+    /// Removes the history from emails that are sent from old Outlook client.
+    /// </summary>
+    local procedure RemoveOldOutlookHistory(Value: Text): Text
+    var
+        RemoveFromLbl: Label '<div style="border:none; border-top:solid #E1E1E1 1.0pt; padding:3.0pt 0in 0in 0in">', Locked = true;
+    begin
+        exit(RemoveHistory(Value, RemoveFromLbl));
+    end;
+
+    local procedure RemoveGmailHistory(Value: Text): Text
+    var
+        RemoveFromLbl: Label '<div class="gmail_quote gmail_quote_container">', Locked = true;
+    begin
+        exit(RemoveHistory(Value, RemoveFromLbl));
+    end;
+
+    local procedure RemoveYahooHistory(Value: Text): Text
+    var
+        RemoveFromLbl: Label '<div id="yahoo_quoted', Locked = true;
+    begin
+        exit(RemoveHistory(Value, RemoveFromLbl));
+    end;
+
+    local procedure RemoveHistory(Value: Text; Match: Text): Text
+    var
+        Pos: Integer;
+    begin
+        Pos := StrPos(Value, Match);
+        if Pos > 0 then
+            exit(CopyStr(Value, 1, Pos - 1) + '</body></html>');
+        exit(Value);
     end;
 
     local procedure AddAttachmentsToMessage(EmailJsonObject: JsonObject; var EmailMessage: Codeunit "Email Message")
     var
+        Base64Convert: Codeunit "Base64 Convert";
+        TempBlob: Codeunit "Temp Blob";
         AttachmentsArray: JsonArray;
         AttachmentObject: JsonObject;
         JsonToken: JsonToken;
+        AttachmentInStream: InStream;
+        AttachmentOutStream: OutStream;
         Counter: Integer;
         AttachmentName: Text[250];
         ContentType: Text[250];
+        ContentId: Text[40];
         ContentBytesBase64: Text;
+        IsInline: Boolean;
     begin
-        EmailJsonObject.Get('attachments', JsonToken);
+        if not EmailJsonObject.Get('attachments', JsonToken) then
+            exit;
         AttachmentsArray := JsonToken.AsArray();
 
         for Counter := 0 to AttachmentsArray.Count() - 1 do begin
@@ -442,9 +598,26 @@ codeunit 4509 "Email - Outlook API Helper"
             AttachmentName := CopyStr(GetTextFromJsonObject(AttachmentObject, 'name'), 1, MaxStrLen(AttachmentName));
             ContentType := CopyStr(GetTextFromJsonObject(AttachmentObject, 'contentType'), 1, MaxStrLen(ContentType));
             ContentBytesBase64 := GetTextFromJsonObject(AttachmentObject, 'contentBytes');
+            IsInline := GetBooleanFromJsonObject(AttachmentObject, 'isInline');
+            if AttachmentObject.Get('contentId', JsonToken) then
+                ContentId := CopyStr(JsonToken.AsValue().AsText(), 1, MaxStrLen(ContentId))
+            else
+                ContentId := '';
 
-            EmailMessage.AddAttachment(AttachmentName, ContentType, ContentBytesBase64);
+            Clear(TempBlob);
+            TempBlob.CreateOutStream(AttachmentOutStream);
+            Base64Convert.FromBase64(ContentBytesBase64, AttachmentOutStream);
+            TempBlob.CreateInStream(AttachmentInStream);
+            EmailMessage.AddAttachment(AttachmentName, ContentType, IsInline, ContentId, AttachmentInStream);
         end;
+    end;
+
+    local procedure GetIntegerFromJsonObject(JsonObject: JsonObject; KeyName: Text): Integer
+    var
+        JsonToken: JsonToken;
+    begin
+        JsonObject.Get(KeyName, JsonToken);
+        exit(JsonToken.AsValue().AsInteger());
     end;
 
     local procedure GetTextFromJsonObject(JsonObject: JsonObject; KeyName: Text): Text
@@ -482,7 +655,7 @@ codeunit 4509 "Email - Outlook API Helper"
     procedure MarkEmailAsRead(AccountId: Guid; ExternalMessageId: Text)
     var
         EmailOutlookAccount: Record "Email - Outlook Account";
-        APIClient: interface "Email - Outlook API Client v3";
+        APIClient: interface "Email - Outlook API Client v5";
         OAuthClient: interface "Email - OAuth Client v2";
         AccessToken: SecretText;
     begin
@@ -490,14 +663,97 @@ codeunit 4509 "Email - Outlook API Helper"
         if not EmailOutlookAccount.Get(AccountId) then
             Error(AccountNotFoundErr);
 
+        EmailOutlookAccountAddressValidation(EmailOutlookAccount);
+
         OAuthClient.GetAccessToken(AccessToken);
         APIClient.MarkEmailAsRead(AccessToken, EmailOutlookAccount."Email Address", ExternalMessageId);
+    end;
+
+    procedure GetEmailCategories(AccountId: Guid; var EmailCategories: Record "Email Categories" temporary)
+    var
+        EmailOutlookAccount: Record "Email - Outlook Account";
+        APIClient: interface "Email - Outlook API Client v6";
+        OAuthClient: interface "Email - OAuth Client v2";
+        AccessToken: SecretText;
+        CategoriesJsonArray: JsonArray;
+        CategoryObject: JsonObject;
+        JsonToken: JsonToken;
+        Counter: Integer;
+        CategoryId: Text;
+        DisplayName: Text;
+        Color: Text;
+    begin
+        InitializeClients(APIClient, OAuthClient);
+        if not EmailOutlookAccount.Get(AccountId) then
+            Error(AccountNotFoundErr);
+
+        EmailOutlookAccountAddressValidation(EmailOutlookAccount);
+
+        OAuthClient.GetAccessToken(AccessToken);
+
+        CategoriesJsonArray := APIClient.GetEmailCategories(AccessToken, EmailOutlookAccount);
+
+        for Counter := 0 to CategoriesJsonArray.Count() - 1 do begin
+            CategoriesJsonArray.Get(Counter, JsonToken);
+            CategoryObject := JsonToken.AsObject();
+
+            CategoryId := GetTextFromJsonObject(CategoryObject, 'id');
+            DisplayName := GetTextFromJsonObject(CategoryObject, 'displayName');
+            if CategoryObject.Get('color', JsonToken) then
+                Color := JsonToken.AsValue().AsText()
+            else
+                Color := '';
+
+            EmailCategories.Init();
+            EmailCategories.Ordering := Counter + 1;
+            EmailCategories.Id := CopyStr(CategoryId, 1, MaxStrLen(EmailCategories.Id));
+            EmailCategories."Display Name" := CopyStr(DisplayName, 1, MaxStrLen(EmailCategories."Display Name"));
+            EmailCategories.Color := CopyStr(Color, 1, MaxStrLen(EmailCategories.Color));
+            EmailCategories.Insert();
+        end;
+    end;
+
+    procedure CreateEmailCategory(AccountId: Guid; CategoryDisplayName: Text; CategoryColor: Text): Text
+    var
+        EmailOutlookAccount: Record "Email - Outlook Account";
+        APIClient: interface "Email - Outlook API Client v6";
+        OAuthClient: interface "Email - OAuth Client v2";
+        AccessToken: SecretText;
+    begin
+        InitializeClients(APIClient, OAuthClient);
+        if not EmailOutlookAccount.Get(AccountId) then
+            Error(AccountNotFoundErr);
+
+        EmailOutlookAccountAddressValidation(EmailOutlookAccount);
+
+        OAuthClient.GetAccessToken(AccessToken);
+
+        exit(APIClient.CreateEmailCategory(AccessToken, EmailOutlookAccount, CategoryDisplayName, CategoryColor));
+    end;
+
+    procedure ApplyEmailCategory(AccountId: Guid; ExternalId: Text; Categories: List of [Text])
+    var
+        EmailOutlookAccount: Record "Email - Outlook Account";
+        APIClient: interface "Email - Outlook API Client v6";
+        OAuthClient: interface "Email - OAuth Client v2";
+        AccessToken: SecretText;
+    begin
+        InitializeClients(APIClient, OAuthClient);
+        if not EmailOutlookAccount.Get(AccountId) then
+            Error(AccountNotFoundErr);
+
+        EmailOutlookAccountAddressValidation(EmailOutlookAccount);
+
+        OAuthClient.GetAccessToken(AccessToken);
+
+        APIClient.ApplyEmailCategory(AccessToken, EmailOutlookAccount, ExternalId, Categories);
     end;
 
     procedure ReplyEmail(AccountId: Guid; var EmailMessage: Codeunit "Email Message")
     var
         EmailOutlookAccount: Record "Email - Outlook Account";
-        APIClient: interface "Email - Outlook API Client v3";
+        TempFilters: Record "Email Retrieval Filters" temporary;
+        APIClient: interface "Email - Outlook API Client v5";
         OAuthClient: interface "Email - OAuth Client v2";
         AccessToken: SecretText;
         DraftMessageId: Text;
@@ -511,10 +767,15 @@ codeunit 4509 "Email - Outlook API Helper"
         if not EmailOutlookAccount.Get(AccountId) then
             Error(AccountNotFoundErr);
 
+        EmailOutlookAccountAddressValidation(EmailOutlookAccount);
+
         OAuthClient.GetAccessToken(AccessToken);
 
         DraftMessageId := APIClient.CreateDraftReply(AccessToken, EmailOutlookAccount."Email Address", EmailMessage.GetExternalId());
-        DraftMessageJson := APIClient.RetrieveEmail(AccessToken, EmailOutlookAccount."Email Address", DraftMessageId, EmailMessage.IsBodyHTMLFormatted());
+
+        TempFilters."Body Type" := TempFilters."Body Type"::HTML;
+        TempFilters.Insert();
+        DraftMessageJson := APIClient.RetrieveEmail(AccessToken, EmailOutlookAccount."Email Address", DraftMessageId, TempFilters);
         if EmailMessage.IsBodyHTMLFormatted() then begin
             DraftMessageBody := GetMessageBody(DraftMessageJson);
             Position := DraftMessageBody.IndexOf('<body', 1);
@@ -541,20 +802,30 @@ codeunit 4509 "Email - Outlook API Helper"
         exit(JToken.AsValue().AsText());
     end;
 
-#if not CLEAN24
-    [InternalEvent(false)]
-    local procedure OnAfterInitializeClients(var OutlookAPIClient: interface "Email - Outlook API Client"; var OAuthClient: interface "Email - OAuth Client")
-    begin
-    end;
-#endif
-
+#if not CLEAN28
+#pragma warning disable AL0432
     [InternalEvent(false)]
     local procedure OnAfterInitializeClientsV2(var OutlookAPIClient: interface "Email - Outlook API Client v2"; var OAuthClient: interface "Email - OAuth Client v2")
     begin
     end;
+#pragma warning restore AL0432
+#endif
+#if not CLEAN28
+#pragma warning disable AL0432
+    [InternalEvent(false)]
+    local procedure OnAfterInitializeClientsV4(var OutlookAPIClient: interface "Email - Outlook API Client v4"; var OAuthClient: interface "Email - OAuth Client v2")
+    begin
+    end;
+#pragma warning restore AL0432
+#endif
 
     [InternalEvent(false)]
-    local procedure OnAfterInitializeClientsV3(var OutlookAPIClient: interface "Email - Outlook API Client v3"; var OAuthClient: interface "Email - OAuth Client v2")
+    local procedure OnAfterInitializeClientsV5(var OutlookAPIClient: interface "Email - Outlook API Client v5"; var OAuthClient: interface "Email - OAuth Client v2")
+    begin
+    end;
+
+    [InternalEvent(false)]
+    local procedure OnAfterInitializeClientsV6(var OutlookAPIClient: interface "Email - Outlook API Client v6"; var OAuthClient: interface "Email - OAuth Client v2")
     begin
     end;
 

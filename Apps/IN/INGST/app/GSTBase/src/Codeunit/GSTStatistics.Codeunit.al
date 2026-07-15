@@ -192,23 +192,6 @@ codeunit 18006 "GST Statistics"
             until SalesCrMemoLine.Next() = 0;
     end;
 
-    local procedure GetPurchaseStatisticsAmountExcludingChargeItem(
-        PurchaseHeader: Record "Purchase Header";
-        var GSTAmount: Decimal)
-    var
-        PurchaseLine: Record "Purchase Line";
-    begin
-        Clear(GSTAmount);
-
-        PurchaseLine.SetRange("Document Type", PurchaseHeader."Document Type");
-        PurchaseLine.SetRange("Document no.", PurchaseHeader."No.");
-        if PurchaseLine.FindSet() then
-            repeat
-                if (not PurchaseLine."GST Reverse Charge") then
-                    GSTAmount += GetGSTAmount(PurchaseLine.RecordId());
-            until PurchaseLine.Next() = 0;
-    end;
-
     local procedure GetStatisticsPostedPurchInvAmountExcludingChargeItem(
         PurchInvHeader: Record "Purch. Inv. Header";
         var GSTAmount: Decimal)
@@ -247,6 +230,9 @@ codeunit 18006 "GST Statistics"
         GSTStatsManagement: Codeunit "GST Stats Management";
         RCMAmount: Decimal;
     begin
+        if PurchaseHeader."GST Vendor Type" = PurchaseHeader."GST Vendor Type"::Import then
+            exit;
+
         GSTAmount := GSTStatsManagement.GetGstStatsAmount();
         GetPurchaseRCMStatisticsAmount(PurchaseHeader, RCMAmount);
         GSTAmount := GSTAmount - RCMAmount;

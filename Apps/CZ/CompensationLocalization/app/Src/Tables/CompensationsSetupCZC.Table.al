@@ -40,6 +40,7 @@ table 31270 "Compensations Setup CZC"
         field(20; "Max. Rounding Amount"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Max. Rounding Amount';
             DataClassification = CustomerContent;
         }
@@ -73,6 +74,11 @@ table 31270 "Compensations Setup CZC"
         field(40; "Show Empty when not Found"; Boolean)
         {
             Caption = 'Show Empty when not Found';
+            DataClassification = CustomerContent;
+        }
+        field(45; "Including Entries with On Hold"; Boolean)
+        {
+            Caption = 'Including Entries with On Hold';
             DataClassification = CustomerContent;
         }
     }

@@ -6,17 +6,17 @@ namespace Microsoft.Finance.VAT.Reporting;
 
 table 27032 "DIOT Report Buffer"
 {
+    DataClassification = CustomerContent;
+
     fields
     {
         field(1; "Vendor No."; Code[20])
         {
             Caption = 'Vendor No.';
         }
-        field(2; "Type of Operation"; Option)
+        field(2; "Type of Operation"; Enum "DIOT Type of Operation")
         {
             Caption = 'Type of Operation';
-            OptionMembers = " ","Prof. Services","Lease and Rent",Others;
-            OptionCaption = ' ,Prof. Services,Lease and Rent,Others';
         }
         field(3; "DIOT Concept No."; Integer)
         {
@@ -24,6 +24,7 @@ table 27032 "DIOT Report Buffer"
         }
         field(4; Value; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Value';
         }
     }

@@ -1,24 +1,16 @@
 namespace Microsoft.DataMigration.GP;
 
-using System.Integration;
-#if not CLEAN25
-using System.Environment.Configuration;
-#endif
 using Microsoft.Purchases.Vendor;
+using System.Integration;
 
 codeunit 42004 "GP Cloud Migration US"
 {
-    var
-#if not CLEAN25
-        IRSFormFeatureKeyIdTok: Label 'IRSForm', Locked = true;
-#endif
-
-    [EventSubscriber(ObjectType::Codeunit, CodeUnit::"Data Migration Mgt.", 'OnAfterMigrationFinished', '', false, false)]
-    local procedure OnAfterMigrationFinishedSubscriber(var DataMigrationStatus: Record "Data Migration Status"; WasAborted: Boolean; StartTime: DateTime; Retry: Boolean)
+    [EventSubscriber(ObjectType::Codeunit, CodeUnit::"Data Migration Mgt.", OnCreatePostMigrationData, '', false, false)]
+    local procedure OnCreatePostMigrationDataSubscriber(var DataMigrationStatus: Record "Data Migration Status")
     var
         HelperFunctions: Codeunit "Helper Functions";
     begin
-        if not (DataMigrationStatus."Migration Type" = HelperFunctions.GetMigrationTypeTxt()) then
+        if DataMigrationStatus."Migration Type" <> HelperFunctions.GetMigrationTypeTxt() then
             exit;
 
         RunPostMigration();
@@ -71,31 +63,12 @@ codeunit 42004 "GP Cloud Migration US"
             until Vendor.Next() = 0;
     end;
 
-    internal procedure IsIRSFormsFeatureEnabled(): Boolean
-    var
-#if not CLEAN25
-        FeatureManagementFacade: Codeunit "Feature Management Facade";
-#endif
-        IsEnabled: Boolean;
-    begin
-        IsEnabled := true;
-
-#if not CLEAN25
-        IsEnabled := FeatureManagementFacade.IsEnabled(IRSFormFeatureKeyIdTok);
-#endif
-
-        exit(IsEnabled);
-    end;
-
     local procedure SetupIRSFormsFeatureIfNeeded()
     var
         GPCompanyAdditionalSettings: Record "GP Company Additional Settings";
         GPIRSFormData: Codeunit "GP IRS Form Data";
         ReportingYear: Integer;
     begin
-        if not IsIRSFormsFeatureEnabled() then
-            exit;
-
         GPCompanyAdditionalSettings.GetSingleInstance();
         ReportingYear := GPCompanyAdditionalSettings.Get1099TaxYear();
 

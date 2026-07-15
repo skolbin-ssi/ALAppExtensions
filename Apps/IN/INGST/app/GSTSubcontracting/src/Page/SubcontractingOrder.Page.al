@@ -12,7 +12,6 @@ using Microsoft.Purchases.Comment;
 using Microsoft.Purchases.Document;
 using Microsoft.Purchases.History;
 using Microsoft.Purchases.Posting;
-using Microsoft.Purchases.Setup;
 using Microsoft.Purchases.Vendor;
 using Microsoft.Utilities;
 using Microsoft.Warehouse.Document;
@@ -434,24 +433,17 @@ page 18491 "Subcontracting Order"
                     ShortCutKey = 'Shift+Ctrl+L';
                     ApplicationArea = Basic, Suite;
                 }
-                action(Statistics)
+                action(PurchaseOrderStatistics)
                 {
-                    Caption = 'Statistics';
-                    ToolTip = 'Statistics';
-                    Image = Statistics;
-                    Promoted = true;
-                    PromotedCategory = Process;
-                    ShortCutKey = 'F7';
                     ApplicationArea = Basic, Suite;
-                    trigger OnAction()
-                    begin
-                        PurchSetup.Get();
-                        if PurchSetup."Calc. Inv. Discount" then begin
-                            CurrPage.PurchLines.Page.CalcInvDisc();
-                            Commit();
-                        end;
-                        Rec.OpenPurchaseOrderStatistics();
-                    end;
+                    Caption = 'Statistics';
+                    Enabled = Rec."No." <> '';
+                    Image = Statistics;
+                    ShortCutKey = 'F7';
+                    Visible = true;
+                    ToolTip = 'View statistical information, such as the value of posted entries, for the record.';
+                    RunObject = Page "Purchase Order Statistics";
+                    RunPageOnRec = true;
                 }
                 action(Card)
                 {
@@ -781,7 +773,6 @@ page 18491 "Subcontracting Order"
     end;
 
     var
-        PurchSetup: Record "Purchases & Payables Setup";
         CopyPurchDoc: Report "Copy Purchase Document";
         MoveNegPurchLines: Report "Move Negative Purchase Lines";
         ReportPrint: Codeunit "Test Report-Print";

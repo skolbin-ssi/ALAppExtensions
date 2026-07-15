@@ -10,11 +10,6 @@ pageextension 11758 "VAT Statement Templates CZL" extends "VAT Statement Templat
     {
         addlast(Control1)
         {
-            field("XML Format CZL"; Rec."XML Format CZL")
-            {
-                ApplicationArea = VAT;
-                ToolTip = 'Specifies the XML format for VAT statement reporting.';
-            }
             field("Allow Comments/Attachments CZL"; Rec."Allow Comments/Attachments CZL")
             {
                 ApplicationArea = VAT;

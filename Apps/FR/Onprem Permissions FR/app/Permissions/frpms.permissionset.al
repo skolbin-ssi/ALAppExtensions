@@ -2,6 +2,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
+#pragma warning disable AA0247
 
 permissionset 10800 "FR-PMS"
 {
@@ -9,7 +10,9 @@ permissionset 10800 "FR-PMS"
     Assignable = true;
     Caption = 'FR Payment Management System';
 
-    Permissions = tabledata "Bank Account Buffer" = RIMD,
+    Permissions =
+#if not CLEAN28
+                  tabledata "Bank Account Buffer" = RIMD,
                   tabledata "Payment Address" = RIMD,
                   tabledata "Payment Class" = RIMD,
                   tabledata "Payment Header" = RIMD,
@@ -20,5 +23,6 @@ permissionset 10800 "FR-PMS"
                   tabledata "Payment Status" = RIMD,
                   tabledata "Payment Step" = RIMD,
                   tabledata "Payment Step Ledger" = RIMD,
+#endif
                   tabledata "Unreal. CV Ledg. Entry Buffer" = RIMD;
 }

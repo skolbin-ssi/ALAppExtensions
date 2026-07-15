@@ -196,7 +196,7 @@ report 31280 "Suggest Payments CZB"
                 var
                     EmpEntriesTxt: Label 'Processing Employee Entries...';
                 begin
-                    if EmployeeType = EmployeeType::Nothing then
+                    if EmplType = EmplType::Nothing then
                         CurrReport.Break();
                     if StopPayments then
                         CurrReport.Break();
@@ -205,6 +205,8 @@ report 31280 "Suggest Payments CZB"
                     WindowDialog.Open(EmpEntriesTxt);
                     DialogOpen := true;
 
+                    if EmplType = EmplType::OnlyPayables then
+                        SetRange(Positive, false);
                     SetRange("Posting Date", 0D, LastDueDateToPayReq);
                     if EmployeeNoFilter <> '' then
                         SetFilter("Employee No.", EmployeeNoFilter);
@@ -253,6 +255,8 @@ report 31280 "Suggest Payments CZB"
                     }
                     field(AmountAvailableCZB; AmountAvailable)
                     {
+                        AutoFormatType = 1;
+                        AutoFormatExpression = '';
                         ApplicationArea = Basic, Suite;
                         Caption = 'Available Amount (LCY)';
                         ToolTip = 'Specifies the max. amount. The amount is in the local currency.';
@@ -267,7 +271,7 @@ report 31280 "Suggest Payments CZB"
                     {
                         ApplicationArea = Basic, Suite;
                         Caption = 'Currency Type';
-                        OptionCaption = ' ,Payment Order,Bank Account';
+                        OptionCaption = ' ,Payment Order,Bank Account,All';
                         ToolTip = 'Specifies used currency code.';
                     }
                     field(KeepBankCZB; KeepBank)
@@ -335,12 +339,47 @@ report 31280 "Suggest Payments CZB"
                             exit(true);
                         end;
                     }
+#if not CLEAN28
                     field(EmployeeTypeCZB; EmployeeType)
                     {
                         ApplicationArea = Basic, Suite;
                         Caption = 'Employee Payables';
                         OptionCaption = 'All Entries,No Suggest';
                         ToolTip = 'Specifies payment suggestion of employee entries.';
+                        Visible = false;
+                        Enabled = false;
+                        ObsoleteState = Pending;
+                        ObsoleteReason = 'Use EmplType instead.';
+                        ObsoleteTag = '28.0';
+
+                        trigger OnValidate()
+                        begin
+                            case EmployeeType of
+                                EmployeeType::All:
+                                    EmplType := EmplType::All;
+                                EmployeeType::Nothing:
+                                    EmplType := EmplType::Nothing;
+                            end;
+                        end;
+                    }
+#endif
+                    field(EmplTypeCZB; EmplType)
+                    {
+                        ApplicationArea = Basic, Suite;
+                        Caption = 'Employee Payables';
+                        OptionCaption = 'Only Payables,All Entries,No Suggest';
+                        ToolTip = 'Specifies payment suggestion of employee entries.';
+#if not CLEAN28
+                        trigger OnValidate()
+                        begin
+                            case EmplType of
+                                EmplType::All:
+                                    EmployeeType := EmployeeType::All;
+                                EmplType::Nothing:
+                                    EmployeeType := EmployeeType::Nothing;
+                            end;
+                        end;
+#endif
                     }
                     field(EmployeeNoFilterCZB; EmployeeNoFilter)
                     {
@@ -442,13 +481,17 @@ report 31280 "Suggest Payments CZB"
         PaymentOrderHeaderCZB: Record "Payment Order Header CZB";
         PaymentOrderLineCZB: Record "Payment Order Line CZB";
         CustomerType, VendorType : Option OnlyBalance,OnlyPayables,All,Nothing;
+        EmplType: Option OnlyPayables,All,Nothing;
+#if not CLEAN28
+        [Obsolete('Use EmplType instead.', '28.0')]
         EmployeeType: Option All,Nothing;
+#endif
         WindowDialog: Dialog;
         LastDueDateToPayReq: Date;
         KeepBank, SkipNonWork, UsePaymentDisc, StopPayments, SkipBlocked, IsSkippedBlocked, DialogOpen : Boolean;
         LineNo: Integer;
         CustomerNoFilter, VendorNoFilter, EmployeeNoFilter : Text;
-        CurrencyType: Option " ","Payment Order","Bank Account";
+        CurrencyType: Option " ","Payment Order","Bank Account",All;
 
     procedure SetPaymentOrder(NewPaymentOrderHeaderCZB: Record "Payment Order Header CZB")
     begin
@@ -458,82 +501,59 @@ report 31280 "Suggest Payments CZB"
     procedure AddCustLedgEntry(CustLedgerEntry: Record "Cust. Ledger Entry")
     begin
         PaymentOrderLineCZB.Init();
-        PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order No.", PaymentOrderHeaderCZB."No.");
+        PaymentOrderLineCZB.Validate("Payment Order No.", PaymentOrderHeaderCZB."No.");
         PaymentOrderLineCZB."Line No." := LineNo;
         LineNo += 10000;
         PaymentOrderLineCZB.Type := PaymentOrderLineCZB.Type::Customer;
         case CurrencyType of
             CurrencyType::" ":
                 if PaymentOrderLineCZB."Payment Order Currency Code" <> CustLedgerEntry."Currency Code" then
-                    PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order Currency Code", CustLedgerEntry."Currency Code");
+                    PaymentOrderLineCZB.Validate("Payment Order Currency Code", CustLedgerEntry."Currency Code");
             CurrencyType::"Payment Order":
                 if PaymentOrderLineCZB."Payment Order Currency Code" <> PaymentOrderHeaderCZB."Payment Order Currency Code" then
-                    PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order Currency Code", PaymentOrderHeaderCZB."Payment Order Currency Code");
+                    PaymentOrderLineCZB.Validate("Payment Order Currency Code", PaymentOrderHeaderCZB."Payment Order Currency Code");
             CurrencyType::"Bank Account":
                 if PaymentOrderLineCZB."Payment Order Currency Code" <> PaymentOrderHeaderCZB."Currency Code" then
-                    PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order Currency Code", PaymentOrderHeaderCZB."Currency Code");
+                    PaymentOrderLineCZB.Validate("Payment Order Currency Code", PaymentOrderHeaderCZB."Currency Code");
         end;
-        PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Applies-to C/V/E Entry No.", CustLedgerEntry."Entry No.");
-        if not UsePaymentDisc and PaymentOrderLineCZB."Pmt. Discount Possible" and
-           (PaymentOrderHeaderCZB."Document Date" <= CustLedgerEntry."Pmt. Discount Date")
-        then begin
-            PaymentOrderLineCZB."Pmt. Discount Possible" := false;
-            PaymentOrderLineCZB."Pmt. Discount Date" := 0D;
-            PaymentOrderLineCZB."Amount (Paym. Order Currency)" += PaymentOrderLineCZB."Remaining Pmt. Disc. Possible";
-            PaymentOrderLineCZB."Remaining Pmt. Disc. Possible" := 0;
-            PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Amount (Paym. Order Currency)");
-            PaymentOrderLineCZB."Original Amount" := PaymentOrderLineCZB.Amount;
-            PaymentOrderLineCZB."Original Amount (LCY)" := PaymentOrderLineCZB."Amount (LCY)";
-            PaymentOrderLineCZB."Orig. Amount(Pay.Order Curr.)" := PaymentOrderLineCZB."Amount (Paym. Order Currency)";
-        end;
+        PaymentOrderLineCZB.SetUsePaymentDiscount(UsePaymentDisc);
+        PaymentOrderLineCZB.Validate("Applies-to C/V/E Entry No.", CustLedgerEntry."Entry No.");
         AddPaymentLine();
     end;
 
     procedure AddVendLedgEntry(VendorLedgerEntry: Record "Vendor Ledger Entry")
     begin
         PaymentOrderLineCZB.Init();
-        PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order No.", PaymentOrderHeaderCZB."No.");
+        PaymentOrderLineCZB.Validate("Payment Order No.", PaymentOrderHeaderCZB."No.");
         PaymentOrderLineCZB."Line No." := LineNo;
         LineNo += 10000;
         PaymentOrderLineCZB.Type := PaymentOrderLineCZB.Type::Vendor;
         case CurrencyType of
             CurrencyType::" ":
                 if PaymentOrderLineCZB."Payment Order Currency Code" <> VendorLedgerEntry."Currency Code" then
-                    PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order Currency Code", VendorLedgerEntry."Currency Code");
+                    PaymentOrderLineCZB.Validate("Payment Order Currency Code", VendorLedgerEntry."Currency Code");
             CurrencyType::"Payment Order":
                 if PaymentOrderLineCZB."Payment Order Currency Code" <> PaymentOrderHeaderCZB."Payment Order Currency Code" then
-                    PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order Currency Code", PaymentOrderHeaderCZB."Payment Order Currency Code");
+                    PaymentOrderLineCZB.Validate("Payment Order Currency Code", PaymentOrderHeaderCZB."Payment Order Currency Code");
             CurrencyType::"Bank Account":
                 if PaymentOrderLineCZB."Payment Order Currency Code" <> PaymentOrderHeaderCZB."Currency Code" then
-                    PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order Currency Code", PaymentOrderHeaderCZB."Currency Code");
+                    PaymentOrderLineCZB.Validate("Payment Order Currency Code", PaymentOrderHeaderCZB."Currency Code");
         end;
-        PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Applies-to C/V/E Entry No.", VendorLedgerEntry."Entry No.");
-        if not UsePaymentDisc and PaymentOrderLineCZB."Pmt. Discount Possible" and
-           (PaymentOrderHeaderCZB."Document Date" <= VendorLedgerEntry."Pmt. Discount Date")
-        then begin
-            PaymentOrderLineCZB."Pmt. Discount Possible" := false;
-            PaymentOrderLineCZB."Pmt. Discount Date" := 0D;
-            PaymentOrderLineCZB."Amount (Paym. Order Currency)" -= PaymentOrderLineCZB."Remaining Pmt. Disc. Possible";
-            PaymentOrderLineCZB."Remaining Pmt. Disc. Possible" := 0;
-            PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Amount (Paym. Order Currency)");
-            PaymentOrderLineCZB."Original Amount" := PaymentOrderLineCZB.Amount;
-            PaymentOrderLineCZB."Original Amount (LCY)" := PaymentOrderLineCZB."Amount (LCY)";
-            PaymentOrderLineCZB."Orig. Amount(Pay.Order Curr.)" := PaymentOrderLineCZB."Amount (Paym. Order Currency)";
-            PaymentOrderLineCZB."Due Date" := VendorLedgerEntry."Due Date";
-        end;
+        PaymentOrderLineCZB.SetUsePaymentDiscount(UsePaymentDisc);
+        PaymentOrderLineCZB.Validate("Applies-to C/V/E Entry No.", VendorLedgerEntry."Entry No.");
         AddPaymentLine();
     end;
 
     procedure AddEmplLedgEntry(EmployeeLedgerEntry: Record "Employee Ledger Entry")
     begin
         PaymentOrderLineCZB.Init();
-        PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order No.", PaymentOrderHeaderCZB."No.");
+        PaymentOrderLineCZB.Validate("Payment Order No.", PaymentOrderHeaderCZB."No.");
         PaymentOrderLineCZB."Line No." := LineNo;
         LineNo += 10000;
         PaymentOrderLineCZB.Type := PaymentOrderLineCZB.Type::Employee;
         if PaymentOrderLineCZB."Payment Order Currency Code" <> EmployeeLedgerEntry."Currency Code" then
-            PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Payment Order Currency Code", EmployeeLedgerEntry."Currency Code");
-        PaymentOrderLineCZB.Validate(PaymentOrderLineCZB."Applies-to C/V/E Entry No.", EmployeeLedgerEntry."Entry No.");
+            PaymentOrderLineCZB.Validate("Payment Order Currency Code", EmployeeLedgerEntry."Currency Code");
+        PaymentOrderLineCZB.Validate("Applies-to C/V/E Entry No.", EmployeeLedgerEntry."Entry No.");
         AddPaymentLine();
     end;
 

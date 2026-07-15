@@ -6,7 +6,11 @@ namespace Microsoft.Integration.DynamicsFieldService;
 
 using Microsoft.Integration.D365Sales;
 
+#pragma warning disable AS0130
+#pragma warning disable PTE0025
 table 6616 "FS Resource Pay Type"
+#pragma warning restore AS0130
+#pragma warning restore PTE0025
 {
     ExternalName = 'msdyn_resourcepaytype';
     TableType = CRM;
@@ -240,6 +244,7 @@ table 6616 "FS Resource Pay Type"
             Description = 'Enter the markup percentage on the resource hourly cost. Use a value greater than 100% to mark it up and a value less than 100% to mark it down.';
             Caption = 'Hourly Markup %';
             DataClassification = SystemMetadata;
+            AutoFormatType = 0;
         }
     }
     keys

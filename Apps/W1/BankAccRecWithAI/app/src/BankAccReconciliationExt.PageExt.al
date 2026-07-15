@@ -1,7 +1,7 @@
 namespace Microsoft.Bank.Reconciliation;
 
-using System.AI;
 using Microsoft.Finance.GeneralLedger.Journal;
+using System.AI;
 using System.Telemetry;
 
 pageextension 7253 BankAccReconciliationExt extends "Bank Acc. Reconciliation"
@@ -131,41 +131,14 @@ pageextension 7253 BankAccReconciliationExt extends "Bank Acc. Reconciliation"
                 end;
             }
         }
-#if not CLEAN25
-        addbefore("Transfer to General Journal_Promoted")
-        {
-            actionref("Match With Copilot_Promoted"; "Match With Copilot")
-            {
-                Visible = false;
-                ObsoleteReason = 'Actions no longer promoted, but shown in the Prompting area';
-                ObsoleteState = Pending;
-                ObsoleteTag = '25.0';
-            }
-            actionref("Transfer to G/L Account_Promoted"; "Transfer to G/L Account")
-            {
-                Visible = false;
-                ObsoleteReason = 'Actions no longer promoted, but shown in the Prompting area';
-                ObsoleteState = Pending;
-                ObsoleteTag = '25.0';
-            }
-        }
-        addbefore(MatchAutomatically_Promoted)
-        {
-            actionref("Match With Copilot_Promoted2"; "Match With Copilot")
-            {
-                Visible = false;
-                ObsoleteReason = 'Actions no longer promoted, but shown in the Prompting area';
-                ObsoleteState = Pending;
-                ObsoleteTag = '25.0';
-            }
-        }
-#endif
     }
 
     trigger OnOpenPage()
     var
+        BankRecAIMatchingImpl: Codeunit "Bank Rec. AI Matching Impl.";
         CopilotCapability: Codeunit "Copilot Capability";
     begin
+        BankRecAIMatchingImpl.RegisterCapability();
         CopilotActionsVisible := CopilotCapability.IsCapabilityRegistered(Enum::"Copilot Capability"::"Bank Account Reconciliation");
     end;
 

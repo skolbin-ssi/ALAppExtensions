@@ -8,12 +8,11 @@ using Microsoft.Bank.BankAccount;
 using Microsoft.Bank.Setup;
 using Microsoft.Finance.Currency;
 using Microsoft.Finance.VAT.Calculation;
-using Microsoft.Foundation.Address;
+using Microsoft.Foundation.Company;
 using Microsoft.Sales.Customer;
 using Microsoft.Sales.Document;
-using System.Utilities;
 using Microsoft.Sales.Setup;
-using Microsoft.Foundation.Company;
+using System.Utilities;
 
 tableextension 11734 "Service Header CZL" extends "Service Header"
 {
@@ -35,6 +34,7 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
         field(11717; "Specific Symbol CZL"; Code[10])
         {
             Caption = 'Specific Symbol';
+            OptimizeForTextSearch = true;
             CharAllowed = '09';
             DataClassification = CustomerContent;
 
@@ -46,6 +46,7 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
         field(11718; "Variable Symbol CZL"; Code[10])
         {
             Caption = 'Variable Symbol';
+            OptimizeForTextSearch = true;
             CharAllowed = '09';
             DataClassification = CustomerContent;
 
@@ -57,6 +58,7 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
         field(11719; "Constant Symbol CZL"; Code[10])
         {
             Caption = 'Constant Symbol';
+            OptimizeForTextSearch = true;
             CharAllowed = '09';
             TableRelation = "Constant Symbol CZL";
             DataClassification = CustomerContent;
@@ -152,6 +154,7 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
         }
         field(11774; "VAT Currency Factor CZL"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'VAT Currency Factor';
             DataClassification = CustomerContent;
             DecimalPlaces = 0 : 15;
@@ -174,6 +177,7 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
                 TestField("VAT Currency Code CZL", "Currency Code");
             end;
         }
+#if not CLEANSCHEMA25
         field(11780; "VAT Date CZL"; Date)
         {
             Caption = 'VAT Date';
@@ -182,6 +186,7 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
             ObsoleteTag = '25.0';
             ObsoleteReason = 'Replaced by VAT Reporting Date.';
         }
+#endif
         field(11781; "Registration No. CZL"; Text[20])
         {
             Caption = 'Registration No.';
@@ -205,6 +210,7 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
                     Clear("Credit Memo Type CZL");
             end;
         }
+#if not CLEANSCHEMA25
         field(31068; "Physical Transfer CZL"; Boolean)
         {
             Caption = 'Physical Transfer';
@@ -221,6 +227,7 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
             ObsoleteTag = '25.0';
             ObsoleteReason = 'Intrastat related functionalities are moved to Intrastat extensions. This field is not used any more.';
         }
+#endif
         field(31072; "EU 3-Party Intermed. Role CZL"; Boolean)
         {
             Caption = 'EU 3-Party Intermediate Role';
@@ -291,21 +298,6 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
         "IBAN CZL" := IBANCode;
         "SWIFT Code CZL" := SWIFTCode;
         OnAfterUpdateBankInfoCZL(Rec);
-    end;
-
-    procedure IsIntrastatTransactionCZL(): Boolean
-    var
-        CountryRegion: Record "Country/Region";
-        IsHandled: Boolean;
-        Result: Boolean;
-    begin
-        OnBeforeIsIntrastatTransactionCZL(Rec, Result, IsHandled);
-        if IsHandled then
-            exit(Result);
-
-        if "EU 3-Party Trade" then
-            exit(false);
-        exit(CountryRegion.IsIntrastatCZL("VAT Country/Region Code", false));
     end;
 
     procedure GetDefaulBankAccountNoCZL() BankAccountNo: Code[20]
@@ -385,11 +377,6 @@ tableextension 11734 "Service Header CZL" extends "Service Header"
 
     [IntegrationEvent(false, false)]
     local procedure OnBeforeGetDefaulBankAccountNoCZL(var ServiceHeader: Record "Service Header"; var BankAccountNo: Code[20]; var IsHandled: Boolean);
-    begin
-    end;
-
-    [IntegrationEvent(true, false)]
-    local procedure OnBeforeIsIntrastatTransactionCZL(ServiceHeader: Record "Service Header"; var Result: Boolean; var IsHandled: Boolean)
     begin
     end;
 

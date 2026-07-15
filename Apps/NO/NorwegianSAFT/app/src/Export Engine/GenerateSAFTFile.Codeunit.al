@@ -241,12 +241,24 @@ codeunit 10673 "Generate SAF-T File"
     local procedure ExportGLAccount(MappingType: Enum "SAF-T Mapping Type"; GLAccNo: Code[20]; StandardAccNo: Text; GroupingCategory: Code[20]; GroupingNo: Code[20]; StartingDate: Date; EndingDate: Date)
     var
         GLAccount: Record "G/L Account";
+        SAFTMappingCategory: Record "SAF-T Mapping Category";
+        SAFTMapping: Record "SAF-T Mapping";
         OpeningDebitBalance: Decimal;
         OpeningCreditBalance: Decimal;
         ClosingDebitBalance: Decimal;
         ClosingCreditBalance: Decimal;
+        GroupingCategoryValue: Text[500];
+        GroupingCodeValue: Text[500];
     begin
         GLAccount.get(GLAccNo);
+        GroupingCategoryValue := GroupingCategory;
+        if SAFTMappingCategory.Get(MappingType, GroupingCategory) then
+            if SAFTMappingCategory."Extended No." <> '' then
+                GroupingCategoryValue := SAFTMappingCategory."Extended No.";
+        GroupingCodeValue := GroupingNo;
+        if SAFTMapping.Get(MappingType, GroupingCategory, GroupingNo) then
+            if SAFTMapping."Extended No." <> '' then
+                GroupingCodeValue := SAFTMapping."Extended No.";
         // Opening balance always zero for income statement
         if GLAccount."Income/Balance" <> GLAccount."Income/Balance"::"Income Statement" then begin
             GLAccount.SetRange("Date Filter", 0D, ClosingDate(StartingDate - 1));
@@ -273,8 +285,8 @@ codeunit 10673 "Generate SAF-T File"
         if MappingType in [MappingType::"Two Digit Standard Account", MappingType::"Four Digit Standard Account"] then
             SAFTXMLHelper.AppendXMLNode('StandardAccountID', StandardAccNo)
         else begin
-            SAFTXMLHelper.AppendXMLNode('GroupingCategory', GroupingCategory);
-            SAFTXMLHelper.AppendXMLNode('GroupingCode', GroupingNo);
+            SAFTXMLHelper.AppendXMLNode('GroupingCategory', GroupingCategoryValue);
+            SAFTXMLHelper.AppendXMLNode('GroupingCode', GroupingCodeValue);
         end;
         SAFTXMLHelper.AppendXMLNode('AccountType', 'GL');
         if GLAccount."Income/Balance" = GLAccount."Income/Balance"::"Income Statement" then begin
@@ -1079,8 +1091,8 @@ codeunit 10673 "Generate SAF-T File"
             CurrencyCode := CustLedgEntry."Currency Code";
             ExchangeRate := GetCurrencyFactor(CustLedgEntry."Original Currency Factor", CustLedgEntry.Amount, CustLedgEntry."Amount (LCY)");
             if CustLedgEntry."Entry No." = GLEntry."Entry No." then begin
-                EntryAmount := CustLedgEntry.Amount;
-                EntryAmountLCY := CustLedgEntry."Amount (LCY)";
+                EntryAmount := Abs(CustLedgEntry.Amount);
+                EntryAmountLCY := Abs(CustLedgEntry."Amount (LCY)");
             end;
             exit;
         end;

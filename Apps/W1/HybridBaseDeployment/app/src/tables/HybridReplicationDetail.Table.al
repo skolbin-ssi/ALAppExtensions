@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 namespace Microsoft.DataMigration;
 
 using System.Environment;
@@ -48,16 +53,6 @@ table 4002 "Hybrid Replication Detail"
             OptionCaption = 'Failed,In Progress,Successful,Warning,Not Started';
             DataClassification = SystemMetadata;
         }
-#if not CLEANSCHEMA16
-        field(10; "Errors"; Blob)
-        {
-            Description = 'Any errors that occured during the replication.';
-            DataClassification = SystemMetadata;
-            ObsoleteReason = 'Moved to the "Error Message" text field.';
-            ObsoleteState = Removed;
-            ObsoleteTag = '16.0';
-        }
-#endif
         field(11; "Error Code"; Text[10])
         {
             Description = 'The error code for any errors that occured during the replication.';

@@ -1,9 +1,10 @@
 namespace Microsoft.Sales.Document.Test;
 using System.TestTools.AITestToolkit;
 
-codeunit 149820 "Extract Info. from csv Prompt"
+codeunit 133520 "Extract Info. from csv Prompt"
 {
     Subtype = Test;
+    TestType = AITest;
     TestPermissions = Disabled;
 
     var

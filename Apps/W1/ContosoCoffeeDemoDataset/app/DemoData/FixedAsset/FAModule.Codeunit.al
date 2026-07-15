@@ -1,3 +1,12 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
+namespace Microsoft.DemoData.FixedAsset;
+
+using Microsoft.DemoTool;
+
 codeunit 4774 "FA Module" implements "Contoso Demo Data Module"
 {
     InherentEntitlements = X;
@@ -36,11 +45,13 @@ codeunit 4774 "FA Module" implements "Contoso Demo Data Module"
         Codeunit.Run(Codeunit::"Create Fixed Asset");
         Codeunit.Run(Codeunit::"Create FA Insurance Type");
         Codeunit.Run(Codeunit::"Create FA Insurance");
+        Codeunit.Run(codeunit::"Create FA Dimension Value");
     end;
 
     procedure CreateTransactionalData()
     begin
         Codeunit.Run(Codeunit::"Create FA Maint. Registration");
+        Codeunit.Run(Codeunit::"Create FA Jnl. Lines");
     end;
 
     procedure CreateHistoricalData()

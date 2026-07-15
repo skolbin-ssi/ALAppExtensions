@@ -164,6 +164,7 @@ tableextension 11723 "Gen. Journal Line CZL" extends "Gen. Journal Line"
         }
         field(11750; "Additional Currency Factor CZL"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Additional Currency Factor';
             DecimalPlaces = 0 : 15;
             Editable = false;
@@ -172,6 +173,7 @@ tableextension 11723 "Gen. Journal Line CZL" extends "Gen. Journal Line"
         }
         field(11776; "VAT Currency Factor CZL"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'VAT Currency Factor';
             DataClassification = CustomerContent;
             DecimalPlaces = 0 : 15;
@@ -184,6 +186,7 @@ tableextension 11723 "Gen. Journal Line CZL" extends "Gen. Journal Line"
             DataClassification = CustomerContent;
             TableRelation = Currency;
         }
+#if not CLEANSCHEMA25
         field(11780; "VAT Date CZL"; Date)
         {
             Caption = 'VAT Date';
@@ -192,6 +195,7 @@ tableextension 11723 "Gen. Journal Line CZL" extends "Gen. Journal Line"
             ObsoleteTag = '25.0';
             ObsoleteReason = 'Replaced by VAT Reporting Date.';
         }
+#endif
         field(11781; "Registration No. CZL"; Text[20])
         {
             Caption = 'Registration No.';

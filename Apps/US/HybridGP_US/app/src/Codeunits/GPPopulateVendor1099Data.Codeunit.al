@@ -1,14 +1,14 @@
 namespace Microsoft.DataMigration.GP;
 
-using Microsoft.Finance.GeneralLedger.Journal;
-using System.Integration;
-using Microsoft.Purchases.Vendor;
-using Microsoft.Foundation.NoSeries;
 using Microsoft.Finance.GeneralLedger.Account;
-using Microsoft.Purchases.Payables;
-using Microsoft.Finance.ReceivablesPayables;
+using Microsoft.Finance.GeneralLedger.Journal;
 using Microsoft.Finance.GeneralLedger.Posting;
+using Microsoft.Finance.ReceivablesPayables;
 using Microsoft.Finance.VAT.Reporting;
+using Microsoft.Foundation.NoSeries;
+using Microsoft.Purchases.Payables;
+using Microsoft.Purchases.Vendor;
+using System.Integration;
 
 codeunit 42003 "GP Populate Vendor 1099 Data"
 {
@@ -88,7 +88,6 @@ codeunit 42003 "GP Populate Vendor 1099 Data"
     var
         GPPM00200: Record "GP PM00200";
     begin
-        GPPM00200.SetRange(TEN99TYPE, 2, 5);
         if not GPPM00200.FindSet() then
             exit;
 
@@ -115,33 +114,20 @@ codeunit 42003 "GP Populate Vendor 1099 Data"
         if IRS1099Code <> '' then
             AssignIRS1099CodeToVendor(Vendor, IRS1099Code);
 
-        if GPPM00200.TXIDNMBR <> '' then
-            Vendor.Validate("Federal ID No.", GPPM00200.TXIDNMBR.TrimEnd());
+        if GPPM00200.TXIDNMBR <> '' then begin
+            Vendor.Validate("Federal ID No.", CopyStr(GPPM00200.TXIDNMBR.TrimEnd(), 1, MaxStrLen(Vendor."Federal ID No.")));
+            Vendor.Modify();
+        end;
 
-        if (IRS1099Code <> '') or (GPPM00200.TXIDNMBR <> '') then begin
-            Vendor.Validate("Tax Identification Type", Vendor."Tax Identification Type"::"Legal Entity");
-            if Vendor.Modify() then
-                AddVendor1099Values(Vendor)
-            else
-                LogLastError(Vendor."No.");
-        end else
-            LogVendorSkipped(Vendor."No.");
+        if GPPM00200.TEN99TYPE > 1 then
+            AddVendor1099Values(Vendor);
     end;
 
     local procedure VendorAlreadyHasIRS1099CodeAssigned(var Vendor: Record Vendor): Boolean
     var
         GPCompanyAdditionalSettings: Record "GP Company Additional Settings";
         IRS1099VendorFormBoxSetup: Record "IRS 1099 Vendor Form Box Setup";
-#if not CLEAN25
-        GPCloudMigrationUS: Codeunit "GP Cloud Migration US";
-#endif
     begin
-#if not CLEAN25
-#pragma warning disable AL0432
-        if not GPCloudMigrationUS.IsIRSFormsFeatureEnabled() then
-            exit(Vendor."IRS 1099 Code" <> '');
-#pragma warning restore AL0432
-#endif
         GPCompanyAdditionalSettings.GetSingleInstance();
         if IRS1099VendorFormBoxSetup.Get(Format(GPCompanyAdditionalSettings.Get1099TaxYear()), Vendor."No.") then
             exit(true);
@@ -152,18 +138,7 @@ codeunit 42003 "GP Populate Vendor 1099 Data"
         GPCompanyAdditionalSettings: Record "GP Company Additional Settings";
         IRS1099VendorFormBoxSetup: Record "IRS 1099 Vendor Form Box Setup";
         IRS1099FormBox: Record "IRS 1099 Form Box";
-#if not CLEAN25	
-        GPCloudMigrationUS: Codeunit "GP Cloud Migration US";
-#endif
     begin
-#if not CLEAN25
-#pragma warning disable AL0432
-        if not GPCloudMigrationUS.IsIRSFormsFeatureEnabled() then begin
-            Vendor.Validate("IRS 1099 Code", IRS1099Code);
-            exit(true);
-        end;
-#pragma warning restore AL0432
-#endif
         IRS1099FormBox.SetRange("No.", IRS1099Code);
         if not IRS1099FormBox.FindFirst() then
             exit(false);
@@ -295,7 +270,6 @@ codeunit 42003 "GP Populate Vendor 1099 Data"
         GenJournalLineCurrent: Record "Gen. Journal Line";
         GenJournalTemplate: Record "Gen. Journal Template";
         IRS1099FormBox: Record "IRS 1099 Form Box";
-        GPCloudMigrationUS: Codeunit "GP Cloud Migration US";
         LineNum: Integer;
     begin
         GenJournalBatch.Get(CreateGenJournalTemplateIfNeeded(VendorTaxBatchNameTxt), VendorTaxBatchNameTxt);
@@ -332,26 +306,19 @@ codeunit 42003 "GP Populate Vendor 1099 Data"
         GenJournalLine.Validate("Bal. Gen. Prod. Posting Group", '');
         GenJournalLine.Validate("Bal. VAT Prod. Posting Group", '');
         GenJournalLine.Validate("Bal. VAT Bus. Posting Group", '');
-#if not CLEAN25
-#pragma warning disable AL0432
-        GenJournalLine.Validate("IRS 1099 Code", IRS1099Code);
-#pragma warning restore AL0432
-#endif
         GenJournalLine.Validate("Document Type", DocumentType);
         GenJournalLine.Validate("Source Code", SourceCodeTxt);
         GenJournalLine.Validate("External Document No.", ExternalDocumentNo);
 
-        if GPCloudMigrationUS.IsIRSFormsFeatureEnabled() then begin
-            GPCompanyAdditionalSettings.GetSingleInstance();
-            GenJournalLine.Validate("IRS 1099 Reporting Period", Format(GPCompanyAdditionalSettings.Get1099TaxYear()));
+        GPCompanyAdditionalSettings.GetSingleInstance();
+        GenJournalLine.Validate("IRS 1099 Reporting Period", Format(GPCompanyAdditionalSettings.Get1099TaxYear()));
 
-            IRS1099FormBox.SetRange("No.", IRS1099Code);
-            if IRS1099FormBox.FindFirst() then
-                GenJournalLine.Validate("IRS 1099 Form No.", IRS1099FormBox."Form No.");
+        IRS1099FormBox.SetRange("No.", IRS1099Code);
+        if IRS1099FormBox.FindFirst() then
+            GenJournalLine.Validate("IRS 1099 Form No.", IRS1099FormBox."Form No.");
 
-            GenJournalLine.Validate("IRS 1099 Form Box No.", IRS1099Code);
-            GenJournalLine.Validate("IRS 1099 Reporting Amount", Amount);
-        end;
+        GenJournalLine.Validate("IRS 1099 Form Box No.", IRS1099Code);
+        GenJournalLine.Validate("IRS 1099 Reporting Amount", Amount);
 
         if GenJournalLine.Insert(true) then
             exit(true)

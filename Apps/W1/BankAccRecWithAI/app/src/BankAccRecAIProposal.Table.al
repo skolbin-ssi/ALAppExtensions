@@ -2,6 +2,7 @@ namespace Microsoft.Bank.Reconciliation;
 
 using Microsoft.Bank.BankAccount;
 using Microsoft.Bank.Ledger;
+using Microsoft.Finance.Dimension;
 using Microsoft.Finance.GeneralLedger.Account;
 using Microsoft.Finance.GeneralLedger.Journal;
 
@@ -98,6 +99,12 @@ table 7250 "Bank Acc. Rec. AI Proposal"
         {
             Caption = 'Journal Batch Name';
             TableRelation = "Gen. Journal Batch".Name where("Journal Template Name" = field("Journal Template Name"));
+        }
+        field(480; "Dimension Set ID"; Integer)
+        {
+            Caption = 'Dimension Set ID';
+            Editable = false;
+            TableRelation = "Dimension Set Entry";
         }
     }
     keys

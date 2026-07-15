@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 namespace Microsoft.DataMigration;
 
 using System.Integration;
@@ -28,17 +33,6 @@ table 4001 "Hybrid Replication Summary"
             Description = 'The end date time of the replication run.';
             DataClassification = SystemMetadata;
         }
-#if not CLEANSCHEMA15
-        field(4; "Replication Type"; Option)
-        {
-            Description = 'The type of trigger for the replication run.';
-            OptionMembers = Scheduled,Manual;
-            DataClassification = SystemMetadata;
-            ObsoleteState = Removed;
-            ObsoleteReason = 'Moved to Trigger Type';
-            ObsoleteTag = '15.4';
-        }
-#endif
         field(5; "Status"; Option)
         {
             Description = 'The status of the replication run.';

@@ -1720,8 +1720,8 @@ codeunit 18917 "TCS On Sales Documents"
     end;
 
     [Test]
-    [HandlerFunctions('TaxRatePageHandler,StatisticsPageHandler')]
-    procedure SalesOrderWithGLAccountVerifyStatistics()
+    [HandlerFunctions('TaxRatePageHandler,StatisticsPageHandlerNM')]
+    procedure SalesOrderWithGLAccountVerifyStatisticsNM()
     var
         TCSPostingSetup: Record "TCS Posting Setup";
         ConcessionalCode: Record "Concessional Code";
@@ -1745,12 +1745,12 @@ codeunit 18917 "TCS On Sales Documents"
             false);
 
         // [THEN] Statistics Verified
-        VerifyStatisticsForTCS(SalesHeader);
+        VerifyStatisticsForTCSNM(SalesHeader);
     end;
 
     [Test]
-    [HandlerFunctions('TaxRatePageHandler,StatisticsPageHandler')]
-    procedure SalesOrderWithItemVerifyStatistics()
+    [HandlerFunctions('TaxRatePageHandler,StatisticsPageHandlerNM')]
+    procedure SalesOrderWithItemVerifyStatisticsNM()
     var
         TCSPostingSetup: Record "TCS Posting Setup";
         ConcessionalCode: Record "Concessional Code";
@@ -1774,12 +1774,12 @@ codeunit 18917 "TCS On Sales Documents"
             false);
 
         // [THEN] Statistics Verified
-        VerifyStatisticsForTCS(SalesHeader);
+        VerifyStatisticsForTCSNM(SalesHeader);
     end;
 
     [Test]
-    [HandlerFunctions('TaxRatePageHandler,InvoiceStatisticsPageHandler')]
-    procedure SalesInvoiceWithGLAccountVerifyStatistics()
+    [HandlerFunctions('TaxRatePageHandler,InvoiceStatisticsPageHandlerNM')]
+    procedure SalesInvoiceWithGLAccountVerifyStatisticsNM()
     var
         TCSPostingSetup: Record "TCS Posting Setup";
         ConcessionalCode: Record "Concessional Code";
@@ -1803,12 +1803,12 @@ codeunit 18917 "TCS On Sales Documents"
             false);
 
         // [THEN] Statistics Verified
-        VerifyStatisticsForTCSWithInvoice(SalesHeader);
+        VerifyStatisticsForTCSWithInvoiceNM(SalesHeader);
     end;
 
     [Test]
-    [HandlerFunctions('TaxRatePageHandler,InvoiceStatisticsPageHandler')]
-    procedure SalesInvoiceWithItemVerifyStatistics()
+    [HandlerFunctions('TaxRatePageHandler,InvoiceStatisticsPageHandlerNM')]
+    procedure SalesInvoiceWithItemVerifyStatisticsNM()
     var
         TCSPostingSetup: Record "TCS Posting Setup";
         ConcessionalCode: Record "Concessional Code";
@@ -1832,7 +1832,7 @@ codeunit 18917 "TCS On Sales Documents"
             false);
 
         // [THEN] Statistics Verified
-        VerifyStatisticsForTCSWithInvoice(SalesHeader);
+        VerifyStatisticsForTCSWithInvoiceNM(SalesHeader);
     end;
 
     [Test]
@@ -3622,7 +3622,7 @@ codeunit 18917 "TCS On Sales Documents"
             exit(SalesInvoiceHeader."Currency Factor");
     end;
 
-    local procedure VerifyStatisticsForTCS(SalesHeader: Record "Sales Header")
+    local procedure VerifyStatisticsForTCSNM(SalesHeader: Record "Sales Header")
     var
         SalesLine: Record "Sales Line";
         SalesOrders: TestPage "Sales Order List";
@@ -3645,7 +3645,7 @@ codeunit 18917 "TCS On Sales Documents"
 
         SalesOrders.OpenEdit();
         SalesOrders.GoToRecord(SalesHeader);
-        SalesOrders.Statistics.Invoke();
+        SalesOrders.SalesOrderStatistics.Invoke();
 
         Evaluate(ActualAmount, Storage.Get(StatsTCSAmountLbl));
 
@@ -3653,7 +3653,7 @@ codeunit 18917 "TCS On Sales Documents"
             StrSubstNo(AmountErr, ActualAmount, ExpectedTCSAmount));
     end;
 
-    local procedure VerifyStatisticsForTCSWithInvoice(SalesHeader: Record "Sales Header")
+    local procedure VerifyStatisticsForTCSWithInvoiceNM(SalesHeader: Record "Sales Header")
     var
         SalesLine: Record "Sales Line";
         SalesOrders: TestPage "Sales Invoice List";
@@ -3676,7 +3676,7 @@ codeunit 18917 "TCS On Sales Documents"
 
         SalesOrders.OpenEdit();
         SalesOrders.GoToRecord(SalesHeader);
-        SalesOrders.Statistics.Invoke();
+        SalesOrders.SalesStatistics.Invoke();
 
         Evaluate(ActualAmount, Storage.Get(StatsTCSAmountLbl));
 
@@ -3977,8 +3977,8 @@ codeunit 18917 "TCS On Sales Documents"
         Storage.Set(SurchargeThresholdAmountLbl, Format(LibraryRandom.RandIntInRange(4000, 6000)));
     end;
 
-    [ModalPageHandler]
-    procedure InvoiceStatisticsPageHandler(var SalesStatistics: TestPage "Sales Statistics");
+    [PageHandler]
+    procedure InvoiceStatisticsPageHandlerNM(var SalesStatistics: TestPage "Sales Statistics");
     var
         Amount: Text;
     begin
@@ -3986,8 +3986,8 @@ codeunit 18917 "TCS On Sales Documents"
         Storage.Set(StatsTCSAmountLbl, Amount);
     end;
 
-    [ModalPageHandler]
-    procedure StatisticsPageHandler(var SalesStatistics: TestPage "Sales Order Statistics")
+    [PageHandler]
+    procedure StatisticsPageHandlerNM(var SalesStatistics: TestPage "Sales Order Statistics")
     var
         Amount: Text;
     begin

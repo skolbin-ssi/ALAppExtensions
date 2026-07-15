@@ -22,21 +22,18 @@ pageextension 31016 "Vendor Ledger Entries CZL" extends "Vendor Ledger Entries"
             field("Specific Symbol CZL"; Rec."Specific Symbol CZL")
             {
                 ApplicationArea = Basic, Suite;
-                Editable = false;
                 ToolTip = 'Specifies the additional symbol of bank payments.';
                 Visible = false;
             }
             field("Variable Symbol CZL"; Rec."Variable Symbol CZL")
             {
                 ApplicationArea = Basic, Suite;
-                Editable = false;
                 ToolTip = 'Specifies the detail information for payment.';
                 Visible = false;
             }
             field("Constant Symbol CZL"; Rec."Constant Symbol CZL")
             {
                 ApplicationArea = Basic, Suite;
-                Editable = false;
                 ToolTip = 'Specifies the additional symbol of bank payments.';
                 Visible = false;
             }
@@ -78,6 +75,8 @@ pageextension 31016 "Vendor Ledger Entries CZL" extends "Vendor Ledger Entries"
         {
             field(SuggestedAmountToApplyCZL; Rec.CalcSuggestedAmountToApplyCZL())
             {
+                AutoFormatType = 1;
+                AutoFormatExpression = '';
                 Caption = 'Suggested Amount to Apply (LCY)';
                 ApplicationArea = Basic, Suite;
                 Editable = false;

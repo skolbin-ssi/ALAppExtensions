@@ -3,10 +3,9 @@ namespace Microsoft.Bank.StatementImport.Yodlee;
 using Microsoft.Bank.Setup;
 using Microsoft.Foundation.Company;
 using System.Integration;
-using System.Telemetry;
-using System.Security.Encryption;
 using System.Privacy;
-
+using System.Security.Encryption;
+using System.Telemetry;
 table 1450 "MS - Yodlee Bank Service Setup"
 {
     ReplicateData = false;
@@ -81,6 +80,7 @@ table 1450 "MS - Yodlee Bank Service Setup"
 
             trigger OnValidate();
             var
+                AuditLog: Codeunit "Audit Log";
                 CustomerConsentMgt: Codeunit "Customer Consent Mgt.";
                 FeatureTelemetry: Codeunit "Feature Telemetry";
                 MSYodleeBankServiceConsentProvidedLbl: Label 'MS Yodlee Bank Service - consent provided by UserSecurityId %1.', Locked = true;
@@ -102,7 +102,7 @@ table 1450 "MS - Yodlee Bank Service Setup"
                     end;
                     TESTFIELD("User Profile Email Address");
                     FeatureTelemetry.LogUptake('0000GY2', 'Yodlee', Enum::"Feature Uptake Status"::"Set up");
-                    Session.LogAuditMessage(StrSubstNo(MSYodleeBankServiceConsentProvidedLbl, UserSecurityId()), SecurityOperationResult::Success, AuditCategory::ApplicationManagement, 4, 0);
+                    AuditLog.LogAuditMessage(StrSubstNo(MSYodleeBankServiceConsentProvidedLbl, UserSecurityId()), SecurityOperationResult::Success, AuditCategory::ApplicationManagement, 4, 0);
                 end;
             end;
         }
@@ -113,34 +113,6 @@ table 1450 "MS - Yodlee Bank Service Setup"
         {
             TableRelation = "Bank Export/Import Setup".Code where(Direction = const(Import));
         }
-#if not CLEANSCHEMA18
-        field(40; "Cobrand Session Token"; BLOB)
-        {
-            ObsoleteReason = 'This field is no longer used after refactoring.';
-            ObsoleteState = Removed;
-            ObsoleteTag = '18.0';
-        }
-        field(41; "Cob. Token Last Date Updated"; DateTime)
-        {
-            Editable = false;
-            ObsoleteReason = 'This field is no longer used after refactoring.';
-            ObsoleteState = Removed;
-            ObsoleteTag = '18.0';
-        }
-        field(42; "Consumer Session Token"; BLOB)
-        {
-            ObsoleteReason = 'This field is no longer used after refactoring.';
-            ObsoleteState = Removed;
-            ObsoleteTag = '18.0';
-        }
-        field(43; "Cons. Token Last Date Updated"; DateTime)
-        {
-            Editable = false;
-            ObsoleteReason = 'This field is no longer used after refactoring.';
-            ObsoleteState = Removed;
-            ObsoleteTag = '18.0';
-        }
-#endif
         field(50; "Accept Terms of Use"; Boolean)
         {
         }
@@ -598,6 +570,7 @@ table 1450 "MS - Yodlee Bank Service Setup"
     [NonDebuggable]
     [Scope('OnPrem')]
     procedure SaveConsumerPassword(var ConsumerPasswordKey: Guid; ConsumerPasswordValue: Text);
+    var
     begin
         ConsumerPasswordValue := DELCHR(ConsumerPasswordValue, '=', ' ');
 
@@ -637,4 +610,3 @@ table 1450 "MS - Yodlee Bank Service Setup"
         exit(DELCHR("Service URL", '>', ' '));
     end;
 }
-

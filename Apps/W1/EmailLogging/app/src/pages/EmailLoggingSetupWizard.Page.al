@@ -1,11 +1,11 @@
 namespace Microsoft.CRM.EmailLoggin;
 
-
 using Microsoft.CRM.Interaction;
 using System.Environment;
 using System.Environment.Configuration;
 using System.Security.Authentication;
 using System.Security.Encryption;
+using System.Telemetry;
 using System.Utilities;
 
 page 1681 "Email Logging Setup Wizard"
@@ -471,6 +471,7 @@ page 1681 "Email Logging Setup Wizard"
                 trigger OnAction()
                 var
                     EmailLoggingSetup: Record "Email Logging Setup";
+                    AuditLog: Codeunit "Audit Log";
                     GuidedExperience: Codeunit "Guided Experience";
                     EmailLoggingSetUpLbl: Label 'Email Logging has been set up by UserSecurityId %1.', Locked = true;
                 begin
@@ -488,7 +489,7 @@ page 1681 "Email Logging Setup Wizard"
                     GuidedExperience.CompleteAssistedSetup(ObjectType::Page, Page::"Email Logging Setup Wizard");
 
                     Session.LogMessage('0000G0V', EmailLoggingSetupCompletedTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', CategoryTok);
-                    Session.LogAuditMessage(StrSubstNo(EmailLoggingSetUpLbl, UserSecurityId()), SecurityOperationResult::Success, AuditCategory::ApplicationManagement, 4, 0);
+                    AuditLog.LogAuditMessage(StrSubstNo(EmailLoggingSetUpLbl, UserSecurityId()), SecurityOperationResult::Success, AuditCategory::ApplicationManagement, 4, 0);
                     CurrPage.Close();
                 end;
             }

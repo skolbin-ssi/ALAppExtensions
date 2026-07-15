@@ -1,6 +1,14 @@
+namespace Microsoft.Test.Sustainability;
+
+using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Sustainability.Account;
+using Microsoft.Sustainability.Calculation;
+using Microsoft.Sustainability.Journal;
+
 codeunit 148181 "Sustainability Journal Test"
 {
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     var

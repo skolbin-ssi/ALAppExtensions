@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -8,7 +8,7 @@ page 10030 "IRS Forms Setup"
 {
     PageType = Card;
     SourceTable = "IRS Forms Setup";
-    ApplicationArea = BasicUS;
+    ApplicationArea = BasicCA, BasicUS;
     UsageCategory = Administration;
     DeleteAllowed = false;
     InsertAllowed = false;
@@ -29,51 +29,24 @@ page 10030 "IRS Forms Setup"
                     ToolTip = 'Specifies if the TIN of the vendor/company must be protected when printing reports.';
                 }
             }
-#if not CLEAN26
-            group(EmailSubject)
+            group(IRIS)
             {
-                Caption = 'Email Subject';
-                Visible = false;
-                ObsoleteReason = 'The group was moved to the new page IRS 1099 Email Content Setup.';
-                ObsoleteState = Pending;
-                ObsoleteTag = '26.0';
-                field("Email Subject"; Rec."Email Subject")
+                grid(GridControl)
                 {
-                    ShowCaption = false;
-                    Importance = Additional;
-                    ToolTip = 'Specifies the subject of the email with 1099 form that is sent to the vendor.';
-                    Visible = false;
-                    ObsoleteReason = 'The field was moved to the new page IRS 1099 Email Content Setup.';
-                    ObsoleteState = Pending;
-                    ObsoleteTag = '26.0';
+                    group(IRISInnerGroup)
+                    {
+                        ShowCaption = false;
+                        field("Business Name Control"; Rec."Business Name Control")
+                        {
+                            ToolTip = 'Specifies the business name control that must match the one in the IRS''s National Account Profile (NAP) database. Generally, it can be up to the first four alphanumeric characters of the business''s legal name.';
+                        }
+                        field("API Client ID"; Rec."IRIS API Client ID")
+                        {
+                            ToolTip = 'Specifies the GUID that is used to authenticate and authorize access to the IRS''s Information Returns Intake System (IRIS) API.';
+                        }
+                    }
                 }
             }
-            group(EmailBody)
-            {
-                Caption = 'Email Body';
-                Visible = false;
-                ObsoleteReason = 'The group was moved to the new page IRS 1099 Email Content Setup.';
-                ObsoleteState = Pending;
-                ObsoleteTag = '26.0';
-                field("Email Body"; EmailBody)
-                {
-                    ExtendedDatatype = RichContent;
-                    MultiLine = true;
-                    Importance = Additional;
-                    Caption = 'Email Body';
-                    ToolTip = 'Specifies the body of the email with 1099 form that is sent to the vendor.';
-                    Visible = false;
-                    ObsoleteReason = 'The field was moved to the new page IRS 1099 Email Content Setup.';
-                    ObsoleteState = Pending;
-                    ObsoleteTag = '26.0';
-
-                    trigger OnValidate()
-                    begin
-                        Rec."Email Body" := CopyStr(EmailBody, 1, MaxStrLen(Rec."Email Body"));
-                    end;
-                }
-            }
-#endif
         }
     }
 
@@ -83,7 +56,7 @@ page 10030 "IRS Forms Setup"
         {
             action(EmailContentSetup)
             {
-                ApplicationArea = BasicUS;
+                ApplicationArea = BasicCA, BasicUS;
                 Caption = 'Email Content Setup';
                 Image = Email;
                 ToolTip = 'Setup the subject and the body of the email with 1099 form that is sent to the vendor.';
@@ -100,7 +73,20 @@ page 10030 "IRS Forms Setup"
                         Rec.Modify(true);
                     end;
                 end;
+            }
+            action(SetupIRISUserID)
+            {
+                ApplicationArea = BasicCA, BasicUS;
+                Caption = 'Setup IRIS User ID';
+                Image = UserCertificate;
+                ToolTip = 'Obtain and set the IRIS User ID which is used to authenticate and authorize access to the IRS''s Information Returns Intake System (IRIS) API.';
 
+                trigger OnAction()
+                var
+                    SetupIRISUserId: Page "Setup IRIS User ID";
+                begin
+                    SetupIRISUserId.RunModal();
+                end;
             }
         }
         area(Promoted)
@@ -108,18 +94,18 @@ page 10030 "IRS Forms Setup"
             actionref(EmailContentSetup_Promoted; EmailContentSetup)
             {
             }
+            actionref(SetupIRISUserID_Promoted; SetupIRISUserID)
+            {
+            }
         }
     }
-#if not CLEAN26
-    var
-        EmailBody: Text;
-#endif
-#if not CLEAN25
+
     trigger OnOpenPage()
     var
-        IRSFormsFeature: Codeunit "IRS Forms Feature";
+        IRSReportingPeriod: Codeunit "IRS Reporting Period";
     begin
-        CurrPage.Editable := IRSFormsFeature.FeatureCanBeUsed();
+        Rec.InitSetup();
+        Rec.InitIRISAPIClientID();
+        IRSReportingPeriod.ShowIRSFormsGuideNotificationIfRequired();
     end;
-#endif
 }

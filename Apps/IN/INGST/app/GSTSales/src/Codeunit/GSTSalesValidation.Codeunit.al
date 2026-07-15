@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -20,9 +20,6 @@ using Microsoft.Sales.Customer;
 using Microsoft.Sales.Document;
 using Microsoft.Sales.History;
 using Microsoft.Sales.Posting;
-#if not CLEAN25
-using Microsoft.Sales.Pricing;
-#endif
 using Microsoft.Sales.Receivables;
 using Microsoft.Sales.Setup;
 using Microsoft.Utilities;
@@ -58,6 +55,7 @@ codeunit 18143 "GST Sales Validation"
         NonExemptedLinesErr: Label 'All lines in the document are not GST Exempted, the preferred Invoice type should be according to GST Customer Type.';
         GSTDependencyTypeErr: Label 'GST dependency type must be Bill to Address or Ship to Address';
         GSTGroupCodeEqualErr: Label 'GST Group Code must be same in Sales Document Lines for the Document Type %1 and Document No. %2.', Comment = '%1 = Document Type ; %2 = Document No.';
+        LengthErr: Label 'The Length of the GST Registration Nos. must be 15.';
 
     procedure GetPostInvoiceNoSeries(var SalesHeader: Record "Sales Header")
     var
@@ -148,26 +146,6 @@ codeunit 18143 "GST Sales Validation"
         SalesLine."Total UPIT Amount" := SalesLine."Unit Price Incl. of Tax" * SalesLine.Quantity - SalesLine."Line Discount Amount";
     end;
 
-#if not CLEAN25
-    //AssignPrice Inclusice of Tax
-#pragma warning disable AS0072
-    [Obsolete('Replaced by the new implementation (V16) of price calculation.', '19.0')]
-#pragma warning restore AS0072
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales Price Calc. Mgt.", 'OnAfterFindSalesLineItemPrice', '', false, false)]
-    local procedure AssignPriceInclusiveTax(var SalesLine: Record "Sales Line"; var TempSalesPrice: Record "Sales Price")
-    begin
-        if TempSalesPrice.IsEmpty() then
-            exit;
-
-        SalesLine."Price Inclusive of Tax" := TempSalesPrice."Price Inclusive of Tax";
-        SalesLine."Unit Price Incl. of Tax" := 0;
-        SalesLine."Total UPIT Amount" := 0;
-        if SalesLine."Price Inclusive of Tax" then begin
-            SalesLine."Unit Price Incl. of Tax" := TempSalesPrice."Unit Price";
-            SalesLine."Total UPIT Amount" := SalesLine."Unit Price Incl. of Tax" * SalesLine.Quantity - SalesLine."Line Discount Amount";
-        end;
-    end;
-#endif
 
     //Check Accounting Period
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post (Yes/No)", 'OnAfterConfirmPost', '', false, false)]
@@ -451,7 +429,10 @@ codeunit 18143 "GST Sales Validation"
     [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'GST Registration No.', False, False)]
     local procedure ValidateGSTRegistrationNo(var Rec: Record Customer)
     begin
-        CustGSTRegistrationNo(Rec);
+        if Rec."Govt. Undertaking" then
+            CheckGSTRegistrationLength(Rec."GST Registration No.")
+        else
+            CustGSTRegistrationNo(Rec);
     end;
 
     [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'GST Registration Type', False, False)]
@@ -460,10 +441,22 @@ codeunit 18143 "GST Sales Validation"
         CustGSTRegistrationType(Rec);
     end;
 
-    [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'GST Customer Type', False, False)]
+    [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'GST Customer Type', false, false)]
     local procedure ValidateCustGSTCustomerType(var Rec: Record Customer)
     begin
-        CustGSTCustomerType(Rec);
+        if Rec."Govt. Undertaking" then
+            CheckGSTRegistrationLength(Rec."GST Registration No.")
+        else
+            CustGSTCustomerType(Rec);
+    end;
+
+    [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'Govt. Undertaking', false, false)]
+    local procedure ValidateCustGSTGovtUndertaking(var Rec: Record Customer)
+    begin
+        if not Rec."Govt. Undertaking" then
+            CustGSTCustomerType(Rec)
+        else
+            CheckGSTRegistrationLength(Rec."GST Registration No.");
     end;
 
     [EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterValidateEvent', 'ARN No.', False, False)]
@@ -1246,10 +1239,13 @@ codeunit 18143 "GST Sales Validation"
                 "GST Customer Type"::"SEZ Development",
                 "GST Customer Type"::"SEZ Unit",
                 "GST Customer Type"::Registered,
-                "GST Customer Type"::Unregistered]
+                "GST Customer Type"::Unregistered,
+                "GST Customer Type"::Export]
             then begin
-                ShipToAddress.TestField(State);
-                if SalesHeader."GST Customer Type" <> SalesHeader."GST Customer Type"::Unregistered then
+                if not (ShipToAddress."Ship-to GST Customer Type" in ["GST Customer Type"::" ", "GST Customer Type"::Export]) then
+                    ShipToAddress.TestField(State);
+
+                if not (SalesHeader."GST Customer Type" in ["GST Customer Type"::Unregistered, "GST Customer Type"::Export]) then
                     if ShipToAddress."GST Registration No." = '' then
                         if ShipToAddress."ARN No." = '' then
                             Error(ShiptoGSTARNErr);
@@ -1454,6 +1450,21 @@ codeunit 18143 "GST Sales Validation"
         else
             if Customer."ARN No." = '' then
                 Customer."GST Customer Type" := "GST Customer Type"::" ";
+    end;
+
+    local procedure CheckGSTRegistrationLength(RegistrationNo: Code[20])
+    var
+        IsHandled: Boolean;
+    begin
+        OnBeforeCheckCustomerGSTRegistrationNo(RegistrationNo, IsHandled);
+        if IsHandled then
+            exit;
+
+        if RegistrationNo = '' then
+            exit;
+
+        if StrLen(RegistrationNo) <> 15 then
+            Error(LengthErr);
     end;
 
     local procedure CustGSTRegistrationType(var Customer: Record Customer)
@@ -2111,6 +2122,11 @@ codeunit 18143 "GST Sales Validation"
 
     [IntegrationEvent(false, false)]
     local procedure OnAfterShipToAddrfields(var SalesHeader: Record "Sales Header"; ShipToAddress: Record "Ship-to Address")
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeCheckcustomerGSTRegistrationNo(RegistrationNo: Code[20]; var IsHandled: Boolean)
     begin
     end;
 }

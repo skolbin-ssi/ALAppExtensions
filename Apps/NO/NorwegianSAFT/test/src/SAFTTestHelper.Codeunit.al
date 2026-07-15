@@ -126,6 +126,14 @@ codeunit 148099 "SAF-T Test Helper"
         SAFTExportHeader.Insert(true);
     end;
 
+    procedure CreateSAFTExportHeader(var SAFTExportHeader: Record "SAF-T Export Header"; MappingRangeCode: Code[20]; Version: Enum "SAF-T Version")
+    begin
+        SAFTExportHeader.Init();
+        SAFTExportHeader.Validate("Mapping Range Code", MappingRangeCode);
+        SAFTExportHeader.Validate(Version, Version);
+        SAFTExportHeader.Insert(true);
+    end;
+
     procedure RunSAFTExport(var SAFTExportHeader: Record "SAF-T Export Header")
     begin
         Codeunit.Run(Codeunit::"SAF-T Export Mgt.", SAFTExportHeader);
@@ -426,6 +434,7 @@ codeunit 148099 "SAF-T Test Helper"
         CompanyInformation.Validate(City, PostCode.City);
         CompanyInformation.Modify(true);
         GeneralLedgerSetup.Get();
+        GeneralLedgerSetup."LCY Code" := '';        // to avoid error on updating LCY Code
         GeneralLedgerSetup.Validate("LCY Code", LibraryUtility.GenerateGUID());
         GeneralLedgerSetup.Modify();
     end;
@@ -669,8 +678,8 @@ codeunit 148099 "SAF-T Test Helper"
     begin
         Assert.AreEqual(ElementName, TempXMLBuffer.GetElementName(),
             StrSubstNo(UnexpectedElementNameErr, ElementName, TempXMLBuffer.GetElementName()));
-        Assert.AreEqual(ElementValue, TempXMLBuffer.Value,
-            StrSubstNo(UnexpectedElementValueErr, ElementName, ElementValue, TempXMLBuffer.Value));
+        Assert.AreEqual(ElementValue, TempXMLBuffer.GetValue(),
+            StrSubstNo(UnexpectedElementValueErr, ElementName, ElementValue, TempXMLBuffer.GetValue()));
     end;
 
     procedure AssertCurrentValue(var TempXMLBuffer: Record "XML Buffer" temporary; XPath: Text; ExpectedValue: Text)

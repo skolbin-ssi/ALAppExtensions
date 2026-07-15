@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -8,7 +8,7 @@ page 10049 "IRS 1099 Form Doc Line Details"
 {
     PageType = List;
     SourceTable = "IRS 1099 Form Doc. Line Detail";
-    ApplicationArea = BasicUS;
+    ApplicationArea = BasicCA, BasicUS;
     Editable = false;
 
     layout
@@ -32,6 +32,10 @@ page 10049 "IRS 1099 Form Doc Line Details"
                 field(Description; Rec.Description)
                 {
                     Tooltip = 'Specifies the description of the vendor ledger entry.';
+                }
+                field("Calculated Amount"; Rec."Calculated Amount")
+                {
+                    Tooltip = 'Specifies the calculated amount that contributes to the form line total.';
                 }
                 field("IRS 1099 Reporting Amount"; Rec."IRS 1099 Reporting Amount")
                 {

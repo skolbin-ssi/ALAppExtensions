@@ -1,6 +1,7 @@
 namespace Microsoft.Integration.MDM;
 
 using Microsoft.Integration.SyncEngine;
+using System.Automation;
 using System.Threading;
 using System.Upgrade;
 
@@ -22,6 +23,7 @@ codeunit 7238 "Master Data Mgt. Upgrade"
     internal procedure UpgradeJobQueueEntryFrequencies()
     var
         IntegrationTableMapping: Record "Integration Table Mapping";
+        RestrictedRecord: Record "Restricted Record";
         JobQueueEntry: Record "Job Queue Entry";
         MasterDataMgtSetupDefault: Codeunit "Master Data Mgt. Setup Default";
         UpgradeTag: Codeunit "Upgrade Tag";
@@ -52,10 +54,10 @@ codeunit 7238 "Master Data Mgt. Upgrade"
                                     JobQueueEntry."No. of Minutes between Runs" := MasterDataMgtSetupDefault.DefaultNumberOfMinutesBetweenRuns();
                                 // we filtered for the default value of this one already
                                 JobQueueEntry."Inactivity Timeout Period" := MasterDataMgtSetupDefault.DefaultInactivityTimeoutPeriod();
-                                if not TryModify(JobQueueEntry) then begin
-                                    NotAllJobQueueEntriesModified := true;
-                                    ClearLastError();
-                                end;
+                                RestrictedRecord.SetRange("Record ID", JobQueueEntry.RecordId());
+                                if RestrictedRecord.IsEmpty() then
+                                    if not JobQueueEntry.Modify() then
+                                        NotAllJobQueueEntriesModified := true;
                             end;
                 until JobQueueEntry.Next() = 0;
         end;
@@ -64,12 +66,6 @@ codeunit 7238 "Master Data Mgt. Upgrade"
             Session.LogMessage('0000NJM', 'Decreasing frequency of all MDM job queue entries failed for at least one of them. Will retry with next upgrade.', Verbosity::Warning, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', 'AL Master Data Management')
         else
             UpgradeTag.SetUpgradeTag(GetJobQueueFrequencyUpgradeTag());
-    end;
-
-    [TryFunction]
-    local procedure TryModify(var JobQueueEntry: Record "Job Queue Entry")
-    begin
-        JobQueueEntry.Modify();
     end;
 
     internal procedure UpgradeSynchTableCaptions()

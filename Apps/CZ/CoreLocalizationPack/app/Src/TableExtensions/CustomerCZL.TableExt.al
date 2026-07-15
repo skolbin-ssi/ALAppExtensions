@@ -35,13 +35,15 @@ tableextension 11701 "Customer CZL" extends Customer
                     if RegNoServiceConfigCZL.RegNoSrvIsEnabled() then begin
                         LogNotVerified := false;
                         RegistrationLogMgtCZL.ValidateRegNoWithARES(ResultRecordRef, Rec, "No.", RegistrationLogCZL."Account Type"::Customer);
-                        ResultRecordRef.SetTable(Rec);
+                        if ResultRecordRef.Number <> 0 then
+                            ResultRecordRef.SetTable(Rec);
                     end;
 
                 if LogNotVerified then
                     RegistrationLogMgtCZL.LogCustomer(Rec);
             end;
         }
+#if not CLEANSCHEMA26
         field(11770; "Registration No. CZL"; Text[20])
         {
             Caption = 'Registration No.';
@@ -50,6 +52,7 @@ tableextension 11701 "Customer CZL" extends Customer
             ObsoleteTag = '26.0';
             ObsoleteReason = 'Replaced by standard "Registration Number" field.';
         }
+#endif
         field(11771; "Tax Registration No. CZL"; Text[20])
         {
             Caption = 'Tax Registration No.';
@@ -65,6 +68,7 @@ tableextension 11701 "Customer CZL" extends Customer
             Caption = 'Validate Registration No.';
             DataClassification = CustomerContent;
         }
+#if not CLEANSCHEMA25
         field(31070; "Transaction Type CZL"; Code[10])
         {
             Caption = 'Transaction Type';
@@ -92,7 +96,13 @@ tableextension 11701 "Customer CZL" extends Customer
             ObsoleteTag = '25.0';
             ObsoleteReason = 'Intrastat related functionalities are moved to Intrastat extensions.';
         }
+#endif
     }
+
+    trigger OnDelete()
+    begin
+        RegistrationLogMgtCZL.DeleteCustomerLog(Rec);
+    end;
 
     var
         RegistrationLogMgtCZL: Codeunit "Registration Log Mgt. CZL";

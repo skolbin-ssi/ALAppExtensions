@@ -1,3 +1,15 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
+namespace Microsoft.DemoData.Manufacturing;
+
+using Microsoft.DemoTool.Helpers;
+using Microsoft.Inventory.Journal;
+using Microsoft.Inventory.Ledger;
+using Microsoft.Inventory.Posting;
+
 codeunit 4779 "Create Mfg Item Jnl Line"
 {
     InherentEntitlements = X;
@@ -30,7 +42,7 @@ codeunit 4779 "Create Mfg Item Jnl Line"
 
         ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1101(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 50, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
         ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1102(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 50, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
-        ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1103(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 50, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
+        ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1103(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 200, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
 
         ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1104(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 50, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
         ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1105(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 50, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
@@ -45,7 +57,7 @@ codeunit 4779 "Create Mfg Item Jnl Line"
         ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1301(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 50, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
         ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1304(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 50, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
         ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1302(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 50, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
-        ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1303(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 50, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
+        ContosoItem.InsertItemJournalLine(TemplateName, BatchName, CreateMfgItem.SPBOM1303(), '', Enum::"Item Ledger Entry Type"::"Positive Adjmt.", 100, ManufacturingDemoDataSetup."Manufacturing Location", ContosoUtilities.AdjustDate(19020601D));
 
         ItemJournalLine.SetRange("Journal Template Name", TemplateName);
         ItemJournalLine.SetRange("Journal Batch Name", BatchName);

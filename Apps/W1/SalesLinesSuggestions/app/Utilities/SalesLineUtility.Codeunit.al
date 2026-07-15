@@ -3,8 +3,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.Sales.Document;
-using System.Telemetry;
+
 using Microsoft.Utilities;
+using System.Telemetry;
 
 codeunit 7280 "Sales Line Utility"
 {
@@ -166,5 +167,16 @@ codeunit 7280 "Sales Line Utility"
     begin
         ProgressDialog.Open(ProcessingLinesLbl);
         ProgressDialog.Update(1, '');
+    end;
+
+    procedure CheckIfSuggestedLinesContainErrors(var TempSalesLineAISuggestion: Record "Sales Line AI Suggestions" temporary): Boolean
+    var
+        TempSalesLineSuggestion: Record "Sales Line AI Suggestions" temporary;
+    begin
+        TempSalesLineSuggestion.Copy(TempSalesLineAISuggestion, true);
+        TempSalesLineSuggestion.Reset();
+        TempSalesLineSuggestion.SetRange("Line Style", 'Unfavorable');
+        if not TempSalesLineSuggestion.IsEmpty() then
+            exit(true);
     end;
 }

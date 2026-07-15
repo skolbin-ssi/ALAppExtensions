@@ -7,7 +7,7 @@ page 40125 "Hybrid GP Overview Fb"
     ApplicationArea = All;
     Caption = 'GP Migration Overview';
     PageType = CardPart;
-
+#pragma warning disable AA0219
     layout
     {
         area(Content)
@@ -77,6 +77,7 @@ page 40125 "Hybrid GP Overview Fb"
             }
         }
     }
+#pragma warning restore AA0219
 
     trigger OnAfterGetRecord()
     var
@@ -93,7 +94,10 @@ page 40125 "Hybrid GP Overview Fb"
         HelperFunctions: Codeunit "Helper Functions";
         TotalGLBatchCount: Integer;
         TotalStatisticalBatchCount: Integer;
+        TotalBankBatchCount: Integer;
+        TotalCustomerBatchCount: Integer;
         TotalItemBatchCount: Integer;
+        TotalVendorBatchCount: Integer;
         CompanyHasFailedBatches: Boolean;
         FailedBatchMsgBuilder: TextBuilder;
         AddComma: Boolean;
@@ -112,9 +116,12 @@ page 40125 "Hybrid GP Overview Fb"
             repeat
                 TotalGLBatchCount := 0;
                 TotalStatisticalBatchCount := 0;
+                TotalBankBatchCount := 0;
+                TotalCustomerBatchCount := 0;
                 TotalItemBatchCount := 0;
+                TotalVendorBatchCount := 0;
 
-                HelperFunctions.GetUnpostedBatchCountForCompany(HybridCompanyStatus.Name, TotalGLBatchCount, TotalStatisticalBatchCount, TotalItemBatchCount);
+                HelperFunctions.GetUnpostedBatchCountForCompany(HybridCompanyStatus.Name, TotalGLBatchCount, TotalStatisticalBatchCount, TotalBankBatchCount, TotalCustomerBatchCount, TotalItemBatchCount, TotalVendorBatchCount);
                 FailedBatchCount := FailedBatchCount + TotalGLBatchCount + TotalStatisticalBatchCount + TotalItemBatchCount;
                 CompanyHasFailedBatches := (TotalGLBatchCount > 0) or (TotalItemBatchCount > 0);
                 if CompanyHasFailedBatches then begin

@@ -5086,6 +5086,7 @@ Cstr(Fields!PageLbl.Value)</Value>
                               </Style>
                             </Tablix>
                             <Textbox Name="QRCode">
+                              <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
@@ -5102,9 +5103,9 @@ Cstr(Fields!PageLbl.Value)</Value>
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>QRCode</rd:DefaultName>
-                              <Top>15.339cm</Top>
+                              <Top>14.95591cm</Top>
                               <Left>14.34128cm</Left>
-                              <Height>3.3441cm</Height>
+                              <Height>3.6919cm</Height>
                               <Width>3.6919cm</Width>
                               <ZIndex>6</ZIndex>
                               <Visibility>
@@ -5197,7 +5198,6 @@ Cstr(Fields!PageLbl.Value)</Value>
                 </FilterValues>
               </Filter>
             </Filters>
-            <Left>0in</Left>
             <Height>8.09792in</Height>
             <Width>18.03318cm</Width>
             <Style>
@@ -5207,7 +5207,7 @@ Cstr(Fields!PageLbl.Value)</Value>
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>20.56871cm</Height>
+        <Height>20.56872cm</Height>
         <Style>
           <Border />
         </Style>
@@ -5238,7 +5238,6 @@ Cstr(Fields!PageLbl.Value)</Value>
                 </Paragraph>
               </Paragraphs>
               <Top>0.8cm</Top>
-              <Left>0in</Left>
               <Height>0.5cm</Height>
               <Width>18cm</Width>
               <Style>
@@ -5270,7 +5269,6 @@ Cstr(Fields!PageLbl.Value)</Value>
                 </Paragraph>
               </Paragraphs>
               <Top>1.3cm</Top>
-              <Left>0in</Left>
               <Height>0.5cm</Height>
               <Width>18cm</Width>
               <ZIndex>1</ZIndex>
@@ -5303,7 +5301,6 @@ Cstr(Fields!PageLbl.Value)</Value>
                   </Style>
                 </Paragraph>
               </Paragraphs>
-              <Left>0in</Left>
               <Height>0.8cm</Height>
               <Width>18cm</Width>
               <ZIndex>2</ZIndex>
@@ -5322,7 +5319,6 @@ Cstr(Fields!PageLbl.Value)</Value>
               <Value>=IIf(Code.GetData(3,1)=1,First(Fields!Picture_CompanyInformation.Value, "DataSet_Result"),"")</Value>
               <MIMEType>image/bmp</MIMEType>
               <Sizing>FitProportional</Sizing>
-              <Left>0in</Left>
               <Height>14mm</Height>
               <Width>60mm</Width>
               <ZIndex>3</ZIndex>

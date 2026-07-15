@@ -58,6 +58,7 @@ table 4093 "GP Customer"
         }
         field(10; CRLMTAMT; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Credit Limit Amount';
             DataClassification = CustomerContent;
         }
@@ -83,6 +84,7 @@ table 4093 "GP Customer"
         }
         field(15; AMOUNT; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Amount';
             DataClassification = CustomerContent;
         }
@@ -131,6 +133,14 @@ table 4093 "GP Customer"
             Caption = 'Tax Exempt 1';
             DataClassification = CustomerContent;
         }
+        field(25; CUSTCLAS; Text[15])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(26; RMSLSACC; Integer)
+        {
+            DataClassification = CustomerContent;
+        }
     }
 
     keys
@@ -138,6 +148,10 @@ table 4093 "GP Customer"
         key(Key1; CUSTNMBR)
         {
             Clustered = true;
+        }
+        key(Key2; PYMTRMID)
+        {
+
         }
     }
 

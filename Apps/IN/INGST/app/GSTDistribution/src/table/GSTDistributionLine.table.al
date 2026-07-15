@@ -81,6 +81,7 @@ table 18204 "GST Distribution Line"
         }
         field(24; "Distribution %"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Distribution %';
             DataClassification = CustomerContent;
 
@@ -115,9 +116,16 @@ table 18204 "GST Distribution Line"
         }
         field(27; "Distribution Amount"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Distribution Amount';
             DataClassification = CustomerContent;
             Editable = false;
+        }
+        field(28; "Location Posting No. Series"; Code[20])
+        {
+            Caption = 'Posting No. Series';
+            DataClassification = CustomerContent;
         }
         field(480; "Dimension Set ID"; Integer)
         {
@@ -131,6 +139,7 @@ table 18204 "GST Distribution Line"
                 ShowDimensions();
             end;
         }
+
     }
 
     keys

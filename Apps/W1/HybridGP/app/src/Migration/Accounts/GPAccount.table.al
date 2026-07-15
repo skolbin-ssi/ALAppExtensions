@@ -62,6 +62,56 @@ table 4090 "GP Account"
             Caption = 'Account Type';
             DataClassification = CustomerContent;
         }
+        field(13; ACTNUMBR_1; Text[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(14; ACTNUMBR_2; Text[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(15; ACTNUMBR_3; Text[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(16; ACTNUMBR_4; Text[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(17; ACTNUMBR_5; Text[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(18; ACTNUMBR_6; Text[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(19; ACTNUMBR_7; Text[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(20; ACTNUMBR_8; Text[20])
+        {
+            DataClassification = CustomerContent;
+        }
+        field(100; "Standard Sales Code"; Code[10])
+        {
+            DataClassification = SystemMetadata;
+        }
+        field(101; "Standard Purchase Code"; Code[10])
+        {
+            DataClassification = SystemMetadata;
+        }
+        field(102; "Sub Type"; Option)
+        {
+            DataClassification = SystemMetadata;
+            OptionMembers = "Standard","Fixed","Variable";
+        }
+        field(103; "Balance For Calculation"; Option)
+        {
+            DataClassification = SystemMetadata;
+            OptionMembers = "YTD","Period";
+        }
     }
 
     keys

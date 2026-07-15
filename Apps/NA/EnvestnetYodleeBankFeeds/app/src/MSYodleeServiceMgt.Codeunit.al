@@ -1,23 +1,24 @@
 namespace Microsoft.Bank.StatementImport.Yodlee;
 
-using System.Utilities;
 using Microsoft.Bank.BankAccount;
 using Microsoft.Bank.Reconciliation;
-using System.Media;
-using System.IO;
-using Microsoft.Finance.GeneralLedger.Journal;
-using System.DataAdministration;
-using System.Security.Encryption;
 using Microsoft.Bank.Statement;
-using System.Environment.Configuration;
-using Microsoft.Foundation.Company;
-using System.Environment;
-using System.Reflection;
-using System.Azure.KeyVault;
-using System.Telemetry;
-using System;
+using Microsoft.Finance.GeneralLedger.Journal;
 using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Foundation.Company;
 using Microsoft.Utilities;
+using System;
+using System.Apps;
+using System.Azure.KeyVault;
+using System.DataAdministration;
+using System.Environment;
+using System.Environment.Configuration;
+using System.IO;
+using System.Media;
+using System.Reflection;
+using System.Security.Encryption;
+using System.Telemetry;
+using System.Utilities;
 
 codeunit 1450 "MS - Yodlee Service Mgt."
 {
@@ -87,6 +88,8 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         BankAccountRefreshBankInBetaMaintenanceTxt: Label 'Yodlee was unable to update your account because it has started providing data updates for this online bank, and it may take a few days to be successful. Please try again later.';
         BankAccountRefreshTimedOutTxt: Label 'Your request timed out due to technical reasons. Open the corresponding bank account card and choose action Edit Online Bank Account Information. Provide the credentials for the online bank account, close the page and then choose action Refresh Online Bank Account.';
         BankAccountRefreshAdditionalAuthInfoNeededTxt: Label 'Additional authentication information is required. Open the corresponding bank account card and choose action Edit Online Bank Account Information.';
+        BankAccountConsentRequiredTxt: Label 'Access consent update is required for this online bank account. Open the corresponding bank account card, choose action ''Manage Access Consent for Online Bank Account'' and provide consent. If that doesn''t help, choose action ''Edit Online Bank Account Information'' and provide credentials and consent.';
+        UserActionNeededAtSiteTxt: Label 'Your financial institution requires additional action at their site. Sign in to your financial institution''s website to complete the necessary steps.';
         YodleeFastlinkUrlTxt: Label 'YODLEE_FASTLINKURL', Locked = true;
         GLBDisableRethrowException: Boolean;
         ErrorsIgnoredTxt: Label 'This failure has been ignored.';
@@ -164,6 +167,10 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         FastlinkEditAccountExtraParamsTok: Label 'providerAccountId=%1&flow=edit&callback=%2', Locked = true;
         BankAccountNameDisplayLbl: Label '%1 - %2', Locked = true;
         LabelDateExprTok: Label '<%1D>', Locked = true;
+        HttpRequestBlockedErr: Label 'Envestnet Yodlee Bank Feeds app is not allowed to make HTTP requests when running in a non-production environment.';
+        HttpRequestBlockedTelemetryMsg: Label 'Customer trying to enable Envestnet Yodlee Bank Feeds and app is not allowed to make HTTP requests when running in a non-production environment.', Locked = true;
+        HttpRequestAllowedTelemetryMsg: Label 'Customer enabled http requests for Envestnet Yodlee Bank Feeds app via notification action.', Locked = true;
+        EnableHttpRequestActionLbl: Label 'Allow HTTP requests';
 
     procedure SetValuesToDefault(var MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup");
     var
@@ -347,8 +354,7 @@ codeunit 1450 "MS - Yodlee Service Mgt."
     begin
         // don't use our client credentials if we are in demo company
         if EnvironmentInformation.IsSaaS() then
-            if CompanyInformationMgt.IsDemoCompany() then
-                exit(false);
+            exit(not (CompanyInformationMgt.IsDemoCompany()));
 
         exit(GetYodleeAdminLoginName(AdminLoginName));
     end;
@@ -611,70 +617,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         exit(true);
     end;
 
-#if not CLEAN24
-#pragma warning disable AL0432
-    [NonDebuggable]
-    [Obsolete('Use RegisterConsumer with SecretText data type for Password parameter.', '24.0')]
-    procedure RegisterConsumer(var Username: Text[250]; var Password: Text; var ErrorText: Text; CobrandToken: Text): Boolean;
-    var
-        MSYodleeBankServiceSetup: Record "MS - Yodlee Bank Service Setup";
-        GeneralLedgerSetup: Record "General Ledger Setup";
-        PasswordHelper: Codeunit "Password Helper";
-        Response: Text;
-        LcyCode: Text;
-        Email: Text;
-        AuthorizationHeaderValue: Text;
-        AlphanumericCharsTxt: Text;
-    begin
-        AlphanumericCharsTxt := 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        CheckServiceEnabled();
-        Username := DelChr(CompanyName(), '=', DelChr(CompanyName(), '=', AlphanumericCharsTxt)) + '_' + FORMAT(CREATEGUID());
-
-        GeneralLedgerSetup.GET();
-        GeneralLedgerSetup.TESTFIELD("LCY Code");
-        LcyCode := GeneralLedgerSetup."LCY Code";
-
-        MSYodleeBankServiceSetup.GET();
-        Email := MSYodleeBankServiceSetup."User Profile Email Address";
-
-        if ClientCredentialsAuthEnabled() then
-            AuthorizationHeaderValue := YodleeAPIStrings.GetAuthorizationHeaderValue(CobrandToken)
-        else begin
-            AuthorizationHeaderValue := YodleeAPIStrings.GetAuthorizationHeaderValue(CobrandToken, '');
-            Password := COPYSTR(PasswordHelper.GeneratePassword(50), 1, 50);
-        end;
-
-        Session.LogMessage('0000DL9', StrSubstNo(StartingToRegisterUserTxt, UserName, LcyCode), Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
-        ExecuteWebServiceRequest(YodleeAPIStrings.GetRegisterConsumerURL(), 'POST',
-            YodleeAPIStrings.GetRegisterConsumerBody(CobrandToken, UserName, Password, Email, LcyCode), AuthorizationHeaderValue,
-            ErrorText, '');
-
-        if not GetResponseValue('/', Response, ErrorText) then begin
-            ErrorText := GetAdjustedErrorText(ErrorText, FailedRegisterConsumerTxt);
-            if IsStaleCredentialsErr(ErrorText) then begin
-                ErrorText := StaleCredentialsErr;
-                LogActivityFailed(RegisterConsumerTxt, ErrorText, FailureAction::RethrowError, '', StrSubstNo(TelemetryActivityFailureTxt, RegisterConsumerTxt, ErrorText), Verbosity::Warning);
-                exit(false);
-            end;
-            if ErrorText.Contains(BankStmtServiceStaleIllegalArgumentValueExceptionTxt) then begin
-                ErrorText := RegisterConsumerVerifyLCYCodeTxt;
-                LogActivityFailed(RegisterConsumerTxt, ErrorText, FailureAction::RethrowError, '', StrSubstNo(TelemetryActivityFailureTxt, RegisterConsumerTxt, ErrorText), Verbosity::Warning);
-            end else
-                LogActivityFailed(RegisterConsumerTxt, ErrorText, FailureAction::RethrowError, '', StrSubstNo(TelemetryActivityFailureTxt, RegisterConsumerTxt, ErrorText), Verbosity::Error);
-
-            exit(false);
-        end;
-
-        LogActivitySucceed(RegisterConsumerTxt, SuccessRegisterConsumerTxt, StrSubstNo(TelemetryActivitySuccessTxt, RegisterConsumerTxt, SuccessRegisterConsumerTxt));
-
-        MSYodleeBankServiceSetup.VALIDATE("Consumer Name", COPYSTR(Username, 1, MAXSTRLEN(MSYodleeBankServiceSetup."Consumer Name")));
-        MSYodleeBankServiceSetup.SaveConsumerPassword(MSYodleeBankServiceSetup."Consumer Password", Password);
-        MSYodleeBankServiceSetup.MODIFY(true);
-        StoreConsumerName(MSYodleeBankServiceSetup."Consumer Name");
-        exit(true);
-    end;
-#pragma warning restore AL0432
-#endif
 
     [NonDebuggable]
     procedure RegisterConsumer(var Username: Text[250]; var Password: SecretText; var ErrorText: Text; CobrandToken: Text): Boolean;
@@ -1010,13 +952,13 @@ codeunit 1450 "MS - Yodlee Service Mgt."
     local procedure UserFriendlyRefreshErrorMessage(RefreshCode: Text): Text;
     begin
         case RefreshCode of
-            '402', 'CREDENTIALS_UPDATE_NEEDED', 'INCORRECT_CREDENTIALS':
+            '402', 'CREDENTIALS_UPDATE_NEEDED', 'INCORRECT_CREDENTIALS', 'INCORRECT_OAUTH_TOKEN':
                 exit(BankAccountRefreshInvalidCredentialsTxt);
             '404', 'TECH_ERROR':
                 exit(BankAccountRefreshUnknownErrorTxt);
             '407', 'ACCOUNT_LOCKED':
                 exit(BankAccountRefreshAccountLockedTxt);
-            '409', 'UNEXPECTED_SITE_ERROR', 'SITE_UNAVAILABLE':
+            '409', 'UNEXPECTED_SITE_ERROR', 'SITE_UNAVAILABLE', 'DATA_NOT_AVAILABLE', 'NOT_AVAILABLE', 'SITE_BLOCKING_ERROR':
                 exit(BankAccountRefreshBankDownTxt);
             '424':
                 exit(BankAccountRefreshBankDownForMaintenanceTxt);
@@ -1026,6 +968,10 @@ codeunit 1450 "MS - Yodlee Service Mgt."
                 exit(BankAccountRefreshTimedOutTxt);
             '518', '519', '520', '522', '523', '524', '526', 'ADDL_AUTHENTICATION_REQUIRED', 'INVALID_ADDL_INFO_PROVIDED', 'NEW_AUTHENTICATION_REQUIRED':
                 exit(BankAccountRefreshAdditionalAuthInfoNeededTxt);
+            'CONSENT_EXPIRED', 'CONSENT_REVOKED', 'CONSENT_REQUIRED':
+                exit(BankAccountConsentRequiredTxt);
+            'USER_ACTION_NEEDED_AT_SITE':
+                exit(UserActionNeededAtSiteTxt);
         end;
         exit('');
     end;
@@ -1676,6 +1622,7 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         UnsuccessfulRequestTelemetryTxt: Text;
         PaginationLinks: array[1] of Text;
         PaginationRelativeLink: Text;
+        HttpRequestBlockedErrorInfo: ErrorInfo;
     begin
         if not TryCheckCredentials(ErrorText) then
             ERROR(ErrorText);
@@ -1730,6 +1677,15 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         if IsSuccessful then
             GetHttpResponseMessage.Content().ReadAs(GLBResponseInStream)
         else begin
+            if GetHttpResponseMessage.IsBlockedByEnvironment() then begin
+                HttpRequestBlockedErrorInfo.DataClassification := HttpRequestBlockedErrorInfo.DataClassification::SystemMetadata;
+                HttpRequestBlockedErrorInfo.ErrorType := HttpRequestBlockedErrorInfo.ErrorType::Client;
+                HttpRequestBlockedErrorInfo.Verbosity := HttpRequestBlockedErrorInfo.Verbosity::Error;
+                HttpRequestBlockedErrorInfo.Message := HttpRequestBlockedErr;
+                HttpRequestBlockedErrorInfo.AddAction(EnableHttpRequestActionLbl, Codeunit::"MS - Yodlee Service Mgt.", 'EnableHttpRequestForYodlee');
+                Session.LogMessage('0000P7D', HttpRequestBlockedTelemetryMsg, Verbosity::Warning, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+                Error(HttpRequestBlockedErrorInfo);
+            end;
             DotNetExceptionHandler.Collect();
             UnsuccessfulRequestTelemetryTxt := DotNetExceptionHandler.GetMessage();
             FeatureTelemetry.LogError('0000GXZ', 'Yodlee', 'Requesting to Yodlee', RequestUnsuccessfulErr);
@@ -3048,6 +3004,15 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         MSYodleeBankSession.DeleteAll();
     end;
 
+    internal procedure EnableHttpRequestForYodlee(ErrorInfo: ErrorInfo)
+    var
+        ExtensionManagement: Codeunit "Extension Management";
+        CallerModuleInfo: ModuleInfo;
+    begin
+        NavApp.GetCurrentModuleInfo(CallerModuleInfo);
+        ExtensionManagement.ConfigureExtensionHttpClientRequestsAllowance(CallerModuleInfo.PackageId(), true);
+        Session.LogMessage('0000P7E', HttpRequestAllowedTelemetryMsg, Verbosity::Normal, DataClassification::CustomerContent, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
+    end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"MS - Yodlee Service Mgt.", 'OnAfterSuccessfulActivitySendTelemetry', '', false, false)]
     local procedure SendTelemetryAfterSuccessfulActivity(Message: Text);
@@ -3084,7 +3049,6 @@ codeunit 1450 "MS - Yodlee Service Mgt."
         Session.LogMessage('00001QG', Message, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', YodleeTelemetryCategoryTok);
     end;
 }
-
 
 
 

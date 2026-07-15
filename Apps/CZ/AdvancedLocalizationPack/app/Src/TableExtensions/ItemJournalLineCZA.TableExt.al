@@ -31,6 +31,7 @@ tableextension 31251 "Item Journal Line CZA" extends "Item Journal Line"
         }
         field(31007; "Currency Factor CZA"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Currency Factor';
             DecimalPlaces = 0 : 15;
             DataClassification = CustomerContent;
@@ -64,5 +65,27 @@ tableextension 31251 "Item Journal Line CZA" extends "Item Journal Line"
                 Validate("Gen. Prod. Posting Group", StockkeepingUnit."Gen. Prod. Posting Group CZL");
         if "Gen. Bus. Posting Group" <> '' then
             GeneralPostingSetup.Get("Gen. Bus. Posting Group", "Gen. Prod. Posting Group");
+    end;
+
+    procedure CheckInventoryPostingGroupCZA()
+    var
+        Item: Record Item;
+        IsHandled: Boolean;
+    begin
+        OnBeforeCheckInventoryPostingGroupCZA(Rec, IsHandled);
+        if IsHandled then
+            exit;
+
+        if ("Item No." = '') or ("Inventory Posting Group" = '') then
+            exit;
+
+        Item.Get("Item No.");
+        if Item.Type = Item.Type::Inventory then
+            TestField("Inventory Posting Group", Item."Inventory Posting Group");
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeCheckInventoryPostingGroupCZA(ItemJournalLine: Record "Item Journal Line"; var IsHandled: Boolean)
+    begin
     end;
 }

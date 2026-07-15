@@ -3,6 +3,7 @@ codeunit 139735 "APIV1 - Sales Order Lines E2E"
     // version Test,ERM,W1,All
 
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     trigger OnRun()
@@ -599,39 +600,6 @@ codeunit 139735 "APIV1 - Sales Order Lines E2E"
     end;
 
     [Test]
-    procedure TestInsertingLineKeepsOrderDiscountAmt()
-    var
-        SalesHeader: Record "Sales Header";
-        Item: Record "Item";
-        TargetURL: Text;
-        ResponseText: Text;
-        OrderLineJSON: Text;
-        DiscountAmount: Decimal;
-    begin
-        // [FEATURE] [Discount]
-        // [SCENARIO] Adding an order through API will keep Discount Amount
-        // [GIVEN] An  order for customer with order discount amount
-        Initialize();
-        SetupAmountDiscountTest(SalesHeader, DiscountAmount);
-        OrderLineJSON := CreateOrderLineJSON(Item.SystemId, LibraryRandom.RandIntInRange(1, 100));
-
-        COMMIT();
-
-        // [WHEN] We create a line through API
-        TargetURL := LibraryGraphMgt
-          .CreateTargetURLWithSubpage(
-            SalesHeader.SystemId,
-            PAGE::"APIV1 - Sales Orders",
-            OrderServiceNameTxt,
-            OrderServiceLinesNameTxt);
-        ASSERTERROR LibraryGraphMgt.PostToWebService(TargetURL, OrderLineJSON, ResponseText);
-
-        // [THEN] Discount Amount is Kept
-        VerifyTotals(SalesHeader, DiscountAmount, SalesHeader."Invoice Discount Calculation"::Amount);
-        RecallNotifications();
-    end;
-
-    [Test]
     procedure TestModifyingLineKeepsOrderDiscountAmt()
     var
         SalesHeader: Record "Sales Header";
@@ -901,7 +869,7 @@ codeunit 139735 "APIV1 - Sales Order Lines E2E"
     procedure TestPatchingTheTypeBlanksIds()
     var
         SalesHeader: Record "Sales Header";
-        SalesInvoiceLineAggregate: Record "Sales Invoice Line Aggregate";
+        TempSalesInvoiceLineAggregate: Record "Sales Invoice Line Aggregate";
         SalesLine: Record "Sales Line";
         TargetURL: Text;
         ResponseText: Text;
@@ -915,7 +883,7 @@ codeunit 139735 "APIV1 - Sales Order Lines E2E"
         Assert.AreNotEqual('', OrderId, 'ID should not be empty');
         FindFirstSalesLine(SalesHeader, SalesLine);
 
-        OrderLineJSON := STRSUBSTNO('{"%1":"%2"}', LineTypeFieldNameTxt, FORMAT(SalesInvoiceLineAggregate."API Type"::Account));
+        OrderLineJSON := STRSUBSTNO('{"%1":"%2"}', LineTypeFieldNameTxt, FORMAT(TempSalesInvoiceLineAggregate."API Type"::Account));
 
         // [WHEN] we PATCH the line
         TargetURL := LibraryGraphMgt

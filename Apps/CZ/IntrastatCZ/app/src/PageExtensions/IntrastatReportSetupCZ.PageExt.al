@@ -29,32 +29,11 @@ pageextension 31342 "Intrastat Report Setup CZ" extends "Intrastat Report Setup"
                 ToolTip = 'Specifies the rounding type for amount calculation for Intrastat declaration.';
             }
         }
-        addafter(Numbering)
+        addlast(Reporting)
         {
-            group("Mandatory Fields")
+            field("Min. Tol. Fair Market Value CZ"; Rec."Min. Tol. Fair Market Value CZ")
             {
-                Caption = 'Mandatory Fields';
-
-                field("Transaction Type Mandatory CZ"; Rec."Transaction Type Mandatory CZ")
-                {
-                    ApplicationArea = Basic, Suite;
-                    ToolTip = 'Specifies this option to make transaction type specification mandatory.';
-                }
-                field("Transaction Spec. Mandatory CZ"; Rec."Transaction Spec. Mandatory CZ")
-                {
-                    ApplicationArea = Basic, Suite;
-                    ToolTip = 'Specifies if you are using a mandatory transaction specification for reporting.';
-                }
-                field("Transport Method Mandatory CZ"; Rec."Transport Method Mandatory CZ")
-                {
-                    ApplicationArea = Basic, Suite;
-                    ToolTip = 'Specifies this option to make transport method specification mandatory.';
-                }
-                field("Shipment Method Mandatory CZ"; Rec."Shipment Method Mandatory CZ")
-                {
-                    ApplicationArea = Basic, Suite;
-                    ToolTip = 'Specifies this option to make shipment method specification mandatory.';
-                }
+                ApplicationArea = Basic, Suite;
             }
         }
     }

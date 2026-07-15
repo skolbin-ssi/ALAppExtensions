@@ -6,7 +6,11 @@ namespace Microsoft.Integration.DynamicsFieldService;
 
 using Microsoft.Integration.D365Sales;
 
+#pragma warning disable AS0130
+#pragma warning disable PTE0025
 table 6612 "FS BookableResourceBookingHdr"
+#pragma warning restore AS0130
+#pragma warning restore PTE0025
 {
     ExternalName = 'bookableresourcebookingheader';
     TableType = CRM;
@@ -250,6 +254,7 @@ table 6612 "FS BookableResourceBookingHdr"
             Description = 'Exchange rate for the currency associated with the bookableresourcebookingheader with respect to the base currency.';
             Caption = 'ExchangeRate';
             DataClassification = SystemMetadata;
+            AutoFormatType = 0;
         }
         field(41; TransactionCurrencyId; GUID)
         {

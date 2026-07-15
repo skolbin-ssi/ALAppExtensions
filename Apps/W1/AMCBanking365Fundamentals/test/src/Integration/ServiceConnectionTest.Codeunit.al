@@ -1,8 +1,11 @@
+#if not CLEAN28
 codeunit 134414 "Service Connection Test"
 {
     Subtype = Test;
     TestPermissions = Disabled;
-
+    ObsoleteReason = 'AMC Banking 365 Fundamental extension is discontinued';
+    ObsoleteState = Pending;
+    ObsoleteTag = '28.0';
     trigger OnRun()
     begin
         // [FEATURE] [Document Exchange Service] [Service Connections] [UI]
@@ -65,21 +68,21 @@ codeunit 134414 "Service Connection Test"
     procedure VerifyBankDataConvServiceSetupDisableConnection()
     var
         AMCBankingSetup: Record "AMC Banking Setup";
-        ServiceConnection: Record "Service Connection";
+        TempServiceConnection: Record "Service Connection";
     begin
         // Setup
         Initialize();
         AMCBankingSetup.Get();
         AMCBankingSetup."Service URL" := '';
         AMCBankingSetup.Modify();
-        ServiceConnection.Status := ServiceConnection.Status::Disabled;
+        TempServiceConnection.Status := TempServiceConnection.Status::Disabled;
 
         // Exercise & Verify
         Assert.IsTrue(
           ServiceExist(AMCBankingSetup.TableCaption()),
           'AMC Banking Setup Connection are not recognized');
         Assert.IsTrue(
-          ServiceExistWithStatusAsExpected(AMCBankingSetup.TableCaption(), ServiceConnection),
+          ServiceExistWithStatusAsExpected(AMCBankingSetup.TableCaption(), TempServiceConnection),
           'AMC Banking Setup Connection have wrong status');
     end;
 
@@ -116,4 +119,4 @@ codeunit 134414 "Service Connection Test"
         exit(Format(ServiceConnectionsOverviewTestPage.Status) = Format(ServiceConnection.Status));
     end;
 }
-
+#endif

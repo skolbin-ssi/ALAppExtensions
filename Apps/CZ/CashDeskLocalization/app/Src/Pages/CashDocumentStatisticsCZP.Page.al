@@ -1,4 +1,5 @@
-﻿// ------------------------------------------------------------------------------------------------
+﻿#if not CLEAN27
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -14,6 +15,9 @@ page 31164 "Cash Document Statistics CZP"
     PageType = ListPlus;
     SourceTable = "Cash Document Line CZP";
     UsageCategory = None;
+    ObsoleteReason = 'The Cash Document Statistics CZP page will be replaced with the Cash Doc. Statistics CZP page.';
+    ObsoleteState = Pending;
+    ObsoleteTag = '27.0';
 
     layout
     {
@@ -31,6 +35,8 @@ page 31164 "Cash Document Statistics CZP"
                 }
                 field(AmountExclVAT; AmountExclVAT)
                 {
+                    AutoFormatExpression = Rec."Currency Code";
+                    AutoFormatType = 1;
                     ApplicationArea = Basic, Suite;
                     Caption = 'Amount Excluding VAT';
                     DrillDown = false;
@@ -48,6 +54,8 @@ page 31164 "Cash Document Statistics CZP"
                 }
                 field(AmountInclVAT; AmountInclVAT)
                 {
+                    AutoFormatExpression = '';
+                    AutoFormatType = 1;
                     ApplicationArea = Basic, Suite;
                     Caption = 'Amount Including VAT';
                     DrillDown = false;
@@ -56,6 +64,8 @@ page 31164 "Cash Document Statistics CZP"
                 }
                 field(AmountExclVATLCY; AmountExclVATLCY)
                 {
+                    AutoFormatExpression = '';
+                    AutoFormatType = 1;
                     ApplicationArea = Basic, Suite;
                     Caption = 'Amount Excluding VAT (LCY)';
                     DrillDown = false;
@@ -73,6 +83,8 @@ page 31164 "Cash Document Statistics CZP"
                 }
                 field(AmountInclVATLCY; AmountInclVATLCY)
                 {
+                    AutoFormatExpression = '';
+                    AutoFormatType = 1;
                     ApplicationArea = Basic, Suite;
                     Caption = 'Amount Including VAT (LCY)';
                     DrillDown = false;
@@ -196,3 +208,4 @@ page 31164 "Cash Document Statistics CZP"
         VATAmountLines.GetTempVATAmountLine(DrillDownVATAmountLine);
     end;
 }
+#endif

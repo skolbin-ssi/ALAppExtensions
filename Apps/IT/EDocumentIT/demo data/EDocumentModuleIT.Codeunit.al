@@ -1,3 +1,4 @@
+#pragma warning disable AA0247
 codeunit 12194 "E-Document Module IT"
 {
     SingleInstance = true;
@@ -19,6 +20,7 @@ codeunit 12194 "E-Document Module IT"
         PreventPostedDocDeletionLocal := SalesReceivablesSetup."Prevent Posted Doc. Deletion";
         SalesReceivablesSetup."Prevent Posted Doc. Deletion" := false;
         SalesReceivablesSetup.Modify();
+        DefineLocalGLAccountInEDocumentsModuleSetup();
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Contoso Demo Tool", 'OnAfterGeneratingDemoData', '', false, false)]
@@ -28,7 +30,8 @@ codeunit 12194 "E-Document Module IT"
     begin
         if Module <> Module::"E-Document Contoso Module" then
             exit;
-        if ContosoDemoDataLevel <> ContosoDemoDataLevel::"Transactional Data" then
+
+        if ContosoDemoDataLevel <> ContosoDemoDataLevel::"Historical Data" then
             exit;
 
         SalesReceivablesSetup.Get();
@@ -36,6 +39,16 @@ codeunit 12194 "E-Document Module IT"
         SalesReceivablesSetup.Modify();
     end;
 
-
+    local procedure DefineLocalGLAccountInEDocumentsModuleSetup()
+    var
+        EDocumentModuleSetup: Record "E-Document Module Setup";
+        CreateGLAccount: Codeunit "Create G/L Account";
+    begin
+        EDocumentModuleSetup.InitEDocumentModuleSetup();
+        EDocumentModuleSetup."Recurring Expense G/L Acc. No" := CreateGLAccount.ConsultingFeesDom();
+        EDocumentModuleSetup."Delivery Expense G/L Acc. No" := CreateGLAccount.FeesandChargesRecDom();
+        EDocumentModuleSetup.Modify();
+    end;
 
 }
+#pragma warning restore AA0247

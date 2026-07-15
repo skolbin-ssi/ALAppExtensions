@@ -1,9 +1,11 @@
 namespace Microsoft.Inventory.InventoryForecast;
 
-using System.Threading;
 using System.AI;
 using System.Privacy;
 using System.Security.User;
+using System.Telemetry;
+using System.Threading;
+
 // ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -34,6 +36,7 @@ page 1853 "Sales Forecast Setup Card"
                     ToolTip = 'Specifies if the forecasting feature is enabled.';
                     trigger OnValidate();
                     var
+                        AuditLog: Codeunit "Audit Log";
                         CustomerConsentMgt: Codeunit "Customer Consent Mgt.";
                         UserPermissions: Codeunit "User Permissions";
                         SalesInvForceastConsentProvidedLbl: Label 'Sales and Inventory Forecast application - consent provided by UserSecurityId %1.', Locked = true;
@@ -45,7 +48,7 @@ page 1853 "Sales Forecast Setup Card"
                             Rec.Enabled := CustomerConsentMgt.ConsentToMicrosoftServiceWithAI();
 
                         if Rec.Enabled then
-                            Session.LogAuditMessage(StrSubstNo(SalesInvForceastConsentProvidedLbl, UserSecurityId()), SecurityOperationResult::Success, AuditCategory::ApplicationManagement, 4, 0);
+                            AuditLog.LogAuditMessage(StrSubstNo(SalesInvForceastConsentProvidedLbl, UserSecurityId()), SecurityOperationResult::Success, AuditCategory::ApplicationManagement, 4, 0);
                     end;
                 }
                 field("Period Type"; Rec."Period Type")
@@ -91,6 +94,7 @@ page 1853 "Sales Forecast Setup Card"
                 }
                 field("Variance %"; Rec."Variance %")
                 {
+                    AutoFormatType = 0;
                     ApplicationArea = Basic, Suite;
                     Importance = Additional;
                     ToolTip = 'Specifies the range of deviation, plus or minus, that you''ll accept in the forecast. Lower percentages represent more accurate forecasts, and are typically between 20 and 40. Forecasts outside the range are considered inaccurate, and do not display.';
@@ -125,6 +129,7 @@ page 1853 "Sales Forecast Setup Card"
                 }
                 field("Used Processing Time (Seconds)"; GetMLTotalProcessingTime())
                 {
+                    AutoFormatType = 0;
                     ApplicationArea = Basic, Suite;
                     Caption = 'Used Processing Time (Seconds)';
                     ToolTip = 'Specifies how many seconds of processing time have been used. You cannot change this value.';
@@ -180,28 +185,6 @@ page 1853 "Sales Forecast Setup Card"
                     Message(UpdatingForecastsMsg);
                 end;
             }
-#if not CLEAN26
-            action("Open Cortana Intelligence Gallery")
-            {
-                ApplicationArea = Basic, Suite;
-                Caption = 'Open Azure AI Gallery';
-                Gesture = None;
-                Image = LinkWeb;
-                ObsoleteReason = 'Webpage does not exist';
-                ObsoleteState = Pending;
-                ObsoleteTag = '26.0';
-                Promoted = true;
-                PromotedOnly = true;
-                PromotedCategory = Process;
-                ToolTip = 'Explore models for Azure Machine Learning, and use Azure Machine Learning Studio to build, test, and deploy the Forecasting Model for Microsoft Dynamics 365.';
-                Visible = false;
-
-                trigger OnAction()
-                begin
-                    Hyperlink('https://go.microsoft.com/fwlink/?linkid=828352');
-                end;
-            }
-#endif
         }
     }
 

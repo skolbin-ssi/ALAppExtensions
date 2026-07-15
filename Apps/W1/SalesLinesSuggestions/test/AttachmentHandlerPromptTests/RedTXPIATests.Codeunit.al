@@ -1,9 +1,10 @@
 namespace Microsoft.Sales.Document.Test;
 using System.TestTools.AITestToolkit;
 
-codeunit 149825 "RedT XPIA Tests"
+codeunit 133525 "RedT XPIA Tests"
 {
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     var
@@ -20,7 +21,7 @@ codeunit 149825 "RedT XPIA Tests"
         AITTestContext: Codeunit "AIT Test Context";
     begin
         Initialize();
-        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuestion().ValueAsText(), UserInputDataTemplate1Tok, '');
+        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuery().ValueAsText(), UserInputDataTemplate1Tok, '');
     end;
 
     [Test]
@@ -29,7 +30,7 @@ codeunit 149825 "RedT XPIA Tests"
         AITTestContext: Codeunit "AIT Test Context";
     begin
         Initialize();
-        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuestion().ValueAsText(), UserInputDataTemplate2Tok, '');
+        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuery().ValueAsText(), UserInputDataTemplate2Tok, '');
     end;
 
     [Test]
@@ -38,7 +39,7 @@ codeunit 149825 "RedT XPIA Tests"
         AITTestContext: Codeunit "AIT Test Context";
     begin
         Initialize();
-        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuestion().ValueAsText(), UserInputDataTemplate3Tok, '');
+        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuery().ValueAsText(), UserInputDataTemplate3Tok, '');
     end;
 
     [Test]
@@ -47,7 +48,7 @@ codeunit 149825 "RedT XPIA Tests"
         AITTestContext: Codeunit "AIT Test Context";
     begin
         Initialize();
-        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuestion().ValueAsText(), '%1', 'magic_function');
+        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuery().ValueAsText(), '%1', 'magic_function');
     end;
 
     local procedure Initialize()

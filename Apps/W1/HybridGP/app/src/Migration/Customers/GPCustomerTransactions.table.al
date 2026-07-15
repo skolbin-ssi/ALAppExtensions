@@ -38,6 +38,7 @@ table 4094 "GP Customer Transactions"
         }
         field(6; CURTRXAM; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Transaction Amount';
             DataClassification = CustomerContent;
         }
@@ -74,6 +75,12 @@ table 4094 "GP Customer Transactions"
         key(Key1; Id)
         {
             Clustered = true;
+        }
+        key(Key2; PYMTRMID)
+        {
+        }
+        key(Key3; CUSTNMBR, TransType)
+        {
         }
     }
 

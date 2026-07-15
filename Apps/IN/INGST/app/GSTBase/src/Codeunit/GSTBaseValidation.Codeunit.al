@@ -16,6 +16,7 @@ using Microsoft.Finance.TaxBase;
 using Microsoft.Finance.TaxEngine.TaxTypeHandler;
 using Microsoft.Finance.TaxEngine.UseCaseBuilder;
 using Microsoft.FixedAssets.FixedAsset;
+using Microsoft.FixedAssets.Journal;
 using Microsoft.Foundation.Company;
 using Microsoft.Inventory.Item;
 using Microsoft.Inventory.Location;
@@ -301,10 +302,22 @@ codeunit 18001 "GST Base Validation"
         if Rec."Transaction Type" = Rec."Transaction Type"::Sales then begin
             Rec."GST Base Amount" := (Rec."GST Base Amount") * SignFactor;
             Rec."GST Amount" := (Rec."GST Amount") * SignFactor;
-        end else begin
-            Rec."GST Base Amount" := Abs(Rec."GST Base Amount") * SignFactor;
-            Rec."GST Amount" := Abs(Rec."GST Amount") * SignFactor;
-        end;
+        end else
+            if (Rec."GST Base Amount" > 0) or (Rec."Journal Entry") then begin
+                Rec."GST Base Amount" := Abs(Rec."GST Base Amount") * SignFactor;
+                Rec."GST Amount" := Abs(Rec."GST Amount") * SignFactor;
+            end
+            else
+                case Rec."Document Type" of
+                    Rec."Document Type"::"Credit Memo":
+                        begin
+                            Rec."GST Base Amount" := Abs(Rec."GST Base Amount");
+                            Rec."GST Amount" := Abs(Rec."GST Amount");
+                        end
+                    else
+                        Rec."GST Base Amount" := Rec."GST Base Amount";
+                        Rec."GST Amount" := Rec."GST Amount";
+                end;
 
         if Rec."Document Type" = Rec."Document Type"::"Credit Memo" then
             Rec.Quantity := Abs(Rec.Quantity)
@@ -312,7 +325,10 @@ codeunit 18001 "GST Base Validation"
             if ((Rec."Transaction Type" = Rec."Transaction Type"::Sales) and (Rec."Document Type" = Rec."Document Type"::Refund)) then
                 Rec.Quantity := Abs(Rec.Quantity) * (-1)
             else
-                Rec.Quantity := Abs(Rec.Quantity) * SignFactor;
+                if Rec.Quantity > 0 then
+                    Rec.Quantity := Abs(Rec.Quantity) * SignFactor
+                else
+                    Rec.Quantity := Abs(Rec.Quantity);
 
         Rec."Remaining Base Amount" := Rec."GST Base Amount";
         Rec."Remaining GST Amount" := Rec."GST Amount";
@@ -338,8 +354,9 @@ codeunit 18001 "GST Base Validation"
 
         Rec."Executed Use Case ID" := GSTPostingManagement.GetUseCaseID();
         if Rec."Source Type" = Rec."Source Type"::Vendor then
-            if GSTPostingManagement.GetPaytoVendorNo() <> '' then
-                Rec."Source No." := GSTPostingManagement.GetPaytoVendorNo();
+            if Rec."Source No." = '' then
+                if GSTPostingManagement.GetPaytoVendorNo() <> '' then
+                    Rec."Source No." := GSTPostingManagement.GetPaytoVendorNo();
 
         if GSTPostingManagement.GetBuyerSellerRegNo() <> '' then
             Rec."Buyer/Seller Reg. No." := GSTPostingManagement.GetBuyerSellerRegNo();
@@ -1190,6 +1207,46 @@ codeunit 18001 "GST Base Validation"
         CheckGSTVendorType(PurchLine, IsHandled);
     end;
 
+    //FA Reclass. Journal Validations - Subscribers
+    [EventSubscriber(ObjectType::Table, Database::"FA Reclass. Journal Line", 'OnAfterValidateEvent', 'From Location Code', false, false)]
+    local procedure OnAfterValidateFromLocationCode(var Rec: Record "FA Reclass. Journal Line")
+    begin
+        ValidateFromLocationCode(Rec);
+    end;
+
+    [EventSubscriber(ObjectType::Table, Database::"FA Reclass. Journal Line", 'OnAfterValidateEvent', 'To Location Code', false, false)]
+    local procedure OnAfterValidateToLocationCode(var Rec: Record "FA Reclass. Journal Line")
+    begin
+        ValidateToLocationCode(Rec);
+    end;
+
+    local procedure ValidateFromLocationCode(Rec: Record "FA Reclass. Journal Line")
+    var
+        Location: Record Location;
+    begin
+        if not Location.Get(Rec."From Location Code") then
+            exit;
+
+        if Location."GST Input Service Distributor" then
+            Location.TestField("GST Input Service Distributor", false);
+
+        Location.TestField("GST Registration No.");
+    end;
+
+    local procedure ValidateToLocationCode(Rec: Record "FA Reclass. Journal Line")
+    var
+        Location: Record Location;
+    begin
+        if not Location.Get(Rec."To Location Code") then
+            exit;
+
+        if Location."GST Input Service Distributor" then
+            Location.TestField("GST Input Service Distributor", false);
+
+        Location.TestField("GST Registration No.");
+    end;
+
+
     local procedure CheckGSTVendorType(PurchLine: Record "Purchase Line"; var IsHandled: Boolean)
     var
         PurchaseHeader: Record "Purchase Header";
@@ -1238,7 +1295,12 @@ codeunit 18001 "GST Base Validation"
     var
         PurchaseLine: Record "Purchase Line";
         CalculateTax: Codeunit "Calculate Tax";
+        IsHandled: Boolean;
     begin
+        OnBeforeCallTaxEngineOnPurchHeader(PurchaseHeader, IsHandled);
+        if IsHandled then
+            exit;
+
         PurchaseLine.SetRange("Document Type", PurchaseHeader."Document Type");
         PurchaseLine.SetRange("Document No.", PurchaseHeader."No.");
         if PurchaseLine.FindSet() then
@@ -1448,4 +1510,8 @@ codeunit 18001 "GST Base Validation"
     begin
     end;
 
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeCallTaxEngineOnPurchHeader(PurchaseHeader: Record "Purchase Header"; var IsHandled: Boolean)
+    begin
+    end;
 }

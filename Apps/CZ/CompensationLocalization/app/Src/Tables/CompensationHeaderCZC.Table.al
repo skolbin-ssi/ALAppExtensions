@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -268,6 +268,8 @@ table 31272 "Compensation Header CZC"
         }
         field(90; "Balance (LCY)"; Decimal)
         {
+            AutoFormatType = 2;
+            AutoFormatExpression = '';
             CalcFormula = sum("Compensation Line CZC"."Ledg. Entry Rem. Amt. (LCY)" where("Compensation No." = field("No.")));
             Caption = 'Balance (LCY)';
             Editable = false;
@@ -275,6 +277,8 @@ table 31272 "Compensation Header CZC"
         }
         field(95; "Compensation Balance (LCY)"; Decimal)
         {
+            AutoFormatType = 2;
+            AutoFormatExpression = '';
             CalcFormula = sum("Compensation Line CZC"."Amount (LCY)" where("Compensation No." = field("No.")));
             Caption = 'Compensation Balance (LCY)';
             Editable = false;
@@ -282,6 +286,8 @@ table 31272 "Compensation Header CZC"
         }
         field(96; "Compensation Value (LCY)"; Decimal)
         {
+            AutoFormatType = 2;
+            AutoFormatExpression = '';
             CalcFormula = sum("Compensation Line CZC"."Amount (LCY)" where("Compensation No." = field("No."), "Amount (LCY)" = filter(> 0)));
             Caption = 'Compensation Value (LCY)';
             Editable = false;
@@ -332,30 +338,18 @@ table 31272 "Compensation Header CZC"
         CompensationsSetupCZC: Record "Compensations Setup CZC";
         CompensationHeader: Record "Compensation Header CZC";
         NoSeries: Codeunit "No. Series";
-#if not CLEAN24
-        NoSeriesManagement: Codeunit NoSeriesManagement;
-        IsHandled: Boolean;
-#endif
     begin
         CompensationsSetupCZC.Get();
         if "No." = '' then begin
             CompensationsSetupCZC.TestField("Compensation Nos.");
-#if not CLEAN24
-            NoSeriesManagement.RaiseObsoleteOnBeforeInitSeries(CompensationsSetupCZC."Compensation Nos.", xRec."No. Series", 0D, "No.", "No. Series", IsHandled);
-            if not IsHandled then begin
-#endif
-                "No. Series" := CompensationsSetupCZC."Compensation Nos.";
-                if NoSeries.AreRelated("No. Series", xRec."No. Series") then
-                    "No. Series" := xRec."No. Series";
+            "No. Series" := CompensationsSetupCZC."Compensation Nos.";
+            if NoSeries.AreRelated("No. Series", xRec."No. Series") then
+                "No. Series" := xRec."No. Series";
+            "No." := NoSeries.GetNextNo("No. Series");
+            CompensationHeader.ReadIsolation(ReadIsolation::ReadUncommitted);
+            CompensationHeader.SetLoadFields("No.");
+            while CompensationHeader.Get("No.") do
                 "No." := NoSeries.GetNextNo("No. Series");
-                CompensationHeader.ReadIsolation(ReadIsolation::ReadUncommitted);
-                CompensationHeader.SetLoadFields("No.");
-                while CompensationHeader.Get("No.") do
-                    "No." := NoSeries.GetNextNo("No. Series");
-#if not CLEAN24
-                NoSeriesManagement.RaiseObsoleteOnAfterInitSeries("No. Series", CompensationsSetupCZC."Compensation Nos.", 0D, "No.");
-            end;
-#endif
         end;
         "User ID" := CopyStr(UserId(), 1, MaxStrLen("User ID"));
     end;

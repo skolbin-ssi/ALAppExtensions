@@ -6,7 +6,11 @@ namespace Microsoft.Integration.DynamicsFieldService;
 
 using Microsoft.Integration.D365Sales;
 
+#pragma warning disable AS0130
+#pragma warning disable PTE0025
 table 6613 "FS Customer Asset"
+#pragma warning restore AS0130
+#pragma warning restore PTE0025
 {
     ExternalName = 'msdyn_customerasset';
     TableType = CRM;
@@ -219,6 +223,7 @@ table 6613 "FS Customer Asset"
             Description = '';
             Caption = 'Latitude';
             DataClassification = SystemMetadata;
+            AutoFormatType = 0;
         }
         field(39; Longitude; Decimal)
         {
@@ -227,6 +232,7 @@ table 6613 "FS Customer Asset"
             Description = '';
             Caption = 'Longitude';
             DataClassification = SystemMetadata;
+            AutoFormatType = 0;
         }
         field(40; MasterAsset; GUID)
         {

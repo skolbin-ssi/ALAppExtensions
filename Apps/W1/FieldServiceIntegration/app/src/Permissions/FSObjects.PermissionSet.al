@@ -10,7 +10,8 @@ permissionset 6612 "FS - Objects"
     Assignable = false;
     Caption = 'Field Service - Objects';
 
-    Permissions = codeunit "FS Assisted Setup Subscriber" = X,
+    Permissions = codeunit "FS Archived Service Orders Job" = X,
+                codeunit "FS Assisted Setup Subscriber" = X,
                 codeunit "FS Data Classification" = X,
                 codeunit "FS Install" = X,
                 codeunit "FS Upgrade" = X,
@@ -22,14 +23,22 @@ permissionset 6612 "FS - Objects"
                 page "FS Connection Setup" = X,
                 page "FS Connection Setup Wizard" = X,
                 page "FS Customer Asset List" = X,
+#if not CLEAN28
+#pragma warning disable AL0432
                 page "FS Item Avail. by Location" = X,
+#pragma warning restore AL0432
+#endif
+                page "FS Work Order Types" = X,
+                page "FS Work Orders" = X,
                 query "FS Item Avail. by Location" = X,
                 table "FS Bookable Resource" = X,
                 table "FS Bookable Resource Booking" = X,
                 table "FS BookableResourceBookingHdr" = X,
+                table "FS Booking Status" = X,
                 table "FS Connection Setup" = X,
                 table "FS Customer Asset" = X,
                 table "FS Customer Asset Category" = X,
+                table "FS Incident Type" = X,
                 table "FS Project Task" = X,
                 table "FS Resource Pay Type" = X,
                 table "FS Warehouse" = X,

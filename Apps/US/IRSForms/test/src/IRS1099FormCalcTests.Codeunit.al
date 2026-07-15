@@ -1,18 +1,18 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.Finance.VAT.Reporting;
 
-using Microsoft.Finance.GeneralLedger.Ledger;
-using Microsoft.Purchases.Document;
-using Microsoft.Purchases.Payables;
 using Microsoft.Finance.GeneralLedger.Journal;
 using Microsoft.Finance.ReceivablesPayables;
+using Microsoft.Purchases.Document;
+using Microsoft.Purchases.Payables;
 
 codeunit 148014 "IRS 1099 Form Calc. Tests"
 {
     Subtype = Test;
+    TestType = IntegrationTest;
     TestPermissions = Disabled;
     EventSubscriberInstance = Manual;
 
@@ -42,11 +42,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         PurchaseLine: Record "Purchase Line";
         VendorLedgerEntry: Record "Vendor Ledger Entry";
         TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
-#if not CLEAN25
-#pragma warning disable AL0432
-        IRSFormsEnableFeature: Codeunit "IRS Forms Enable Feature";
-#pragma warning restore AL0432
-#endif
         PeriodNo: Code[20];
         FormNo: Code[20];
         FormBoxNo: Code[20];
@@ -56,10 +51,7 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         // [SCENARIO 495389] The calculation of the form boxes is correct for a single vendor and a single form
 
         Initialize();
-#if not CLEAN25
-        BindSubscription(IRSFormsEnableFeature);
-#endif
-        PostingDate := GetPostingDate();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
         // [GIVEN] IRS Reporting "X" with "Starting Date" = 01.01.2024 and "Ending Date" = 31.12.2024
         PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
         FormNo := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
@@ -90,9 +82,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         // [THEN] Check connected entry
         LibraryIRS1099FormBox.VerifyConnectedEntryInVendFormBoxBuffer(TempVendFormBoxBuffer, VendorLedgerEntry."Entry No.");
 
-#if not CLEAN25
-        UnbindSubscription(IRSFormsEnableFeature);
-#endif
     end;
 
     [Test]
@@ -102,11 +91,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         PurchaseLine: Record "Purchase Line";
         VendorLedgerEntry: Record "Vendor Ledger Entry";
         TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
-#if not CLEAN25
-#pragma warning disable AL0432
-        IRSFormsEnableFeature: Codeunit "IRS Forms Enable Feature";
-#pragma warning restore AL0432
-#endif
         PeriodNo: Code[20];
         FormNo: Code[20];
         FormBoxNo: array[2] of Code[20];
@@ -119,10 +103,7 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         // [SCENARIO 495389] The calculation of the form boxes is correct for a single vendor and single form with multiple form boxes
 
         Initialize();
-#if not CLEAN25
-        BindSubscription(IRSFormsEnableFeature);
-#endif
-        PostingDate := GetPostingDate();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
         PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
         // [GIVEN] MISC form with two boxes - MISC-01 and MISC-02
         FormNo := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
@@ -135,13 +116,13 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         for i := 1 to ArrayLen(FormBoxNo) do begin
             LibraryPurchase.CreatePurchHeader(PurchaseHeader, PurchaseHeader."Document Type"::Invoice, VendNo);
             PurchaseHeader.Validate("Posting Date", PostingDate);
-            LibraryPurchase.CreatePurchaseLineWithUnitCost(
-                PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
-                LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
             PurchaseHeader.Validate("IRS 1099 Reporting Period", LibraryIRSReportingPeriod.GetReportingPeriod(PostingDate));
             PurchaseHeader.Validate("IRS 1099 Form No.", FormNo);
             PurchaseHeader.Validate("IRS 1099 Form Box No.", FormBoxNo[i]);
             PurchaseHeader.Modify(true);
+            LibraryPurchase.CreatePurchaseLineWithUnitCost(
+                PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
+                LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
 
             LibraryERM.FindVendorLedgerEntry(
                 VendorLedgerEntry, VendorLedgerEntry."Document Type"::Invoice,
@@ -165,9 +146,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
             LibraryIRS1099FormBox.VerifyConnectedEntryInVendFormBoxBuffer(TempVendFormBoxBuffer, ExpectedEntryNo[i]);
         end;
 
-#if not CLEAN25
-        UnbindSubscription(IRSFormsEnableFeature);
-#endif
     end;
 
     [Test]
@@ -177,11 +155,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         PurchaseLine: Record "Purchase Line";
         VendorLedgerEntry: Record "Vendor Ledger Entry";
         TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
-#if not CLEAN25
-#pragma warning disable AL0432
-        IRSFormsEnableFeature: Codeunit "IRS Forms Enable Feature";
-#pragma warning restore AL0432
-#endif
         PeriodNo: Code[20];
         FormNo: array[2] of Code[20];
         FormBoxNo: array[2, 2] of Code[20];
@@ -194,10 +167,7 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         // [SCENARIO 495389] The calculation of the form boxes is correct for a single vendor and multiple forms and form boxes
 
         Initialize();
-#if not CLEAN25
-        BindSubscription(IRSFormsEnableFeature);
-#endif
-        PostingDate := GetPostingDate();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
         PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
         // [GIVEN] A single vendor
         VendNo := LibraryPurchase.CreateVendorNo();
@@ -213,13 +183,13 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
                 // [GIVEN] Purchase invoice is posted for the vendor and NEC-02
                 LibraryPurchase.CreatePurchHeader(PurchaseHeader, PurchaseHeader."Document Type"::Invoice, VendNo);
                 PurchaseHeader.Validate("Posting Date", PostingDate);
-                LibraryPurchase.CreatePurchaseLineWithUnitCost(
-                    PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
-                    LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
                 PurchaseHeader.Validate("IRS 1099 Reporting Period", LibraryIRSReportingPeriod.GetReportingPeriod(PostingDate));
                 PurchaseHeader.Validate("IRS 1099 Form No.", FormNo[i]);
                 PurchaseHeader.Validate("IRS 1099 Form Box No.", FormBoxNo[i, j]);
                 PurchaseHeader.Modify(true);
+                LibraryPurchase.CreatePurchaseLineWithUnitCost(
+                    PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
+                    LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
 
                 LibraryERM.FindVendorLedgerEntry(
                     VendorLedgerEntry, VendorLedgerEntry."Document Type"::Invoice,
@@ -244,9 +214,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
                     TempVendFormBoxBuffer, PeriodNo, FormNo[i], FormBoxNo[i, j], VendNo, ExpectedAmount[i, j]);
                 LibraryIRS1099FormBox.VerifyConnectedEntryInVendFormBoxBuffer(TempVendFormBoxBuffer, ExpectedEntryNo[i, j]);
             end;
-#if not CLEAN25
-        UnbindSubscription(IRSFormsEnableFeature);
-#endif
     end;
 
     [Test]
@@ -256,11 +223,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         PurchaseLine: Record "Purchase Line";
         VendorLedgerEntry: Record "Vendor Ledger Entry";
         TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
-#if not CLEAN25
-#pragma warning disable AL0432
-        IRSFormsEnableFeature: Codeunit "IRS Forms Enable Feature";
-#pragma warning restore AL0432
-#endif
         PeriodNo: Code[20];
         FormNo: array[2] of Code[20];
         FormBoxNo: array[2, 2, 2] of Code[20];
@@ -273,10 +235,7 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         // [SCENARIO 495389] The calculation of the form boxes is correct for multiple vendors and multiple forms and form boxes
 
         Initialize();
-#if not CLEAN25
-        BindSubscription(IRSFormsEnableFeature);
-#endif
-        PostingDate := GetPostingDate();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
         PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
         // [GIVEN] Forms MISC and NEC with two boxes each (MISC-01, MISC-02, NEC-01, NEC-02)
         for i := 1 to ArrayLen(FormNo) do
@@ -297,13 +256,13 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
                     // [GIVEN] Purchase invoice is posted for the vendor "Y" and NEC-02
                     LibraryPurchase.CreatePurchHeader(PurchaseHeader, PurchaseHeader."Document Type"::Invoice, VendNo[i]);
                     PurchaseHeader.Validate("Posting Date", PostingDate);
-                    LibraryPurchase.CreatePurchaseLineWithUnitCost(
-                        PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
-                        LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
                     PurchaseHeader.Validate("IRS 1099 Reporting Period", LibraryIRSReportingPeriod.GetReportingPeriod(PostingDate));
                     PurchaseHeader.Validate("IRS 1099 Form No.", FormNo[j]);
                     PurchaseHeader.Validate("IRS 1099 Form Box No.", FormBoxNo[i, j, k]);
                     PurchaseHeader.Modify(true);
+                    LibraryPurchase.CreatePurchaseLineWithUnitCost(
+                        PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
+                        LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
 
                     LibraryERM.FindVendorLedgerEntry(
                         VendorLedgerEntry, VendorLedgerEntry."Document Type"::Invoice,
@@ -329,9 +288,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
                     LibraryIRS1099FormBox.VerifyConnectedEntryInVendFormBoxBuffer(TempVendFormBoxBuffer, ExpectedEntryNo[i, j, k]);
                 end;
 
-#if not CLEAN25
-        UnbindSubscription(IRSFormsEnableFeature);
-#endif
     end;
 
     [Test]
@@ -342,11 +298,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         InvVendorLedgerEntry: Record "Vendor Ledger Entry";
         CrMemoVendorLedgerEntry: Record "Vendor Ledger Entry";
         TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
-#if not CLEAN25
-#pragma warning disable AL0432
-        IRSFormsEnableFeature: Codeunit "IRS Forms Enable Feature";
-#pragma warning restore AL0432
-#endif
         PeriodNo: Code[20];
         FormNo: Code[20];
         FormBoxNo: Code[20];
@@ -356,10 +307,7 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         // [SCENARIO 495389] The calculation of the form boxes is correct for a single refund and credit memo
 
         Initialize();
-#if not CLEAN25
-        BindSubscription(IRSFormsEnableFeature);
-#endif
-        PostingDate := GetPostingDate();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
         // [GIVEN] Form box MISC-01 is created for the period "X"
         PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
         FormNo := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
@@ -408,16 +356,13 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         TempVendFormBoxBuffer.Next();
         TempVendFormBoxBuffer.TestField("Vendor Ledger Entry No.", CrMemoVendorLedgerEntry."Entry No.");
 
-#if not CLEAN25
-        UnbindSubscription(IRSFormsEnableFeature);
-#endif
     end;
 
     [Test]
-    [TransactionModel(TransactionModel::AutoRollback)]
     procedure OnlyAdjustment()
     var
         TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
+        IRSReportingPeriod: Record "IRS Reporting Period";
         PeriodNo: Code[20];
         FormNo: Code[20];
         FormBoxNo: Code[20];
@@ -429,7 +374,7 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
 
         Initialize();
         // [GIVEN] Form box MISC-01
-        PostingDate := GetPostingDate();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
         PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
         FormNo := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
         FormBoxNo := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo);
@@ -446,12 +391,90 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBuffer(
             TempVendFormBoxBuffer, PeriodNo, FormNo, FormBoxNo, VendNo, 0, AdjustmentAmount, true);
         TempVendFormBoxBuffer.TestField("Adjustment Amount", AdjustmentAmount);
+
+        // Tear Down
+        IRSReportingPeriod.SetRange("No.", PeriodNo);
+        IRSReportingPeriod.DeleteAll(true);
+    end;
+
+    [Test]
+    procedure TwoPaymentsPartiallyAppliedToOneInvoice()
+    var
+        IRSReportingPeriod: Record "IRS Reporting Period";
+        InvVendorLedgerEntry: Record "Vendor Ledger Entry";
+        PmtVendorLedgerEntry: array[2] of Record "Vendor Ledger Entry";
+        DetailedVendorLedgEntry: Record "Detailed Vendor Ledg. Entry";
+        TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
+        PeriodNo: Code[20];
+        FormNo: Code[20];
+        FormBoxNo: Code[20];
+        VendNo: Code[20];
+        InvAmount: Decimal;
+        PmtAmount: array[2] of Decimal;
+        ExpectedAmount: Decimal;
+        PostingDate: Date;
+        i: Integer;
+    begin
+        // [FEATURE] [AI test]
+        // [SCENARIO 618118] The calculation of the form box is correct when two payments are partially applied to one invoice
+        Initialize();
+
+        // [GIVEN] Form box "FB" is created for the period "P"
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
+        PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
+        FormNo := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
+        FormBoxNo := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo);
+        VendNo := LibraryIRS1099FormBox.CreateVendorNoWithFormBox(PostingDate, FormNo, FormBoxNo);
+
+        // [GIVEN] Posted invoice with "FB" code and amount = 1000
+        InvAmount := LibraryRandom.RandIntInRange(1000, 2000);
+        CreateVendorLedgerEntry(
+            InvVendorLedgerEntry, PostingDate, InvVendorLedgerEntry."Document Type"::Invoice, VendNo, FormNo, FormBoxNo, InvAmount);
+        CreateDetailedVendorLedgerEntry(
+            InvVendorLedgerEntry."Entry No.", 0, DetailedVendorLedgEntry."Entry Type"::"Initial Entry",
+            InvVendorLedgerEntry."Vendor No.", -InvAmount, true);
+
+        // [GIVEN] Two payments "P1" and "P2" each partially applied to the same invoice (400 and 600)
+        PmtAmount[1] := Round(InvAmount * 0.4);
+        PmtAmount[2] := InvAmount - PmtAmount[1];
+        for i := 1 to ArrayLen(PmtAmount) do begin
+            CreateVendorLedgerEntry(
+                PmtVendorLedgerEntry[i], PostingDate, PmtVendorLedgerEntry[i]."Document Type"::Payment, VendNo, FormNo, FormBoxNo, 0);
+            CreateDetailedVendorLedgerEntry(
+                PmtVendorLedgerEntry[i]."Entry No.", 0, DetailedVendorLedgEntry."Entry Type"::"Initial Entry",
+                VendNo, PmtAmount[i], true);
+            // Application entries linking payment to invoice
+            CreateDetailedVendorLedgerEntry(
+                InvVendorLedgerEntry."Entry No.", InvVendorLedgerEntry."Entry No.", DetailedVendorLedgEntry."Entry Type"::Application,
+                VendNo, PmtAmount[i], false);
+            CreateDetailedVendorLedgerEntry(
+                PmtVendorLedgerEntry[i]."Entry No.", InvVendorLedgerEntry."Entry No.", DetailedVendorLedgEntry."Entry Type"::Application,
+                VendNo, -PmtAmount[i], false);
+        end;
+
+        // [WHEN] Calculate form boxes for period "P"
+        LibraryIRS1099FormBox.GetVendorFormBoxAmount(TempVendFormBoxBuffer, PeriodNo, FormNo, VendNo);
+
+        // [THEN] A single form box record is created with amount equal to sum of payments
+        TempVendFormBoxBuffer.Reset();
+        TempVendFormBoxBuffer.SetRange("Buffer Type", TempVendFormBoxBuffer."Buffer Type"::Amount);
+        Assert.RecordCount(TempVendFormBoxBuffer, 1);
+        ExpectedAmount := PmtAmount[1] + PmtAmount[2];
+        LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBufferIncludedIn1099(
+            TempVendFormBoxBuffer, PeriodNo, FormNo, FormBoxNo, VendNo, ExpectedAmount);
+        // [THEN] Only one connected entry exists (invoice not double-counted)
+        LibraryIRS1099FormBox.VerifyConnectedEntryInVendFormBoxBuffer(TempVendFormBoxBuffer, InvVendorLedgerEntry."Entry No.");
+
+        // Tear Down
+        IRSReportingPeriod.SetRange("No.", PeriodNo);
+        IRSReportingPeriod.DeleteAll(true);
     end;
 
     [Test]
     procedure PaymentAppliedToMultipleInvoicesEachWithPaymentDiscount()
     var
         InvVendorLedgerEntry: array[2] of Record "Vendor Ledger Entry";
+        IRSReportingPeriod: Record "IRS Reporting Period";
         PmtVendorLedgerEntry: Record "Vendor Ledger Entry";
         DetailedVendorLedgEntry: Record "Detailed Vendor Ledg. Entry";
         TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
@@ -468,7 +491,7 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
 
         Initialize();
         // [GIVEN] Form box MISC-01 is created for the period "X"
-        PostingDate := GetPostingDate();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
         PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
         FormNo := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
         FormBoxNo := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo);
@@ -515,6 +538,266 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         ExpectedAmount := InvAmount[1] + InvAmount[2] - PmtDiscAmount;
         LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBufferIncludedIn1099(
             TempVendFormBoxBuffer, PeriodNo, FormNo, FormBoxNo, VendNo, ExpectedAmount);
+
+        // Tear Down
+        IRSReportingPeriod.SetRange("No.", PeriodNo);
+        IRSReportingPeriod.DeleteAll(true);
+    end;
+
+    [Test]
+    procedure MultipleVendorsDifferentFormBoxes()
+    var
+        PurchaseHeader: Record "Purchase Header";
+        PurchaseLine: Record "Purchase Line";
+        VendorLedgerEntry: array[2] of Record "Vendor Ledger Entry";
+        TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
+        PeriodNo: Code[20];
+        FormNo: array[2] of Code[20];
+        FormBoxNo: array[2] of Code[20];
+        VendNo: array[2] of Code[20];
+        PostingDate: Date;
+        i: Integer;
+    begin
+        // [FEATURE] [AI test 0.3]
+        // [SCENARIO 597565] Multiple vendors with different form boxes are all calculated correctly
+        Initialize();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
+
+        // [GIVEN] IRS Reporting Period "X" with one day
+        PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
+
+        // [GIVEN] Form DIV with box DIV-01-A
+        FormNo[1] := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
+        FormBoxNo[1] := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo[1]);
+
+        // [GIVEN] Form MISC with box MISC-01
+        FormNo[2] := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
+        FormBoxNo[2] := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo[2]);
+
+        // [GIVEN] Vendor "A" with DIV-01-A form box
+        VendNo[1] := LibraryIRS1099FormBox.CreateVendorNoWithFormBox(PostingDate, FormNo[1], FormBoxNo[1]);
+
+        // [GIVEN] Vendor "B" with MISC-01 form box
+        VendNo[2] := LibraryIRS1099FormBox.CreateVendorNoWithFormBox(PostingDate, FormNo[2], FormBoxNo[2]);
+
+        // [GIVEN] Purchase invoice is posted for Vendor "A" with DIV-01-A
+        // [GIVEN] Purchase invoice is posted for Vendor "B" with MISC-01
+        for i := 1 to 2 do begin
+            LibraryPurchase.CreatePurchHeader(PurchaseHeader, PurchaseHeader."Document Type"::Invoice, VendNo[i]);
+            PurchaseHeader.Validate("Posting Date", PostingDate);
+            LibraryPurchase.CreatePurchaseLineWithUnitCost(
+                PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
+                LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
+            LibraryERM.FindVendorLedgerEntry(
+                VendorLedgerEntry[i], VendorLedgerEntry[i]."Document Type"::Invoice,
+                LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, true));
+            VendorLedgerEntry[i].CalcFields(Amount);
+
+            // [GIVEN] Payment is posted and applied to the invoice
+            LibraryIRS1099Document.PostPaymentAppliedToInvoice(PostingDate, VendNo[i], VendorLedgerEntry[i]."Document No.", -VendorLedgerEntry[i].Amount);
+        end;
+
+        // [WHEN] Calculate form boxes for all vendors
+        LibraryIRS1099FormBox.GetVendorFormBoxAmount(TempVendFormBoxBuffer, PeriodNo, '', '');
+
+        // [THEN] Two form box records are created, one for each vendor
+        TempVendFormBoxBuffer.Reset();
+        TempVendFormBoxBuffer.SetRange("Buffer Type", TempVendFormBoxBuffer."Buffer Type"::Amount);
+        Assert.RecordCount(TempVendFormBoxBuffer, 2);
+
+        // [THEN] Vendor "A" has correct amount for DIV-01-A
+        TempVendFormBoxBuffer.SetRange("Vendor No.", VendNo[1]);
+        TempVendFormBoxBuffer.FindFirst();
+        LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBufferIncludedIn1099(
+            TempVendFormBoxBuffer, PeriodNo, FormNo[1], FormBoxNo[1], VendNo[1], -VendorLedgerEntry[1].Amount);
+
+        // [THEN] Vendor "B" has correct amount for MISC-01
+        TempVendFormBoxBuffer.SetRange("Vendor No.", VendNo[2]);
+        TempVendFormBoxBuffer.FindFirst();
+        LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBufferIncludedIn1099(
+            TempVendFormBoxBuffer, PeriodNo, FormNo[2], FormBoxNo[2], VendNo[2], -VendorLedgerEntry[2].Amount);
+    end;
+
+    [Test]
+    procedure VendorWithMultipleFormBoxesAndOtherVendor()
+    var
+        PurchaseHeader: Record "Purchase Header";
+        PurchaseLine: Record "Purchase Line";
+        VendorLedgerEntry: array[3] of Record "Vendor Ledger Entry";
+        TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
+        PeriodNo: Code[20];
+        FormNo: array[2] of Code[20];
+        FormBoxNo: array[3] of Code[20];
+        VendNo: array[2] of Code[20];
+        PostingDate: Date;
+    begin
+        // [FEATURE] [AI test 0.3]
+        // [SCENARIO 597565] Vendor with multiple form boxes (one different from default) alongside another vendor - both are processed
+        Initialize();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
+
+        // [GIVEN] IRS Reporting Period "X"
+        PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
+
+        // [GIVEN] Form DIV with boxes DIV-01-A and DIV-01-B
+        FormNo[1] := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
+        FormBoxNo[1] := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo[1]);
+        FormBoxNo[2] := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo[1]);
+
+        // [GIVEN] Form MISC with box MISC-01
+        FormNo[2] := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
+        FormBoxNo[3] := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo[2]);
+
+        // [GIVEN] Vendor "A" with default form box DIV-01-A
+        VendNo[1] := LibraryIRS1099FormBox.CreateVendorNoWithFormBox(PostingDate, FormNo[1], FormBoxNo[1]);
+
+        // [GIVEN] Vendor "B" with default form box MISC-01
+        VendNo[2] := LibraryIRS1099FormBox.CreateVendorNoWithFormBox(PostingDate, FormNo[2], FormBoxNo[3]);
+
+        // [GIVEN] Invoice for Vendor "A" with DIV-01-A (default)
+        LibraryPurchase.CreatePurchHeader(PurchaseHeader, PurchaseHeader."Document Type"::Invoice, VendNo[1]);
+        PurchaseHeader.Validate("Posting Date", PostingDate);
+        LibraryPurchase.CreatePurchaseLineWithUnitCost(
+            PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
+            LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
+        LibraryERM.FindVendorLedgerEntry(
+            VendorLedgerEntry[1], VendorLedgerEntry[1]."Document Type"::Invoice,
+            LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, true));
+        VendorLedgerEntry[1].CalcFields(Amount);
+        LibraryIRS1099Document.PostPaymentAppliedToInvoice(PostingDate, VendNo[1], VendorLedgerEntry[1]."Document No.", -VendorLedgerEntry[1].Amount);
+
+        // [GIVEN] Invoice for Vendor "A" with DIV-01-B (different from default)
+        LibraryPurchase.CreatePurchHeader(PurchaseHeader, PurchaseHeader."Document Type"::Invoice, VendNo[1]);
+        PurchaseHeader.Validate("Posting Date", PostingDate);
+        PurchaseHeader.Validate("IRS 1099 Reporting Period", LibraryIRSReportingPeriod.GetReportingPeriod(PostingDate));
+        PurchaseHeader.Validate("IRS 1099 Form No.", FormNo[1]);
+        PurchaseHeader.Validate("IRS 1099 Form Box No.", FormBoxNo[2]);
+        PurchaseHeader.Modify(true);
+        LibraryPurchase.CreatePurchaseLineWithUnitCost(
+            PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
+            LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
+        LibraryERM.FindVendorLedgerEntry(
+            VendorLedgerEntry[2], VendorLedgerEntry[2]."Document Type"::Invoice,
+            LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, true));
+        VendorLedgerEntry[2].CalcFields(Amount);
+        LibraryIRS1099Document.PostPaymentAppliedToInvoice(PostingDate, VendNo[1], VendorLedgerEntry[2]."Document No.", -VendorLedgerEntry[2].Amount);
+
+        // [GIVEN] Invoice for Vendor "B" with MISC-01
+        LibraryPurchase.CreatePurchHeader(PurchaseHeader, PurchaseHeader."Document Type"::Invoice, VendNo[2]);
+        PurchaseHeader.Validate("Posting Date", PostingDate);
+        LibraryPurchase.CreatePurchaseLineWithUnitCost(
+            PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
+            LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
+        LibraryERM.FindVendorLedgerEntry(
+            VendorLedgerEntry[3], VendorLedgerEntry[3]."Document Type"::Invoice,
+            LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, true));
+        VendorLedgerEntry[3].CalcFields(Amount);
+        LibraryIRS1099Document.PostPaymentAppliedToInvoice(PostingDate, VendNo[2], VendorLedgerEntry[3]."Document No.", -VendorLedgerEntry[3].Amount);
+
+        // [WHEN] Calculate form boxes for all vendors
+        LibraryIRS1099FormBox.GetVendorFormBoxAmount(TempVendFormBoxBuffer, PeriodNo, '', '');
+
+        // [THEN] Three form box records are created
+        TempVendFormBoxBuffer.Reset();
+        TempVendFormBoxBuffer.SetRange("Buffer Type", TempVendFormBoxBuffer."Buffer Type"::Amount);
+        Assert.RecordCount(TempVendFormBoxBuffer, 3);
+
+        // [THEN] Vendor "A" has two records: one for DIV-01-A, one for DIV-01-B
+        TempVendFormBoxBuffer.SetRange("Vendor No.", VendNo[1]);
+        Assert.RecordCount(TempVendFormBoxBuffer, 2);
+        TempVendFormBoxBuffer.SetRange("Form Box No.", FormBoxNo[1]);
+        TempVendFormBoxBuffer.FindFirst();
+        LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBufferIncludedIn1099(
+            TempVendFormBoxBuffer, PeriodNo, FormNo[1], FormBoxNo[1], VendNo[1], -VendorLedgerEntry[1].Amount);
+        TempVendFormBoxBuffer.SetRange("Form Box No.", FormBoxNo[2]);
+        TempVendFormBoxBuffer.FindFirst();
+        LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBufferIncludedIn1099(
+            TempVendFormBoxBuffer, PeriodNo, FormNo[1], FormBoxNo[2], VendNo[1], -VendorLedgerEntry[2].Amount);
+
+        // [THEN] Vendor "B" has one record for MISC-01
+        TempVendFormBoxBuffer.SetRange("Vendor No.", VendNo[2]);
+        TempVendFormBoxBuffer.SetRange("Form Box No.", FormBoxNo[3]);
+        TempVendFormBoxBuffer.FindFirst();
+        LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBufferIncludedIn1099(
+            TempVendFormBoxBuffer, PeriodNo, FormNo[2], FormBoxNo[3], VendNo[2], -VendorLedgerEntry[3].Amount);
+    end;
+
+    [Test]
+    procedure SingleVendorMultipleFormBoxesDifferentFromDefault()
+    var
+        PurchaseHeader: Record "Purchase Header";
+        PurchaseLine: Record "Purchase Line";
+        VendorLedgerEntry: array[2] of Record "Vendor Ledger Entry";
+        TempVendFormBoxBuffer: Record "IRS 1099 Vend. Form Box Buffer" temporary;
+        PeriodNo: Code[20];
+        FormNo: Code[20];
+        FormBoxNo: array[2] of Code[20];
+        VendNo: Code[20];
+        PostingDate: Date;
+    begin
+        // [FEATURE] [AI test 0.3]
+        // [SCENARIO 597565] Single vendor with multiple form boxes including one different from default
+        Initialize();
+        PostingDate := LibraryIRSReportingPeriod.GetPostingDate();
+
+        // [GIVEN] IRS Reporting Period "X"
+        PeriodNo := LibraryIRSReportingPeriod.CreateOneDayReportingPeriod(PostingDate);
+
+        // [GIVEN] Form DIV with boxes DIV-01-A and DIV-01-B
+        FormNo := LibraryIRS1099FormBox.CreateSingleFormInReportingPeriod(PostingDate);
+        FormBoxNo[1] := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo);
+        FormBoxNo[2] := LibraryIRS1099FormBox.CreateSingleFormBoxInReportingPeriod(PostingDate, FormNo);
+
+        // [GIVEN] Vendor "A" with default form box DIV-01-A
+        VendNo := LibraryIRS1099FormBox.CreateVendorNoWithFormBox(PostingDate, FormNo, FormBoxNo[1]);
+
+        // [GIVEN] Invoice for Vendor "A" with DIV-01-A (default)
+        LibraryPurchase.CreatePurchHeader(PurchaseHeader, PurchaseHeader."Document Type"::Invoice, VendNo);
+        PurchaseHeader.Validate("Posting Date", PostingDate);
+        LibraryPurchase.CreatePurchaseLineWithUnitCost(
+            PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
+            LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
+        LibraryERM.FindVendorLedgerEntry(
+            VendorLedgerEntry[1], VendorLedgerEntry[1]."Document Type"::Invoice,
+            LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, true));
+        VendorLedgerEntry[1].CalcFields(Amount);
+        LibraryIRS1099Document.PostPaymentAppliedToInvoice(PostingDate, VendNo, VendorLedgerEntry[1]."Document No.", -VendorLedgerEntry[1].Amount);
+
+        // [GIVEN] Invoice for Vendor "A" with DIV-01-B (different from default)
+        LibraryPurchase.CreatePurchHeader(PurchaseHeader, PurchaseHeader."Document Type"::Invoice, VendNo);
+        PurchaseHeader.Validate("Posting Date", PostingDate);
+        PurchaseHeader.Validate("IRS 1099 Reporting Period", LibraryIRSReportingPeriod.GetReportingPeriod(PostingDate));
+        PurchaseHeader.Validate("IRS 1099 Form No.", FormNo);
+        PurchaseHeader.Validate("IRS 1099 Form Box No.", FormBoxNo[2]);
+        PurchaseHeader.Modify(true);
+        LibraryPurchase.CreatePurchaseLineWithUnitCost(
+            PurchaseLine, PurchaseHeader, LibraryInventory.CreateItemNo(),
+            LibraryRandom.RandInt(100), LibraryRandom.RandDec(100, 2));
+        LibraryERM.FindVendorLedgerEntry(
+            VendorLedgerEntry[2], VendorLedgerEntry[2]."Document Type"::Invoice,
+            LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, true));
+        VendorLedgerEntry[2].CalcFields(Amount);
+        LibraryIRS1099Document.PostPaymentAppliedToInvoice(PostingDate, VendNo, VendorLedgerEntry[2]."Document No.", -VendorLedgerEntry[2].Amount);
+
+        // [WHEN] Calculate form boxes for the vendor
+        LibraryIRS1099FormBox.GetVendorFormBoxAmount(TempVendFormBoxBuffer, PeriodNo, FormNo, VendNo);
+
+        // [THEN] Two form box records are created for the vendor
+        TempVendFormBoxBuffer.Reset();
+        TempVendFormBoxBuffer.SetRange("Buffer Type", TempVendFormBoxBuffer."Buffer Type"::Amount);
+        Assert.RecordCount(TempVendFormBoxBuffer, 2);
+
+        // [THEN] First record is for DIV-01-A with correct amount
+        TempVendFormBoxBuffer.SetRange("Form Box No.", FormBoxNo[1]);
+        TempVendFormBoxBuffer.FindFirst();
+        LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBufferIncludedIn1099(
+            TempVendFormBoxBuffer, PeriodNo, FormNo, FormBoxNo[1], VendNo, -VendorLedgerEntry[1].Amount);
+
+        // [THEN] Second record is for DIV-01-B with correct amount
+        TempVendFormBoxBuffer.SetRange("Form Box No.", FormBoxNo[2]);
+        TempVendFormBoxBuffer.FindFirst();
+        LibraryIRS1099FormBox.VerifyCurrTempVendFormBoxBufferIncludedIn1099(
+            TempVendFormBoxBuffer, PeriodNo, FormNo, FormBoxNo[2], VendNo, -VendorLedgerEntry[2].Amount);
     end;
 
     local procedure Initialize()
@@ -527,16 +810,6 @@ codeunit 148014 "IRS 1099 Form Calc. Tests"
         IsInitialized := true;
         Commit();
         LibraryTestInitialize.OnAfterTestSuiteInitialize(Codeunit::"IRS 1099 Form Calc. Tests");
-    end;
-
-    local procedure GetPostingDate(): Date
-    var
-        GLEntry: Record "G/L Entry";
-    begin
-        GLEntry.SetCurrentKey("Posting Date", "G/L Account No.", "Dimension Set ID");
-        if GLEntry.FindLast() then
-            exit(CalcDate('<1Y>', GLEntry."Posting Date"));
-        exit(WorkDate());
     end;
 
     local procedure CreateVendorLedgerEntry(var VendorLedgerEntry: Record "Vendor Ledger Entry"; PostingDate: Date; DocumentType: Enum "Gen. Journal Document Type"; VendorNo: Code[20]; FormNo: Code[20]; FormBoxNo: Code[20]; Amount: Decimal)

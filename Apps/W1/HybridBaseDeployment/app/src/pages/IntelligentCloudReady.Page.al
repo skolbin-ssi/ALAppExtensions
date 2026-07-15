@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 namespace Microsoft.DataMigration;
 
 using System.Security.AccessControl;
@@ -25,7 +30,6 @@ page 4007 "Intelligent Cloud Ready"
                     field(Spacer1; '')
                     {
                         ApplicationArea = All;
-                        Caption = '';
                         ShowCaption = false;
                         Editable = false;
                     }
@@ -161,7 +165,7 @@ page 4007 "Intelligent Cloud Ready"
         ReadMigrationWhitePaperTxt: Label '1. Read the Business Central Cloud Migration help.';
         ReadWhitePaperURLTxt: Label 'https://go.microsoft.com/fwlink/?linkid=2009758', Locked = true;
         HaveAllUsersExitTxt: Label '2. Have all users exit both the cloud tenant and on-premises solution.';
-        RunFullMigrationTxt: Label '3. Run a migration by selecting Run Migration Now within the Cloud Migration Management page.';
+        RunFullMigrationTxt: Label '3. Run a migration by selecting Run data replication within the Cloud Migration Management page.';
         FixErrorsTxt: Label '4. Correct any necessary errors.';
         RunMigrationAgainTxt: Label '5. Run the migration again if you had to make any corrections in step #4.', Comment = '#4 - reference to step 4';
         DisableMigrationTxt: Label '6. Disable Cloud Migration in the Actions menu above.';

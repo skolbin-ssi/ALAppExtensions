@@ -14,6 +14,7 @@ page 30050 "APIV2 - Jobs"
     PageType = API;
     SourceTable = Job;
     Extensible = false;
+    AboutText = 'Exposes comprehensive project management data including project setup, status, budgeting, customer details, scheduling, and financial metrics. Supports full CRUD operations for seamless integration with external project management, ERP, and time tracking systems, enabling end-to-end project lifecycle management, cost tracking, and resource coordination.';
 
     layout
     {
@@ -44,6 +45,14 @@ page 30050 "APIV2 - Jobs"
                     Caption = 'Document Attachments';
                     EntityName = 'documentAttachment';
                     EntitySetName = 'documentAttachments';
+                    SubPageLink = "Document Id" = field(SystemId), "Document Type" = const(Job);
+                }
+                part(pdfDocument; "APIV2 - PDF Document")
+                {
+                    Caption = 'PDF Document';
+                    Multiplicity = ZeroOrOne;
+                    EntityName = 'pdfDocument';
+                    EntitySetName = 'pdfDocument';
                     SubPageLink = "Document Id" = field(SystemId), "Document Type" = const(Job);
                 }
             }

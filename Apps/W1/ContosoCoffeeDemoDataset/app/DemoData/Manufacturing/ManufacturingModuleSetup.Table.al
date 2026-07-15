@@ -1,3 +1,12 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
+namespace Microsoft.DemoData.Manufacturing;
+
+using Microsoft.Inventory.Location;
+
 table 4766 "Manufacturing Module Setup"
 {
     DataClassification = CustomerContent;
@@ -14,6 +23,11 @@ table 4766 "Manufacturing Module Setup"
             DataClassification = SystemMetadata;
         }
         field(2; "Manufacturing Location"; code[10])
+        {
+            DataClassification = CustomerContent;
+            TableRelation = "Location" where("Use As In-Transit" = const(false));
+        }
+        field(3; "Subcontracting Location"; Code[10])
         {
             DataClassification = CustomerContent;
             TableRelation = "Location" where("Use As In-Transit" = const(false));

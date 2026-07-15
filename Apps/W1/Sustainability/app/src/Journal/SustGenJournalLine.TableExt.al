@@ -1,6 +1,7 @@
 namespace Microsoft.Sustainability.Journal;
 
 using Microsoft.Finance.GeneralLedger.Journal;
+using Microsoft.Foundation.AuditCodes;
 using Microsoft.Sustainability.Account;
 using Microsoft.Sustainability.Setup;
 
@@ -80,6 +81,7 @@ tableextension 6224 "Sust. Gen. Journal Line" extends "Gen. Journal Line"
             AutoFormatType = 11;
             AutoFormatExpression = SustainabilitySetup.GetFormat(SustainabilitySetup.FieldNo("Emission Decimal Places"));
             Caption = 'Total Emission CO2';
+            CaptionClass = '102,12,1';
             DataClassification = CustomerContent;
 
             trigger OnValidate()
@@ -93,6 +95,7 @@ tableextension 6224 "Sust. Gen. Journal Line" extends "Gen. Journal Line"
             AutoFormatType = 11;
             AutoFormatExpression = SustainabilitySetup.GetFormat(SustainabilitySetup.FieldNo("Emission Decimal Places"));
             Caption = 'Total Emission CH4';
+            CaptionClass = '102,12,2';
             DataClassification = CustomerContent;
 
             trigger OnValidate()
@@ -106,12 +109,43 @@ tableextension 6224 "Sust. Gen. Journal Line" extends "Gen. Journal Line"
             AutoFormatType = 11;
             AutoFormatExpression = SustainabilitySetup.GetFormat(SustainabilitySetup.FieldNo("Emission Decimal Places"));
             Caption = 'Total Emission N2O';
+            CaptionClass = '102,12,3';
             DataClassification = CustomerContent;
 
             trigger OnValidate()
             begin
                 if Rec."Total Emission N2O" <> 0 then
                     ValidateEmissionPrerequisite(Rec, Rec.FieldNo("Total Emission N2O"));
+            end;
+        }
+        field(6221; "CO2e per Unit"; Decimal)
+        {
+            AutoFormatType = 11;
+            AutoFormatExpression = SustainabilitySetup.GetFormat(SustainabilitySetup.FieldNo("Emission Decimal Places"));
+            Caption = 'CO2e per Unit';
+            DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            begin
+                if Rec."CO2e per Unit" <> 0 then
+                    ValidateEmissionPrerequisite(Rec, Rec.FieldNo("CO2e per Unit"));
+
+                UpdateSustainabilityEmission(Rec);
+            end;
+        }
+        field(6222; "Total CO2e"; Decimal)
+        {
+            AutoFormatType = 11;
+            AutoFormatExpression = SustainabilitySetup.GetFormat(SustainabilitySetup.FieldNo("Emission Decimal Places"));
+            Caption = 'Total CO2e';
+            DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            begin
+                if Rec."Total CO2e" <> 0 then
+                    ValidateEmissionPrerequisite(Rec, Rec.FieldNo("Total CO2e"));
+
+                UpdateEmissionPerUnit(Rec);
             end;
         }
     }
@@ -121,6 +155,7 @@ tableextension 6224 "Sust. Gen. Journal Line" extends "Gen. Journal Line"
         GenJournalLine.Validate("Total Emission CO2", 0);
         GenJournalLine.Validate("Total Emission CH4", 0);
         GenJournalLine.Validate("Total Emission N2O", 0);
+        GenJournalLine.Validate("CO2e per Unit", 0);
     end;
 
     local procedure ValidateEmissionPrerequisite(GenJournalLine: Record "Gen. Journal Line"; CurrentFieldNo: Integer)
@@ -130,6 +165,14 @@ tableextension 6224 "Sust. Gen. Journal Line" extends "Gen. Journal Line"
             GenJournalLine.FieldNo("Total Emission CH4"),
             GenJournalLine.FieldNo("Total Emission CO2"):
                 GenJournalLine.TestField("Sust. Account No.");
+            GenJournalLine.FieldNo("CO2e per Unit"),
+            GenJournalLine.FieldNo("Total CO2e"):
+                begin
+                    if not GenJournalLine.IsSourceFixedAssetGLJournal() then
+                        GenJournalLine.TestField("Job No.");
+
+                    GenJournalLine.TestField("Sust. Account No.");
+                end;
             GenJournalLine.FieldNo("Sust. Account No."):
                 CheckSustGenJournalLine(GenJournalLine);
         end;
@@ -140,9 +183,39 @@ tableextension 6224 "Sust. Gen. Journal Line" extends "Gen. Journal Line"
         if (GenJournalLine."Document Type" in [GenJournalLine."Document Type"::" ", GenJournalLine."Document Type"::Invoice, GenJournalLine."Document Type"::"Credit Memo"]) then
             GenJournalLine.TestField("Sust. Account No.")
         else
-            GenJournalLine.TestField("Sust. Account No.", '');
+            Error(InvalidDocumentTypeErr, GenJournalLine."Journal Template Name", GenJournalLine."Journal Batch Name", GenJournalLine."Line No.");
+    end;
+
+    procedure UpdateSustainabilityEmission(var GenJournalLine: Record "Gen. Journal Line")
+    begin
+        GenJournalLine."Total CO2e" := GenJournalLine."CO2e per Unit" * GenJournalLine."Job Quantity";
+    end;
+
+    procedure UpdateEmissionPerUnit(var GenJournalLine: Record "Gen. Journal Line")
+    var
+        Denominator: Decimal;
+    begin
+        GenJournalLine."CO2e Per Unit" := 0;
+
+        if (GenJournalLine."Job Quantity" = 0) then
+            exit;
+
+        Denominator := GenJournalLine."Job Quantity";
+        if GenJournalLine."Total CO2e" <> 0 then
+            GenJournalLine."CO2e per Unit" := GenJournalLine."Total CO2e" / Denominator;
+    end;
+
+    internal procedure IsSourceFixedAssetGLJournal(): Boolean
+    var
+        SourceCodeSetup: Record "Source Code Setup";
+    begin
+        SourceCodeSetup.SetLoadFields("Fixed Asset G/L Journal");
+        SourceCodeSetup.Get();
+
+        exit(Rec."Source Code" = SourceCodeSetup."Fixed Asset G/L Journal");
     end;
 
     var
         SustainabilitySetup: Record "Sustainability Setup";
+        InvalidDocumentTypeErr: Label 'You can only specify Sustainability Accounts for lines of type blank, invoice and credit memo for Journal Template Name=%1 ,Journal Batch Name=%2 ,Line No.=%3.', Comment = '%1 = Journal Template Name , %2 = Journal Batch Name , %3 = Line No.';
 }

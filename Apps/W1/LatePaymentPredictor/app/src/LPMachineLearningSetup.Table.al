@@ -1,9 +1,10 @@
 namespace Microsoft.Finance.Latepayment;
 
 using System.AI;
-using System.Environment;
-using System.Utilities;
 using System.Privacy;
+using System.Telemetry;
+using System.Utilities;
+
 table 1950 "LP Machine Learning Setup"
 {
     DataClassification = CustomerContent;
@@ -48,6 +49,7 @@ table 1950 "LP Machine Learning Setup"
 
         field(5; "My Model Quality"; Decimal)
         {
+            AutoFormatType = 0;
             Editable = false;
             MinValue = 0;
             MaxValue = 1;
@@ -55,6 +57,7 @@ table 1950 "LP Machine Learning Setup"
 
         field(6; "Standard Model Quality"; Decimal)
         {
+            AutoFormatType = 0;
             Editable = false;
             MinValue = 0;
             MaxValue = 1;
@@ -62,6 +65,7 @@ table 1950 "LP Machine Learning Setup"
 
         field(7; "Model Quality Threshold"; Decimal)
         {
+            AutoFormatType = 0;
             MinValue = 0;
             MaxValue = 1;
             Caption = 'Model Quality Threshold';
@@ -72,13 +76,14 @@ table 1950 "LP Machine Learning Setup"
             Caption = 'Use My Azure Subscription';
             trigger OnValidate()
             var
+                AuditLog: Codeunit "Audit Log";
                 CustomerConsentMgt: Codeunit "Customer Consent Mgt.";
                 LatePaymentPredictionConsentProvidedLbl: Label 'Late Payment Prediction - consent provided by UserSecurityId %1.', Locked = true;
             begin
                 if not xRec."Use My Model Credentials" and Rec."Use My Model Credentials" then
                     Rec."Use My Model Credentials" := CustomerConsentMgt.ConfirmUserConsentToMicrosoftService();
                 if Rec."Use My Model Credentials" then
-                    Session.LogAuditMessage(StrSubstNo(LatePaymentPredictionConsentProvidedLbl, UserSecurityId()), SecurityOperationResult::Success, AuditCategory::ApplicationManagement, 4, 0);
+                    AuditLog.LogAuditMessage(StrSubstNo(LatePaymentPredictionConsentProvidedLbl, UserSecurityId()), SecurityOperationResult::Success, AuditCategory::ApplicationManagement, 4, 0);
             end;
         }
 
@@ -102,15 +107,6 @@ table 1950 "LP Machine Learning Setup"
                 AzureMLConnector.ValidateApiUrl("Custom API Key");
             end;
         }
-#if not CLEANSCHEMA18
-        field(11; "Exact Invoice No OnLastML"; Integer)
-        {
-            Editable = false;
-            ObsoleteState = Removed;
-            ObsoleteReason = 'Discontinued because of performance refactoring. Use the field Posting Date OnLastML instead.';
-            ObsoleteTag = '18.0';
-        }
-#endif
         field(12; "OverestimatedInvNo OnLastReset"; Integer)
         {
             Editable = false;
@@ -168,16 +164,15 @@ table 1950 "LP Machine Learning Setup"
 
     procedure GetModelAsText(ForModel: Option) Content: Text
     var
-        MediaResources: Record "Media Resources";
         TempBlob: Codeunit "Temp Blob";
         InStream: InStream;
     begin
         case ForModel of
             "Selected Model"::Standard:
                 begin
-                    if not MediaResources.Get('LatePaymentStandardModel.txt') then
-                        exit;
-                    TempBlob.FromRecord(MediaResources, MediaResources.FieldNo(Blob));
+                    NavApp.GetResource('LatePaymentStandardModel.txt', InStream);
+                    InStream.Read(Content);
+                    exit;
                 end;
             "Selected Model"::My:
                 TempBlob.FromRecord(Rec, FieldNo("My Model"));
@@ -289,28 +284,6 @@ table 1950 "LP Machine Learning Setup"
                 exit(CopyStr(ApiUriValue, 1, 250));
     end;
 
-#if not CLEAN24
-    [NonDebuggable]
-    [Scope('OnPrem')]
-    [Obsolete('Use "SaveApiKey(ApiKeyText: SecretText)" instead.', '24.0')]
-    procedure SaveApiKey(ApiKeyText: Text[200])
-    var
-        ApiKeyKeyGUID: Guid;
-    begin
-        ApiKeyText := CopyStr(DelChr(ApiKeyText, '=', ' '), 1, 200);
-        if "Custom API Key" <> '' then
-            evaluate(ApiKeyKeyGUID, "Custom API Key");
-        if IsNullGuid(ApiKeyKeyGUID) or not IsolatedStorage.Contains(ApiKeyKeyGUID, DataScope::Company) then begin
-            ApiKeyKeyGUID := FORMAT(CreateGuid());
-            "Custom API Key" := ApiKeyKeyGUID;
-        end;
-
-        if not EncryptionEnabled() then
-            IsolatedStorage.Set(ApiKeyKeyGUID, ApiKeyText, DataScope::Company)
-        else
-            IsolatedStorage.SetEncrypted(ApiKeyKeyGUID, ApiKeyText, DataScope::Company);
-    end;
-#endif
     [Scope('OnPrem')]
     procedure SaveApiKey(ApiKeyText: SecretText)
     var
@@ -329,15 +302,6 @@ table 1950 "LP Machine Learning Setup"
             IsolatedStorage.SetEncrypted(ApiKeyKeyGUID, ApiKeyText, DataScope::Company);
     end;
 
-#if not CLEAN24
-    [NonDebuggable]
-    [Scope('OnPrem')]
-    [Obsolete('Replaced by GetApiKeySecret()', '24.0')]
-    procedure GetApiKey(): Text[200]
-    begin
-        exit(CopyStr(GetApiKeyAsSecret().Unwrap(), 1, 200));
-    end;
-#endif
     [Scope('OnPrem')]
     procedure GetApiKeyAsSecret(): SecretText
     var

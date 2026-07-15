@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -289,6 +289,7 @@ table 11744 "Cash Desk CZP"
         }
         field(59; "Balance (LCY)"; Decimal)
         {
+            AutoFormatExpression = '';
             AutoFormatType = 1;
             CalcFormula = Sum("Bank Account Ledger Entry"."Amount (LCY)" where("Bank Account No." = field("No."),
                                                                                 "Global Dimension 1 Code" = field("Global Dimension 1 Filter"),
@@ -311,6 +312,7 @@ table 11744 "Cash Desk CZP"
         }
         field(61; "Net Change (LCY)"; Decimal)
         {
+            AutoFormatExpression = '';
             AutoFormatType = 1;
             CalcFormula = Sum("Bank Account Ledger Entry"."Amount (LCY)" where("Bank Account No." = field("No."),
                                                                                 "Global Dimension 1 Code" = field("Global Dimension 1 Filter"),
@@ -334,6 +336,7 @@ table 11744 "Cash Desk CZP"
         }
         field(96; "Balance at Date (LCY)"; Decimal)
         {
+            AutoFormatExpression = '';
             AutoFormatType = 1;
             CalcFormula = Sum("Bank Account Ledger Entry"."Amount (LCY)" where("Bank Account No." = field("No."),
                                                                                 "Global Dimension 1 Code" = field("Global Dimension 1 Filter"),
@@ -371,6 +374,7 @@ table 11744 "Cash Desk CZP"
         }
         field(99; "Debit Amount (LCY)"; Decimal)
         {
+            AutoFormatExpression = '';
             AutoFormatType = 1;
             BlankZero = true;
             CalcFormula = Sum("Bank Account Ledger Entry"."Debit Amount (LCY)" where("Bank Account No." = field("No."),
@@ -383,6 +387,7 @@ table 11744 "Cash Desk CZP"
         }
         field(100; "Credit Amount (LCY)"; Decimal)
         {
+            AutoFormatExpression = '';
             AutoFormatType = 1;
             BlankZero = true;
             CalcFormula = Sum("Bank Account Ledger Entry"."Credit Amount (LCY)" where("Bank Account No." = field("No."),
@@ -416,6 +421,8 @@ table 11744 "Cash Desk CZP"
         }
         field(122; "Max. Balance"; Decimal)
         {
+            AutoFormatExpression = Rec."Currency Code";
+            AutoFormatType = 1;
             Caption = 'Max. Balance';
             DataClassification = CustomerContent;
         }
@@ -508,6 +515,7 @@ table 11744 "Cash Desk CZP"
         }
         field(260; "Amount Rounding Precision"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Amount Rounding Precision';
             DataClassification = CustomerContent;
             DecimalPlaces = 2 : 2;
@@ -528,11 +536,15 @@ table 11744 "Cash Desk CZP"
         }
         field(267; "Cash Receipt Limit"; Decimal)
         {
+            AutoFormatExpression = Rec."Currency Code";
+            AutoFormatType = 1;
             Caption = 'Cash Receipt Limit';
             DataClassification = CustomerContent;
         }
         field(268; "Cash Withdrawal Limit"; Decimal)
         {
+            AutoFormatExpression = Rec."Currency Code";
+            AutoFormatType = 1;
             Caption = 'Cash Withdrawal Limit';
             DataClassification = CustomerContent;
         }
@@ -625,29 +637,18 @@ table 11744 "Cash Desk CZP"
     var
         CashDesk: Record "Cash Desk CZP";
         NoSeries: Codeunit "No. Series";
-#if not CLEAN24
-        IsHandled: Boolean;
-#endif
     begin
         if "No." = '' then begin
             GeneralLedgerSetup.Get();
             GeneralLedgerSetup.TestField("Cash Desk Nos. CZP");
-#if not CLEAN24
-            NoSeriesManagement.RaiseObsoleteOnBeforeInitSeries(GeneralLedgerSetup."Cash Desk Nos. CZP", xRec."No. Series", 0D, "No.", "No. Series", IsHandled);
-            if not IsHandled then begin
-#endif
-                "No. Series" := GeneralLedgerSetup."Cash Desk Nos. CZP";
-                if NoSeries.AreRelated("No. Series", xRec."No. Series") then
-                    "No. Series" := xRec."No. Series";
+            "No. Series" := GeneralLedgerSetup."Cash Desk Nos. CZP";
+            if NoSeries.AreRelated("No. Series", xRec."No. Series") then
+                "No. Series" := xRec."No. Series";
+            "No." := NoSeries.GetNextNo("No. Series");
+            CashDesk.ReadIsolation(ReadIsolation::ReadUncommitted);
+            CashDesk.SetLoadFields("No.");
+            while CashDesk.Get("No.") do
                 "No." := NoSeries.GetNextNo("No. Series");
-                CashDesk.ReadIsolation(ReadIsolation::ReadUncommitted);
-                CashDesk.SetLoadFields("No.");
-                while CashDesk.Get("No.") do
-                    "No." := NoSeries.GetNextNo("No. Series");
-#if not CLEAN24
-                NoSeriesManagement.RaiseObsoleteOnAfterInitSeries("No. Series", GeneralLedgerSetup."Cash Desk Nos. CZP", 0D, "No.");
-            end;
-#endif
         end;
         DimensionManagement.UpdateDefaultDim(Database::"Cash Desk CZP", "No.", "Global Dimension 1 Code", "Global Dimension 2 Code");
 
@@ -704,9 +705,6 @@ table 11744 "Cash Desk CZP"
         BankAccountLedgerEntry: Record "Bank Account Ledger Entry";
         CommentLine: Record "Comment Line";
         PostCode: Record "Post Code";
-#if not CLEAN24
-        NoSeriesManagement: Codeunit NoSeriesManagement;
-#endif
         ConfirmManagement: Codeunit "Confirm Management";
         MoveEntries: Codeunit MoveEntries;
         DimensionManagement: Codeunit DimensionManagement;
@@ -772,7 +770,7 @@ table 11744 "Cash Desk CZP"
 
     procedure CalcBalance(): Decimal
     begin
-        exit(CalcOpenedReceipts() + CalcOpenedWithdrawals() + CalcPostedReceipts() + CalcPostedWithdrawals());
+        exit(CalcPostedReceipts() + CalcPostedWithdrawals() + CalcOpenedReceipts() + CalcOpenedWithdrawals());
     end;
 
     procedure CalcOpenedWithdrawals(): Decimal

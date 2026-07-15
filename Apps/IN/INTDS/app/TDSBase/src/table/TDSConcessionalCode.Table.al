@@ -4,8 +4,8 @@
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.Finance.TDS.TDSBase;
 
-using Microsoft.Purchases.Vendor;
 using Microsoft.Finance.TaxBase;
+using Microsoft.Purchases.Vendor;
 
 table 18688 "TDS Concessional Code"
 {
@@ -58,6 +58,33 @@ table 18688 "TDS Concessional Code"
                 if "End Date" < "Start Date" then
                     Error(ShorterEndDateErr);
             end;
+        }
+        field(7; "Certificate Value"; Decimal)
+        {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
+            Caption = 'Certificate Value';
+            DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            begin
+                if ("Remaining Certificate Value" = 0) or ("Certificate Value" <> xRec."Certificate Value") then
+                    "Remaining Certificate Value" := "Certificate Value";
+            end;
+        }
+        field(8; "Remaining Certificate Value"; Decimal)
+        {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
+            Caption = 'Remaining Certificate Value';
+            DataClassification = CustomerContent;
+        }
+        field(9; "Used Certificate Value"; Decimal)
+        {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
+            Caption = 'Used Certificate Value';
+            DataClassification = CustomerContent;
         }
     }
 

@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -8,7 +8,7 @@ page 10037 "IRS 1099 Form Document"
 {
     PageType = Card;
     SourceTable = "IRS 1099 Form Doc. Header";
-    ApplicationArea = BasicUS;
+    ApplicationArea = BasicCA, BasicUS;
 
     layout
     {
@@ -20,7 +20,7 @@ page 10037 "IRS 1099 Form Document"
                 field("Period No."; Rec."Period No.")
                 {
                     Tooltip = 'Specifies the period of the document.';
-                    Visible = false;
+                    Visible = IsPeriodNoActive;
                 }
                 field("Vendor No."; Rec."Vendor No.")
                 {
@@ -81,7 +81,7 @@ page 10037 "IRS 1099 Form Document"
             }
             part(FormLines; "IRS 1099 Form Doc. Subform")
             {
-                ApplicationArea = BasicUS;
+                ApplicationArea = BasicCA, BasicUS;
                 SubPageLink = "Document ID" = field(ID), "Period No." = field("Period No."), "Vendor No." = field("Vendor No."), "Form No." = field("Form No.");
                 Editable = IsLinesEditable;
                 Enabled = IsLinesEditable;
@@ -115,7 +115,7 @@ page 10037 "IRS 1099 Form Document"
                 Image = ReleaseDoc;
                 action(Release)
                 {
-                    ApplicationArea = BasicUS;
+                    ApplicationArea = BasicCA, BasicUS;
                     Caption = 'Re&lease';
                     Enabled = Rec.Status = Rec.Status::Open;
                     Image = ReleaseDoc;
@@ -131,7 +131,7 @@ page 10037 "IRS 1099 Form Document"
                 }
                 action(Reopen)
                 {
-                    ApplicationArea = BasicUS;
+                    ApplicationArea = BasicCA, BasicUS;
                     Caption = 'Re&open';
                     Enabled = Rec.Status <> Rec.Status::Open;
                     Image = ReOpen;
@@ -144,65 +144,80 @@ page 10037 "IRS 1099 Form Document"
                         IRS1099FormDocument.Reopen(Rec);
                     end;
                 }
-                action("Mark as Submitted")
-                {
-                    ApplicationArea = Basic, Suite;
-                    Caption = 'Mark as Submitted';
-                    Image = Approve;
-                    ToolTip = 'Indicate that you submitted the form document to the tax authority manually.';
+            }
+            action("Mark as Submitted")
+            {
+                ApplicationArea = Basic, Suite;
+                Caption = 'Mark as Submitted';
+                Image = Approve;
+                ToolTip = 'Indicate that you submitted the form document to the tax authority manually.';
 
-                    trigger OnAction()
-                    var
-                        IRS1099FormDocument: Codeunit "IRS 1099 Form Document";
-                    begin
-                        IRS1099FormDocument.MarkAsSubmitted(Rec);
-                    end;
-                }
-                action(Print)
-                {
-                    ApplicationArea = BasicUS;
-                    Caption = 'Print';
-                    Ellipsis = true;
-                    Image = PrintAcknowledgement;
-                    ToolTip = 'Prints a single form.';
+                trigger OnAction()
+                var
+                    IRS1099FormDocument: Codeunit "IRS 1099 Form Document";
+                begin
+                    IRS1099FormDocument.MarkAsSubmitted(Rec);
+                end;
+            }
+            action(AllowCorrection)
+            {
+                ApplicationArea = BasicCA, BasicUS;
+                Caption = 'Allow Correction';
+                Image = ResetStatus;
+                ToolTip = 'Allows the form to be reopened for correction. After the correction is done, the form must be released again.';
 
-                    trigger OnAction()
-                    var
-                        IRSFormsFacade: Codeunit "IRS Forms Facade";
-                    begin
-                        IRSFormsFacade.PrintContent(Rec);
-                    end;
-                }
-                action(Reports)
-                {
-                    ApplicationArea = BasicUS;
-                    Caption = 'Reports';
-                    Ellipsis = true;
-                    Image = Report;
-                    ToolTip = 'Opens the reports page.';
-                    RunObject = page "IRS 1099 Form Reports";
-                    RunPageLink = "Document ID" = field(ID);
-                }
-                action(SendEmail)
-                {
-                    ApplicationArea = BasicUS;
-                    Caption = 'Send Email';
-                    Ellipsis = true;
-                    Image = Email;
-                    ToolTip = 'Sends the form by email.';
+                trigger OnAction()
+                var
+                    IRS1099FormDocument: Codeunit "IRS 1099 Form Document";
+                begin
+                    IRS1099FormDocument.AllowCorrection(Rec);
+                end;
+            }
+            action(Print)
+            {
+                ApplicationArea = BasicCA, BasicUS;
+                Caption = 'Print';
+                Ellipsis = true;
+                Image = PrintAcknowledgement;
+                ToolTip = 'Prints a single form.';
 
-                    trigger OnAction()
-                    var
-                        IRS1099SendEmailReport: Report "IRS 1099 Send Email";
-                        IRS1099SendEmail: Codeunit "IRS 1099 Send Email";
-                    begin
-                        IRS1099SendEmail.CheckCanSendEmail(Rec);
+                trigger OnAction()
+                var
+                    IRSFormsFacade: Codeunit "IRS Forms Facade";
+                begin
+                    IRSFormsFacade.PrintContent(Rec);
+                end;
+            }
+            action(Reports)
+            {
+                ApplicationArea = BasicCA, BasicUS;
+                Caption = 'Reports';
+                Ellipsis = true;
+                Image = Report;
+                ToolTip = 'Opens the reports page.';
+                RunObject = page "IRS 1099 Form Reports";
+                RunPageLink = "Document ID" = field(ID);
+            }
+            action(SendEmail)
+            {
+                ApplicationArea = BasicCA, BasicUS;
+                Caption = 'Send Email';
+                Ellipsis = true;
+                Image = Email;
+                ToolTip = 'Sends the form by email.';
 
-                        Rec.SetRecFilter();
-                        IRS1099SendEmailReport.SetTableView(Rec);
-                        IRS1099SendEmailReport.RunModal();
-                    end;
-                }
+                trigger OnAction()
+                var
+                    IRS1099SendEmailReport: Report "IRS 1099 Send Email";
+                    IRS1099SendEmail: Codeunit "IRS 1099 Send Email";
+                begin
+                    IRS1099SendEmail.CheckEmailSetup();
+                    IRS1099SendEmail.CheckCanSendEmail(Rec);
+
+                    Rec.SetRecFilter();
+                    IRS1099SendEmailReport.SetTableView(Rec);
+                    IRS1099SendEmailReport.RunModal();
+                end;
             }
         }
         area(Promoted)
@@ -238,11 +253,13 @@ page 10037 "IRS 1099 Form Document"
     var
         IsLinesEditable: Boolean;
         EmailErrorVisible: Boolean;
+        IsPeriodNoActive: Boolean;
 
     trigger OnOpenPage()
     begin
         UpdateLinesAvailable();
         EmailErrorVisible := Rec."Email Error Log" <> '';
+        IsPeriodNoActive := (Rec."Period No." = '');
     end;
 
     trigger OnAfterGetRecord()
@@ -253,6 +270,7 @@ page 10037 "IRS 1099 Form Document"
     trigger OnAfterGetCurrRecord()
     begin
         UpdateLinesAvailable();
+        IsPeriodNoActive := (Rec."Period No." = '');
     end;
 
     trigger OnNewRecord(BelowxRec: Boolean)

@@ -3,6 +3,7 @@ codeunit 139709 "Sales Invoices E2E"
     // version Test,ERM,W1,All
 
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     trigger OnRun()
@@ -49,12 +50,12 @@ codeunit 139709 "Sales Invoices E2E"
 
     local procedure InitializeForSending()
     var
-        EmailAccount: Record "Email Account";
+        TempEmailAccount: Record "Email Account";
         ConnectorMock: Codeunit "Connector Mock";
         EmailScenario: Codeunit "Email Scenario";
     begin
-        ConnectorMock.AddAccount(EmailAccount); // Create an email account
-        EmailScenario.SetDefaultEmailAccount(EmailAccount); // Set the email account as default
+        ConnectorMock.AddAccount(TempEmailAccount); // Create an email account
+        EmailScenario.SetDefaultEmailAccount(TempEmailAccount); // Set the email account as default
 
         DeleteJobQueueEntry(CODEUNIT::"Document-Mailing");
         DeleteJobQueueEntry(CODEUNIT::"O365 Sales Cancel Invoice");

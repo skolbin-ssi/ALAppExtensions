@@ -1,9 +1,10 @@
 namespace Microsoft.Sales.Document.Test;
 using System.TestTools.AITestToolkit;
 
-codeunit 149826 "Extract Info. Accuracy"
+codeunit 133518 "Extract Info. Accuracy"
 {
     Subtype = Test;
+    TestType = AITest;
     TestPermissions = Disabled;
 
     var
@@ -18,7 +19,7 @@ codeunit 149826 "Extract Info. Accuracy"
         AITTestContext: Codeunit "AIT Test Context";
     begin
         Initialize();
-        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuestion().ValueAsText(), ExtractInformationFromCsvFunctionLbl);
+        ExecutePromptAndVerifyReturnedJson(AITTestContext.GetQuery().ValueAsText(), ExtractInformationFromCsvFunctionLbl);
     end;
 
     local procedure Initialize()

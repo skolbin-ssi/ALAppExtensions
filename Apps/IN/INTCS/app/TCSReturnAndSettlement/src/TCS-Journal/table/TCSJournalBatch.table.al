@@ -4,13 +4,13 @@
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.Finance.TCS.TCSReturnAndSettlement;
 
-using Microsoft.Finance.TCS.TCSBase;
+using Microsoft.Bank.BankAccount;
 using Microsoft.Finance.GeneralLedger.Account;
+using Microsoft.Finance.TCS.TCSBase;
 using Microsoft.Foundation.NoSeries;
 using Microsoft.Inventory.Location;
-using Microsoft.Sales.Customer;
 using Microsoft.Purchases.Vendor;
-using Microsoft.Bank.BankAccount;
+using Microsoft.Sales.Customer;
 
 table 18869 "TCS Journal Batch"
 {
@@ -107,6 +107,14 @@ table 18869 "TCS Journal Batch"
                     Modify();
                 end;
             end;
+        }
+        field(40; "No. of Lines"; Integer)
+        {
+            CalcFormula = count("TCS Journal Line" where("Journal Template Name" = field("Journal Template Name"), "Journal Batch Name" = field(Name)));
+            Caption = 'No. of Lines';
+            Editable = false;
+            FieldClass = FlowField;
+            ToolTip = 'Specifies the number of lines in this journal batch.';
         }
     }
 

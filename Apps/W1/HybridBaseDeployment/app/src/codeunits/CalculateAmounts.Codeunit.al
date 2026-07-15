@@ -1,8 +1,13 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 namespace Microsoft.DataMigration;
 
 using Microsoft.Finance.GeneralLedger.Account;
-using Microsoft.Sales.Receivables;
 using Microsoft.Purchases.Payables;
+using Microsoft.Sales.Receivables;
 
 codeunit 4010 CalculateAmounts
 {

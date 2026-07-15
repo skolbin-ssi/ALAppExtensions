@@ -108,6 +108,8 @@ page 31276 "Compensation Proposal CZC"
                 ShowCaption = false;
                 field(TotalBalance; TotalBalance)
                 {
+                    AutoFormatType = 1;
+                    AutoFormatExpression = '';
                     ApplicationArea = Basic, Suite;
                     Caption = 'Total Balance (LCY)';
                     Editable = false;
@@ -134,6 +136,17 @@ page 31276 "Compensation Proposal CZC"
                     TotalBalance := CurrPage.CustLedgEntries.Page.GetBalance() + CurrPage.VendLedgEntries.Page.GetBalance();
                     CurrPage.Update(false);
                 end;
+            }
+        }
+        area(Promoted)
+        {
+            group(Category_Process)
+            {
+                Caption = 'Process';
+
+                actionref(RecalculateBalance_Promoted; RecalculateBalance)
+                {
+                }
             }
         }
     }
@@ -205,7 +218,8 @@ page 31276 "Compensation Proposal CZC"
         FilteredCustLedgerEntry.SetRange(Open, true);
         FilteredCustLedgerEntry.SetRange(Prepayment, false);
         FilteredCustLedgerEntry.SetRange("Compensation Amount (LCY) CZC", 0);
-        FilteredCustLedgerEntry.SetRange("On Hold", '');
+        if not CompensationsSetupCZC."Including Entries with On Hold" then
+            FilteredCustLedgerEntry.SetRange("On Hold", '');
         FilteredCustLedgerEntry.SetFilter("Posting Date", '<=%1', PostingDate);
         OnApplyFilterOnAfterSetCustLedgerEntryFilter(PostingDate, FilteredCustLedgerEntry);
 
@@ -213,7 +227,8 @@ page 31276 "Compensation Proposal CZC"
         FilteredVendorLedgerEntry.SetRange(Open, true);
         FilteredVendorLedgerEntry.SetRange(Prepayment, false);
         FilteredVendorLedgerEntry.SetRange("Compensation Amount (LCY) CZC", 0);
-        FilteredVendorLedgerEntry.SetRange("On Hold", '');
+        if not CompensationsSetupCZC."Including Entries with On Hold" then
+            FilteredVendorLedgerEntry.SetRange("On Hold", '');
         FilteredVendorLedgerEntry.SetFilter("Posting Date", '<=%1', PostingDate);
         OnApplyFilterOnAfterSetVendLedgerEntryFilter(PostingDate, FilteredVendorLedgerEntry);
 

@@ -1,3 +1,4 @@
+#pragma warning disable AA0247
 tableextension 14112 PackageNoInformationExt extends "Package No. Information"
 {
     fields
@@ -13,6 +14,7 @@ tableextension 14112 PackageNoInformationExt extends "Package No. Information"
         }
         field(14110; "Positive Adjmt. (Qty)"; Decimal)
         {
+            AutoFormatType = 0;
             CalcFormula = Sum("Item Ledger Entry".Quantity WHERE("Item No." = FIELD("Item No."),
                                                                   "Variant Code" = FIELD("Variant Code"),
                                                                   "Package No." = FIELD("Package No."),
@@ -24,6 +26,7 @@ tableextension 14112 PackageNoInformationExt extends "Package No. Information"
         }
         field(14111; "Purchases (Qty)"; Decimal)
         {
+            AutoFormatType = 0;
             CalcFormula = Sum("Item Ledger Entry".Quantity WHERE("Item No." = FIELD("Item No."),
                                                                   "Variant Code" = FIELD("Variant Code"),
                                                                   "Package No." = FIELD("Package No."),
@@ -35,6 +38,7 @@ tableextension 14112 PackageNoInformationExt extends "Package No. Information"
         }
         field(14112; "Negative Adjmt. (Qty)"; Decimal)
         {
+            AutoFormatType = 0;
             CalcFormula = - Sum("Item Ledger Entry".Quantity WHERE("Item No." = FIELD("Item No."),
                                                                    "Variant Code" = FIELD("Variant Code"),
                                                                    "Package No." = FIELD("Package No."),
@@ -46,6 +50,7 @@ tableextension 14112 PackageNoInformationExt extends "Package No. Information"
         }
         field(14113; "Sales (Qty)"; Decimal)
         {
+            AutoFormatType = 0;
             CalcFormula = - Sum("Item Ledger Entry".Quantity WHERE("Item No." = FIELD("Item No."),
                                                                    "Variant Code" = FIELD("Variant Code"),
                                                                    "Package No." = FIELD("Package No."),

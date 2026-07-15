@@ -1,14 +1,15 @@
 {
+  "$schema": "https://raw.githubusercontent.com/microsoft/AL-Go/0c7b1de38ba518aaf5fdee3902c2d2ae886ede32/Actions/.Modules/settings.schema.json",
   "type": "PTE",
   "templateUrl": "https://github.com/microsoft/AL-Go-PTE@preview",
   "bcContainerHelperVersion": "latest",
   "runs-on": "windows-latest",
   "cacheImageName": "",
   "UsePsSession": false,
-  "artifact": "https://bcinsider-fvh2ekdjecfjd6gk.b02.azurefd.net/sandbox/26.0.26183.0/base",
+  "artifact": "https://bcinsider-fvh2ekdjecfjd6gk.b02.azurefd.net/sandbox/29.0.49708.0/base",
   "country": "base",
   "useProjectDependencies": true,
-  "repoVersion": "26.0",
+  "repoVersion": "29.0",
   "cleanModePreprocessorSymbols": [
     "CLEAN17",
     "CLEAN18",
@@ -38,17 +39,24 @@
   "excludeEnvironments": [
     "Official-Build"
   ],
-  "buildModes": [
-    "Translated"
-  ],
-  "CICDPushBranches": [
-    "main"
-  ],
+  "CICDPushBranches": [],
   "CICDPullRequestBranches": [
     "main"
   ],
+  "conditionalSettings": [
+    {
+      "workflows": [
+        "CI/CD"
+      ],
+      "settings": {
+        "workflowSchedule": {
+          "cron": "0 2 * * *"
+        }
+      }
+    }
+  ],
   "enableCodeCop": true,
-  "enableAppSourceCop": true,
+  "enableAppSourceCop": false,
   "enablePerTenantExtensionCop": true,
   "enableUICop": true,
   "rulesetFile": "..\\..\\..\\Build\\rulesets\\app.ruleset.json",
@@ -60,5 +68,5 @@
   ],
   "UpdateALGoSystemFilesEnvironment": "Official-Build",
   "PullRequestTrigger": "pull_request",
-  "templateSha": "9308ffb724a39179ea32dd55c838f176903a2a5c"
+  "templateSha": "87ad9f919052f78e0cc462d90fec1cf3c2e72c80"
 }

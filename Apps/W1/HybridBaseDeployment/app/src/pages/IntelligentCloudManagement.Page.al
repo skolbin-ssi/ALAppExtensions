@@ -1,9 +1,14 @@
-﻿namespace Microsoft.DataMigration;
+﻿// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
 
+namespace Microsoft.DataMigration;
+
+using System.Environment;
 using System.Integration;
 using System.Security.AccessControl;
 using System.Security.User;
-using System.Environment;
 using System.Telemetry;
 
 page 4003 "Intelligent Cloud Management"
@@ -184,32 +189,10 @@ page 4003 "Intelligent Cloud Management"
                     WarnAboutNonInitializedCompanies();
                 end;
             }
-
-            action(ResetAllCloudData)
-            {
-                Enabled = IsSuper and IsSetupComplete;
-                Visible = not IsOnPrem;
-                ApplicationArea = Basic, Suite;
-                Caption = 'Reset Cloud Data';
-                ToolTip = 'Resets migration enabled data in the cloud tenant.';
-                Image = Restore;
-
-                trigger OnAction()
-                var
-                    HybridCloudManagement: Codeunit "Hybrid Cloud Management";
-                begin
-                    if not Dialog.Confirm(ResetCloudDataConfirmQst, false) then
-                        exit;
-
-                    HybridCloudManagement.ResetCloudData();
-                    Message(ResetTriggeredTxt);
-                end;
-            }
-
             action(PrepareTables)
             {
                 Enabled = IsSuper and IsSetupComplete;
-                Visible = IsOnPrem;
+                Visible = false;
                 ApplicationArea = Basic, Suite;
                 Caption = 'Prepare tables for migration';
                 ToolTip = 'Gets the candidate tables ready for migration';
@@ -413,6 +396,53 @@ page 4003 "Intelligent Cloud Management"
                     HybridCloudManagement.ChangeRemovePermissionsFromUsers();
                 end;
             }
+            action(EnableDisableCustomMigration)
+            {
+                Enabled = IsSuper;
+                Visible = not IsOnPrem;
+                ApplicationArea = Basic, Suite;
+                Caption = 'Enable/Disable Custom Migration';
+                ToolTip = 'Enable or disable custom migration functionality. This is the ability to use mappings defined out of the box. Custom migration apps are not affected.';
+                Image = GetEntries;
+
+                trigger OnAction()
+                var
+                    HybridCloudManagement: Codeunit "Hybrid Cloud Management";
+                begin
+                    HybridCloudManagement.EnableDisableNoCodeMigration();
+                end;
+            }
+            action(EnableDisableOnPremDevelopment)
+            {
+                Visible = IsSuper and IsOnPrem;
+                ApplicationArea = Basic, Suite;
+                Caption = 'Enable/Disable OnPrem Development';
+                ToolTip = 'Enable or disable OnPrem development functionality.';
+                Image = Debug;
+
+                trigger OnAction()
+                var
+                    HybridCloudManagement: Codeunit "Hybrid Cloud Management";
+                begin
+                    HybridCloudManagement.EnableDisableOnPremDevelopment();
+                end;
+            }	    
+            action(ValidationStatus)
+            {
+                ApplicationArea = Basic, Suite;
+                Caption = 'Validation Status';
+                Image = Process;
+                ToolTip = 'View the Company migration status page to manually run validation.';
+                Visible = (NumberOfRegisteredValidators > 0);
+
+                trigger OnAction()
+                var
+                    HybridCompaniesList: Page "Hybrid Companies List";
+                begin
+                    HybridCompaniesList.RunModal();
+                    CurrPage.Update(false);
+                end;
+            }
         }
     }
 
@@ -424,9 +454,9 @@ page 4003 "Intelligent Cloud Management"
     trigger OnOpenPage()
     var
         IntelligentCloudSetup: Record "Intelligent Cloud Setup";
+        ValidationSuite: Record "Validation Suite";
         PermissionManager: Codeunit "Permission Manager";
         UserPermissions: Codeunit "User Permissions";
-        EnvironmentInformation: Codeunit "Environment Information";
         IntelligentCloudNotifier: Codeunit "Intelligent Cloud Notifier";
         HybridCloudManagement: Codeunit "Hybrid Cloud Management";
         FeatureTelemetry: Codeunit "Feature Telemetry";
@@ -442,7 +472,7 @@ page 4003 "Intelligent Cloud Management"
             SendUserIsNotSuperNotification();
 
         SendRepairDataNotification();
-        IsOnPrem := not EnvironmentInformation.IsSaaS();
+        IsOnPrem := not HybridCloudManagement.IsCloudMigrationUISupported();
 
         if (not PermissionManager.IsIntelligentCloud()) and (not IsOnPrem) then
             SendSetupIntelligentCloudNotification();
@@ -455,8 +485,12 @@ page 4003 "Intelligent Cloud Management"
         CanShowUpdateReplicationCompanies(UpdateReplicationCompaniesEnabled);
         CanMapCustomTables(CustomTablesEnabled);
 
-        if IntelligentCloudSetup.Get() then
+        if IntelligentCloudSetup.Get() then begin
             HybridDeployment.Initialize(IntelligentCloudSetup."Product ID");
+
+            ValidationSuite.SetRange("Migration Type", IntelligentCloudSetup."Product ID");
+            NumberOfRegisteredValidators := ValidationSuite.Count();
+        end;
 
         IntelligentCloudNotifier.ShowICUpdateNotification();
         WarnAboutNonInitializedCompanies();
@@ -648,8 +682,6 @@ page 4003 "Intelligent Cloud Management"
         RunReplicationTxt: Label 'Migration has been successfully triggered. You can track the status on the management page.';
         IntegrationKeyTxt: Label 'Primary key for the integration runtime is: %1', Comment = '%1 = Integration Runtime Key';
         NewIntegrationKeyTxt: Label 'New Primary key for the integration runtime is: %1', Comment = '%1 = Integration Runtime Key';
-        ResetCloudDataConfirmQst: Label 'If you choose to reset cloud data, all migrated data will be deleted for all companies in the next migration run. Are you sure you want to reset cloud data?';
-        ResetTriggeredTxt: Label 'Reset has been successfully triggered. All migration enabled data will be reset in the next migration run.';
         TablesReadyForReplicationMsg: Label 'All tables have been successfully prepared for migration.';
         NonInitializedCompaniesMsg: Label 'One or more companies have been successfully migrated but are not yet initialized. Manage the companies in the Hybrid Companies List page.';
         OpenPageMsg: Label 'Open page';
@@ -658,4 +690,5 @@ page 4003 "Intelligent Cloud Management"
         IntelligentCloudNotSetupMsg: Label 'Cloud migration was not set up. To migrate data to the cloud, complete the wizard.';
         RunReplicationConfirmQst: Label 'Are you sure you want to trigger migration?';
         DataRepairNotCompletedMsg: Label 'Data repair has not completed. Before you complete the cloud migration or trigger an upgrade, invoke the ''Repair Companion Table Records'' action';
+        NumberOfRegisteredValidators: Integer;
 }

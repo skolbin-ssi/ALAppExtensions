@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -129,6 +129,7 @@ table 31252 "Bank Statement Header CZB"
         }
         field(8; "Currency Factor"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Currency Factor';
             DecimalPlaces = 0 : 15;
             Editable = false;
@@ -145,6 +146,8 @@ table 31252 "Bank Statement Header CZB"
 #pragma warning disable AA0232
         field(9; Amount; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             CalcFormula = sum("Bank Statement Line CZB".Amount where("Bank Statement No." = field("No.")));
             Caption = 'Amount';
             Editable = false;
@@ -153,6 +156,8 @@ table 31252 "Bank Statement Header CZB"
 #pragma warning restore
         field(10; "Amount (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("Bank Statement Line CZB"."Amount (LCY)" where("Bank Statement No." = field("No.")));
             Caption = 'Amount (LCY)';
             Editable = false;
@@ -160,6 +165,8 @@ table 31252 "Bank Statement Header CZB"
         }
         field(11; Debit; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             CalcFormula = - sum("Bank Statement Line CZB".Amount where("Bank Statement No." = field("No."), Positive = const(false)));
             Caption = 'Debit';
             Editable = false;
@@ -167,6 +174,8 @@ table 31252 "Bank Statement Header CZB"
         }
         field(12; "Debit (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = - sum("Bank Statement Line CZB"."Amount (LCY)" where("Bank Statement No." = field("No."), Positive = const(false)));
             Caption = 'Debit (LCY)';
             Editable = false;
@@ -174,6 +183,8 @@ table 31252 "Bank Statement Header CZB"
         }
         field(13; Credit; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             CalcFormula = sum("Bank Statement Line CZB".Amount where("Bank Statement No." = field("No."), Positive = const(true)));
             Caption = 'Credit';
             Editable = false;
@@ -181,6 +192,8 @@ table 31252 "Bank Statement Header CZB"
         }
         field(14; "Credit (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("Bank Statement Line CZB"."Amount (LCY)" where("Bank Statement No." = field("No."), Positive = const(true)));
             Caption = 'Credit (LCY)';
             Editable = false;
@@ -217,6 +230,7 @@ table 31252 "Bank Statement Header CZB"
         }
         field(21; "Bank Statement Currency Factor"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Bank Statement Currency Factor';
             DecimalPlaces = 0 : 15;
             Editable = false;
@@ -282,36 +296,48 @@ table 31252 "Bank Statement Header CZB"
         }
         field(60; "Check Amount"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             Caption = 'Check Amount';
             Editable = false;
             DataClassification = CustomerContent;
         }
         field(65; "Check Amount (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Check Amount (LCY)';
             Editable = false;
             DataClassification = CustomerContent;
         }
         field(70; "Check Debit"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             Caption = 'Check Debit';
             Editable = false;
             DataClassification = CustomerContent;
         }
         field(75; "Check Debit (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Check Debit (LCY)';
             Editable = false;
             DataClassification = CustomerContent;
         }
         field(80; "Check Credit"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             Caption = 'Check Credit';
             Editable = false;
             DataClassification = CustomerContent;
         }
         field(85; "Check Credit (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Check Credit (LCY)';
             Editable = false;
             DataClassification = CustomerContent;
@@ -389,30 +415,18 @@ table 31252 "Bank Statement Header CZB"
     var
         BankStatementHeader: Record "Bank Statement Header CZB";
         NoSeries: Codeunit "No. Series";
-#if not CLEAN24
-        NoSeriesManagement: Codeunit NoSeriesManagement;
-        IsHandled: Boolean;
-#endif
     begin
         if "No." = '' then begin
             BankAccount.Get("Bank Account No.");
             BankAccount.Testfield("Bank Statement Nos. CZB");
-#if not CLEAN24
-            NoSeriesManagement.RaiseObsoleteOnBeforeInitSeries(BankAccount."Bank Statement Nos. CZB", xRec."No. Series", 0D, "No.", "No. Series", IsHandled);
-            if not IsHandled then begin
-#endif
-                "No. Series" := BankAccount."Bank Statement Nos. CZB";
-                if NoSeries.AreRelated("No. Series", xRec."No. Series") then
-                    "No. Series" := xRec."No. Series";
+            "No. Series" := BankAccount."Bank Statement Nos. CZB";
+            if NoSeries.AreRelated("No. Series", xRec."No. Series") then
+                "No. Series" := xRec."No. Series";
+            "No." := NoSeries.GetNextNo("No. Series");
+            BankStatementHeader.ReadIsolation(ReadIsolation::ReadUncommitted);
+            BankStatementHeader.SetLoadFields("No.");
+            while BankStatementHeader.Get("No.") do
                 "No." := NoSeries.GetNextNo("No. Series");
-                BankStatementHeader.ReadIsolation(ReadIsolation::ReadUncommitted);
-                BankStatementHeader.SetLoadFields("No.");
-                while BankStatementHeader.Get("No.") do
-                    "No." := NoSeries.GetNextNo("No. Series");
-#if not CLEAN24
-                NoSeriesManagement.RaiseObsoleteOnAfterInitSeries("No. Series", BankAccount."Bank Statement Nos. CZB", 0D, "No.");
-            end;
-#endif
         end;
     end;
 
@@ -469,8 +483,13 @@ table 31252 "Bank Statement Header CZB"
     procedure UpdateBankStatementLine(ChangedFieldName: Text; AskQuestion: Boolean)
     var
         BankStatementLineCZB: Record "Bank Statement Line CZB";
+        IsHandled: Boolean;
         UpdateLinesQst: Label 'You have modified %1.\Do you want update lines?', Comment = '%1 = FieldCaption';
     begin
+        OnBeforeUpdateBankStatementLine(Rec, ChangedFieldName, AskQuestion, IsHandled);
+        if IsHandled then
+            exit;
+
         if not BankStmtLinesExist() then
             exit;
         if AskQuestion then
@@ -608,6 +627,8 @@ table 31252 "Bank Statement Header CZB"
         DocumentAttachment.SaveAttachmentFromStream(DocumentInStream, RecordRef, FileName);
         DocumentAttachmentMgmt.ShowNotification(RecordRef, 1, true);
     end;
+#if not CLEAN27
+    [Obsolete('The statistics action will be replaced with the BankStatementStatistics action. The new action uses RunObject and does not run the action trigger. Use a page extension to modify the behaviour.', '27.0')]
 
     procedure ShowStatistics()
     var
@@ -619,7 +640,7 @@ table 31252 "Bank Statement Header CZB"
         BankingDocStatisticsCZB.SetValues("Bank Account No.", "Document Date", Amount);
         BankingDocStatisticsCZB.Run();
     end;
-
+#endif
 
     [IntegrationEvent(false, false)]
     local procedure OnBeforeImportBankStatement(var BankStatementHeaderCZB: Record "Bank Statement Header CZB"; var IsHandled: Boolean)
@@ -628,6 +649,11 @@ table 31252 "Bank Statement Header CZB"
 
     [IntegrationEvent(false, false)]
     local procedure OnAfterImportBankStatement(var BankStatementHeaderCZB: Record "Bank Statement Header CZB")
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeUpdateBankStatementLine(BankStatementHeaderCZB: Record "Bank Statement Header CZB"; ChangedFieldName: Text; AskQuestion: Boolean; var IsHandled: Boolean)
     begin
     end;
 }

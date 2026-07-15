@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 namespace Microsoft.DataMigration;
 
 using System.Integration;
@@ -120,7 +125,7 @@ page 4006 "Intelligent Cloud Details"
                     ApplicationArea = Basic, Suite;
                     Caption = 'Records Migrated Last run';
                     ToolTip = 'Specifies the number of records in the table that have been migrated in the last replication run.';
-                    Visible = ShowRecordCounts;
+                    Visible = ShowRecordCounts or CustomMigration;
                     BlankZero = true;
                 }
                 field("Total Records"; Rec."Total Records")
@@ -280,6 +285,7 @@ page 4006 "Intelligent Cloud Details"
         IntelligentCloudStatus.SetRange(Blocked, true);
         UnblockTableVisible := not IntelligentCloudStatus.IsEmpty();
         CompanyFilterDisplayName := HybridReplicationStatistics.GetAllCompaniesLbl();
+        ShowRecordCounts := GetShowRecordCounts();
     end;
 
     trigger OnAfterGetRecord()
@@ -321,11 +327,8 @@ page 4006 "Intelligent Cloud Details"
 
     local procedure UpdateRecordCountStatistics()
     begin
-        // if any tables have "Records Copied" > 0, then we show the field.
-        if not ShowRecordCounts then begin
-            ShowRecordCounts := Rec."Records Copied" > 0;
+        if not ShowRecordCounts then
             exit;
-        end;
 
         if not Rec.GetCountOfRecordsInTheTableSafe(Rec, TotalRecordsTargetTable) then begin
             TotalRecordsTargetTable := 0;
@@ -341,9 +344,23 @@ page 4006 "Intelligent Cloud Details"
         DifferenceInRecords := TotalRecordsTargetTable - Rec."Total Records";
     end;
 
+    local procedure GetShowRecordCounts(): Boolean
+    var
+        HybridReplicationDetail: Record "Hybrid Replication Detail";
+        HybridCloudManagement: Codeunit "Hybrid Cloud Management";
+    begin
+        CustomMigration := HybridCloudManagement.IsCustomMigrationEnabled();
+        if CustomMigration then
+            exit(false);
+
+        HybridReplicationDetail.SetFilter("Records Copied", '>0');
+        exit(not HybridReplicationDetail.IsEmpty());
+    end;
+
     var
         StatusExpr: Text;
         ShowRecordCounts: Boolean;
+        CustomMigration: Boolean;
         TotalRecordsTargetTable: Integer;
         DifferenceInRecords: Integer;
         CompanyFilterDisplayName: Text;
@@ -351,5 +368,5 @@ page 4006 "Intelligent Cloud Details"
         UnblockTableVisible: Boolean;
         LatestStatusTxt: Text;
         LatestStatusExpr: Text;
-        CouldNotReadTargetTableCountLbl: Label 'Could not get the target table count.;';
+        CouldNotReadTargetTableCountLbl: Label 'The total of records in the target table is unavailable since the table is protected, so it isn''t possible to calculate if there is a difference to the source table. Instead, check the number of records that were migrated in the last run.;';
 }

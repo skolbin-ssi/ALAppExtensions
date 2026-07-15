@@ -1,3 +1,4 @@
+#pragma warning disable AA0247
 table 14102 "CD FA Information"
 {
     Caption = 'CD FA Information';
@@ -40,6 +41,7 @@ table 14102 "CD FA Information"
         }
         field(7; Quantity; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Quantity';
         }
         field(9; "CD Header Number"; Code[30])

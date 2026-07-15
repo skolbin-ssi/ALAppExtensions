@@ -108,18 +108,15 @@ codeunit 5261 "Audit File Export Mgt."
         if not AuditFileExportLine.FindSet() then
             exit;
 
+        AuditFileExportLine.SetRange(ID, AuditFileExportLine.ID);
         repeat
-            AuditFileExportLine.SetRange(ID, AuditFileExportLine.ID);
-            repeat
-                CancelTask(AuditFileExportLine);
-                AuditFileExportHeader.Get(AuditFileExportLine.ID);
-                NotBefore := CurrentDateTime();
-                RunGenerateAuditFileOnSingleLine(AuditFileExportLine, AuditFileExportHeader, DummyNoOfJobs, NotBefore);
-            until AuditFileExportLine.Next() = 0;
-            AuditFileExportHeader.Find();
-            UpdateExportStatus(AuditFileExportHeader);
-            AuditFileExportLine.SetRange(ID);
+            CancelTask(AuditFileExportLine);
+            AuditFileExportHeader.Get(AuditFileExportLine.ID);
+            NotBefore := CurrentDateTime();
+            RunGenerateAuditFileOnSingleLine(AuditFileExportLine, AuditFileExportHeader, DummyNoOfJobs, NotBefore);
         until AuditFileExportLine.Next() = 0;
+        AuditFileExportHeader.Find();
+        UpdateExportStatus(AuditFileExportHeader);
     end;
 
     procedure SendTraceTagOfExport(Category: Text; TraceTagMessage: Text)
@@ -286,17 +283,23 @@ codeunit 5261 "Audit File Export Mgt."
         AuditFileExportLine.Validate(Status, AuditFileExportLine.Status::"In Progress");
         Clear(AuditFileExportLine."Audit File Content");
         AuditFileExportLine.Validate(Progress, 0);
+        AuditFileExportLine.Validate("No. Of Attempts", 3);
         if AuditFileExportHeader."Parallel Processing" then begin
             LogState(AuditFileExportLine, StrSubstNo(ScheduleTaskForLineTxt, AuditFileExportLine."Line No."), true);
             NotBefore += 3000; // have a delay between running jobs to avoid deadlocks
             OnBeforeScheduleTask(DoNotScheduleTask, TaskID);
             if DoNotScheduleTask then
                 AuditFileExportLine."Task ID" := TaskID
-            else
+            else begin
+                if not IsNullGuid(AuditFileExportLine."Task ID") then
+                    if TaskScheduler.TaskExists(AuditFileExportLine."Task ID") then
+                        TaskScheduler.CancelTask(AuditFileExportLine."Task ID");
+
                 AuditFileExportLine."Task ID" :=
                     TaskScheduler.CreateTask(
                         Codeunit::"Audit Line Export Runner", Codeunit::"Audit File Export Error Handl.", true, CompanyName(),
                         NotBefore, AuditFileExportLine.RecordId());
+            end;
             AuditFileExportLine.Modify(true);
             Commit();
             NoOfJobs += 1;
@@ -720,10 +723,13 @@ codeunit 5261 "Audit File Export Mgt."
         exit(true);
     end;
 
-    local procedure CheckLineStatusForRestart(var AuditFileExportLine: Record "Audit File Export Line"): Boolean;
+    local procedure CheckLineStatusForRestart(var AuditFileExportLine: Record "Audit File Export Line"): Boolean
+    var
+        AuditFileExportLineCopy: Record "Audit File Export Line";
     begin
-        AuditFileExportLine.SetFilter(Status, '%1|%2', AuditFileExportLine.Status::"In Progress", AuditFileExportLine.Status::Completed);
-        if not AuditFileExportLine.IsEmpty() then
+        AuditFileExportLineCopy.Copy(AuditFileExportLine);
+        AuditFileExportLineCopy.SetFilter(Status, '%1|%2', AuditFileExportLineCopy.Status::"In Progress", AuditFileExportLineCopy.Status::Completed);
+        if not AuditFileExportLineCopy.IsEmpty() then
             exit(HandleConfirm(StrSubstNo(TwoStringsTxt, LinesInProgressOrCompletedMsg, RestartExportLineQst)));
         exit(true);
     end;

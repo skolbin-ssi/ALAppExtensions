@@ -61,6 +61,7 @@ table 31006 "Sales Adv. Letter Entry CZZ"
         }
         field(17; "VAT %"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'VAT %';
             DataClassification = CustomerContent;
         }
@@ -82,9 +83,19 @@ table 31006 "Sales Adv. Letter Entry CZZ"
         }
         field(26; "Currency Factor"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Currency Factor';
             DataClassification = CustomerContent;
             DecimalPlaces = 0 : 15;
+            MinValue = 0;
+        }
+        field(27; "Additional Currency Factor"; Decimal)
+        {
+            AutoFormatType = 0;
+            Caption = 'Additional Currency Factor';
+            DataClassification = CustomerContent;
+            DecimalPlaces = 0 : 15;
+            Editable = false;
             MinValue = 0;
         }
         field(28; "User ID"; Code[50])
@@ -124,34 +135,43 @@ table 31006 "Sales Adv. Letter Entry CZZ"
         }
         field(40; "VAT Base Amount"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             Caption = 'VAT Base Amount';
             DataClassification = CustomerContent;
-            AutoFormatExpression = "Currency Code";
         }
         field(41; "VAT Amount"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             Caption = 'VAT Amount';
             DataClassification = CustomerContent;
-            AutoFormatExpression = "Currency Code";
         }
         field(42; Amount; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             Caption = 'Amount';
             DataClassification = CustomerContent;
-            AutoFormatExpression = "Currency Code";
         }
         field(45; "VAT Base Amount (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'VAT Base Amount (LCY)';
             DataClassification = CustomerContent;
         }
         field(46; "VAT Amount (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'VAT Amount (LCY)';
             DataClassification = CustomerContent;
         }
         field(47; "Amount (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Amount (LCY)';
             DataClassification = CustomerContent;
         }
@@ -383,6 +403,7 @@ table 31006 "Sales Adv. Letter Entry CZZ"
         "VAT Calculation Type" := GenJournalLine."VAT Calculation Type";
         "Currency Code" := GenJournalLine."Currency Code";
         "Currency Factor" := GenJournalLine."Currency Factor";
+        "Additional Currency Factor" := GenJournalLine."Additional Currency Factor CZL";
         Amount := GenJournalLine.Amount;
         "Amount (LCY)" := GenJournalLine."Amount (LCY)";
         "VAT Amount" := GenJournalLine."VAT Amount";
@@ -451,6 +472,14 @@ table 31006 "Sales Adv. Letter Entry CZZ"
     begin
         RemainingAmountLCY := SalesAdvLetterManagementCZZ.GetRemAmtLCYSalAdvPayment(Rec, BalanceAtDate);
         OnAfterRemainingAmountLCY(Rec, BalanceAtDate, RemainingAmountLCY);
+    end;
+
+    procedure GetAdjustedCurrencyFactor(): Decimal
+    var
+        CustLedgerEntry: Record "Cust. Ledger Entry";
+    begin
+        CustLedgerEntry.Get("Cust. Ledger Entry No.");
+        exit(CustLedgerEntry."Adjusted Currency Factor");
     end;
 
     [IntegrationEvent(false, false)]

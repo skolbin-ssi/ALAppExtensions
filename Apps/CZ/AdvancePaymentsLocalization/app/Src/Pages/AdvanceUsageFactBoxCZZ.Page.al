@@ -39,6 +39,7 @@ page 31216 "Advance Usage FactBox CZZ"
             field(AmountToUse; GetAmountToUse())
             {
                 ApplicationArea = Basic, Suite;
+                AutoFormatType = 0;
                 Caption = 'Amount to Use';
                 ToolTip = 'Specifies amount to use of assigned advances.';
                 Visible = AmountToUseVisible;
@@ -46,6 +47,8 @@ page 31216 "Advance Usage FactBox CZZ"
             field(AmountToUseLCY; GetAmountToUseLCY())
             {
                 ApplicationArea = Basic, Suite;
+                AutoFormatType = 1;
+                AutoFormatExpression = '';
                 Caption = 'Amount to Use (LCY)';
                 ToolTip = 'Specifies amount to use (LCY) of assigned advances.';
                 Visible = AmountToUseLCYVisible;
@@ -53,6 +56,7 @@ page 31216 "Advance Usage FactBox CZZ"
             field(AmountUsed; GetAmountUsed())
             {
                 ApplicationArea = Basic, Suite;
+                AutoFormatType = 0;
                 Caption = 'Amount Used';
                 ToolTip = 'Specifies amount used by the document.';
                 Visible = AmountUsedVisible;
@@ -60,6 +64,8 @@ page 31216 "Advance Usage FactBox CZZ"
             field(AmountUsedLCY; GetAmountUsedLCY())
             {
                 ApplicationArea = Basic, Suite;
+                AutoFormatType = 1;
+                AutoFormatExpression = '';
                 Caption = 'Amount Used (LCY)';
                 ToolTip = 'Specifies amount (LCY) used by the document.';
                 Visible = AmountUsedLCYVisible;
@@ -67,6 +73,7 @@ page 31216 "Advance Usage FactBox CZZ"
             field(TotalAfterDeduction; GetTotalAfterDeduction())
             {
                 ApplicationArea = Basic, Suite;
+                AutoFormatType = 0;
                 Caption = 'Total after Deduction';
                 ToolTip = 'Specifies total document amount after deduction of used advances.';
                 Style = Strong;
@@ -75,6 +82,8 @@ page 31216 "Advance Usage FactBox CZZ"
             field(TotalAfterDeductionLCY; GetTotalAfterDeductionLCY())
             {
                 ApplicationArea = Basic, Suite;
+                AutoFormatType = 1;
+                AutoFormatExpression = '';
                 Caption = 'Total after Deduction (LCY)';
                 ToolTip = 'Specifies total document amount (LCY) after deduction of used advances.';
                 Style = Strong;
@@ -269,7 +278,6 @@ page 31216 "Advance Usage FactBox CZZ"
     begin
         PurchPost.GetPurchLines(PurchaseHeader, TempPurchaseLine, 1);
         TempPurchaseLine.CalcVATAmountLines(1, PurchaseHeader, TempPurchaseLine, TempVATAmountLine);
-        TempPurchaseLine.UpdateVATOnLines(1, PurchaseHeader, TempPurchaseLine, TempVATAmountLine);
         exit(TempVATAmountLine.GetTotalAmountInclVAT());
     end;
 
@@ -286,7 +294,6 @@ page 31216 "Advance Usage FactBox CZZ"
     begin
         SalesPost.GetSalesLines(SalesHeader, TempSalesLine, 1);
         TempSalesLine.CalcVATAmountLines(1, SalesHeader, TempSalesLine, TempVATAmountLine);
-        TempSalesLine.UpdateVATOnLines(1, SalesHeader, TempSalesLine, TempVATAmountLine);
         exit(TempVATAmountLine.GetTotalAmountInclVAT());
     end;
 

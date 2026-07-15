@@ -534,7 +534,12 @@ codeunit 20361 "Tax Json Deserialization"
         MinorVersion: Integer;
         OldMajorVersion: Integer;
         OldMinorVersion: Integer;
+        IsHandled: Boolean;
     begin
+        OnBeforeReadUseCase(JObject, IsHandled);
+        if IsHandled then
+            exit;
+
         UseCaseID := GetGuidPropertyValue(JObject, 'CaseID');
         TaxType := GetCode20PropertyValue(JObject, 'TaxType');
         Description := GetText250PropertyValue(JObject, 'Description');
@@ -2518,11 +2523,6 @@ codeunit 20361 "Tax Json Deserialization"
         exit(CopyStr(JToken2Text(JToken), 1, 10));
     end;
 
-    local procedure JToken2Text100(JToken: JsonToken): Text[100]
-    begin
-        exit(CopyStr(JToken2Text(JToken), 1, 100));
-    end;
-
     local procedure JToken2Text250(JToken: JsonToken): Text[250]
     begin
         exit(CopyStr(JToken2Text(JToken), 1, 250));
@@ -2583,14 +2583,6 @@ codeunit 20361 "Tax Json Deserialization"
     begin
         if JObject.Get(Name, JToken) then
             exit(JToken.AsValue().AsText());
-    end;
-
-    local procedure GetDecimalPropertyValue(JObject: JsonObject; Name: Text): Decimal
-    var
-        JToken: JsonToken;
-    begin
-        if JObject.Get(Name, JToken) then
-            exit(JToken.AsValue().AsDecimal());
     end;
 
     local procedure GetComponentID(TaxType: Code[20]; Name: Text[30]): Integer
@@ -2820,6 +2812,20 @@ codeunit 20361 "Tax Json Deserialization"
     local procedure GetVersionText(Major: Integer; Minor: Integer): Text
     begin
         exit(StrSubstNo(VersionLbl, Major, Minor));
+    end;
+
+    procedure ExtractJTokenValue(JsonToken: JsonToken; TaxType: Text): Text
+    var
+        Token: JsonToken;
+    begin
+        foreach Token in JsonToken.AsArray() do
+            if Token.AsObject().Contains(TaxType) then
+                exit(GetText250PropertyValue(Token.AsObject(), TaxType));
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeReadUseCase(JObject: JsonObject; var IsHandled: Boolean)
+    begin
     end;
 
     var

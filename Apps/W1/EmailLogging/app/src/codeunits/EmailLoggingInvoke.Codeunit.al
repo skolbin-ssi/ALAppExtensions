@@ -1,8 +1,8 @@
 namespace Microsoft.CRM.EmailLoggin;
 
-using Microsoft.CRM.Segment;
-using Microsoft.CRM.Interaction;
 using Microsoft.CRM.Contact;
+using Microsoft.CRM.Interaction;
+using Microsoft.CRM.Segment;
 using Microsoft.CRM.Team;
 using Microsoft.Foundation.NoSeries;
 
@@ -324,6 +324,7 @@ codeunit 1685 "Email Logging Invoke"
                 repeat
                     NextInteractionLogEntryNo := SequenceNoMgt.GetNextSeqNo(Database::"Interaction Log Entry");
                     InsertInteractionLogEntry(SegmentLine, NextInteractionLogEntryNo);
+                    OnLogMessageAsInteractionOnAfterInsertInteractionLogEntry(NextInteractionLogEntryNo, SegmentLine.Subject);
                     EntryNumbers.Add(NextInteractionLogEntryNo);
                 until SegmentLine.Next() = 0;
         end else
@@ -492,6 +493,7 @@ codeunit 1685 "Email Logging Invoke"
 
     local procedure GetInboundOutboundInteraction(var EmailLoggingMessage: Codeunit "Email Logging Message"; var SegmentLine: Record "Segment Line"): Boolean
     begin
+        OnBeforeGetInboundOutboundInteraction(EmailLoggingMessage, SegmentLine);
         // Check if in- or out-bound and store sender and recipients in segment line(s)
         if IsSalesperson(EmailLoggingMessage.GetSender(), SegmentLine) then begin
             SegmentLine."Information Flow" := SegmentLine."Information Flow"::Outbound;
@@ -534,5 +536,15 @@ codeunit 1685 "Email Logging Invoke"
     local procedure SetErrorContext(NewContext: Text)
     begin
         ErrorContext := NewContext;
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeGetInboundOutboundInteraction(var EmailLoggingMessage: Codeunit "Email Logging Message"; var SegmentLine: Record "Segment Line")
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnLogMessageAsInteractionOnAfterInsertInteractionLogEntry(NextInteractionLogEntryNo: Integer; Subject: Text)
+    begin
     end;
 }

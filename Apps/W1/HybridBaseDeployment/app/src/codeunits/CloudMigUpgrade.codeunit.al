@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 namespace Microsoft.DataMigration;
 
 using System.Upgrade;
@@ -22,7 +27,6 @@ codeunit 40010 "Cloud Mig. Upgrade"
 
         UpgradeTag.SetUpgradeTag(GetSendCloudMigrationUpgradeTelemetryTag());
     end;
-
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Upgrade Tag", 'OnGetPerCompanyUpgradeTags', '', false, false)]
     local procedure RegisterUpgradeTags(var PerCompanyUpgradeTags: List of [Code[250]])

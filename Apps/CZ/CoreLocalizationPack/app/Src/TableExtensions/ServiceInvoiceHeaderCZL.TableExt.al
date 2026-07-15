@@ -17,6 +17,7 @@ tableextension 11735 "Service Invoice Header CZL" extends "Service Invoice Heade
         field(11717; "Specific Symbol CZL"; Code[10])
         {
             Caption = 'Specific Symbol';
+            OptimizeForTextSearch = true;
             CharAllowed = '09';
             Editable = false;
             DataClassification = CustomerContent;
@@ -24,6 +25,7 @@ tableextension 11735 "Service Invoice Header CZL" extends "Service Invoice Heade
         field(11718; "Variable Symbol CZL"; Code[10])
         {
             Caption = 'Variable Symbol';
+            OptimizeForTextSearch = true;
             CharAllowed = '09';
             Editable = false;
             DataClassification = CustomerContent;
@@ -31,6 +33,7 @@ tableextension 11735 "Service Invoice Header CZL" extends "Service Invoice Heade
         field(11719; "Constant Symbol CZL"; Code[10])
         {
             Caption = 'Constant Symbol';
+            OptimizeForTextSearch = true;
             CharAllowed = '09';
             TableRelation = "Constant Symbol CZL";
             Editable = false;
@@ -101,6 +104,7 @@ tableextension 11735 "Service Invoice Header CZL" extends "Service Invoice Heade
         }
         field(11774; "VAT Currency Factor CZL"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'VAT Currency Factor';
             DataClassification = CustomerContent;
             DecimalPlaces = 0 : 15;
@@ -114,6 +118,7 @@ tableextension 11735 "Service Invoice Header CZL" extends "Service Invoice Heade
             TableRelation = Currency;
             Editable = false;
         }
+#if not CLEANSCHEMA25
         field(11780; "VAT Date CZL"; Date)
         {
             Caption = 'VAT Date';
@@ -122,6 +127,7 @@ tableextension 11735 "Service Invoice Header CZL" extends "Service Invoice Heade
             ObsoleteTag = '25.0';
             ObsoleteReason = 'Replaced by VAT Reporting Date.';
         }
+#endif
         field(11781; "Registration No. CZL"; Text[20])
         {
             Caption = 'Registration No.';
@@ -132,6 +138,7 @@ tableextension 11735 "Service Invoice Header CZL" extends "Service Invoice Heade
             Caption = 'Tax Registration No.';
             DataClassification = CustomerContent;
         }
+#if not CLEANSCHEMA25
         field(31068; "Physical Transfer CZL"; Boolean)
         {
             Caption = 'Physical Transfer';
@@ -148,6 +155,7 @@ tableextension 11735 "Service Invoice Header CZL" extends "Service Invoice Heade
             ObsoleteTag = '25.0';
             ObsoleteReason = 'Intrastat related functionalities are moved to Intrastat extensions. This field is not used any more.';
         }
+#endif
         field(31072; "EU 3-Party Intermed. Role CZL"; Boolean)
         {
             Caption = 'EU 3-Party Intermediate Role';
@@ -188,6 +196,8 @@ tableextension 11735 "Service Invoice Header CZL" extends "Service Invoice Heade
             if "SWIFT Code CZL" <> '' then
                 SWIFT := "SWIFT Code CZL";
         end;
+        if IBAN <> '' then
+            IBAN := DelChr(IBAN, '=', ' ');
 
         CalcFields("Amount Including VAT");
 

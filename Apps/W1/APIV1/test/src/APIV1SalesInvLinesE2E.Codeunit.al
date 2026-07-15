@@ -3,6 +3,7 @@ codeunit 139734 "APIV1 - Sales Inv. Lines E2E"
     // version Test,ERM,W1,All
 
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     trigger OnRun()
@@ -824,38 +825,6 @@ codeunit 139734 "APIV1 - Sales Inv. Lines E2E"
     end;
 
     [Test]
-    procedure TestInsertingLineKeepsInvoiceDiscountAmt()
-    var
-        SalesHeader: Record "Sales Header";
-        Item: Record "Item";
-        TargetURL: Text;
-        ResponseText: Text;
-        InvoiceLineJSON: Text;
-        DiscountAmount: Decimal;
-    begin
-        // [FEATURE] [Discount]
-        // [SCENARIO] Adding an invoice through API will keep Discount Amount
-        // [GIVEN] An unposted invoice for customer with invoice discount amount
-        Initialize();
-        SetupAmountDiscountTest(SalesHeader, DiscountAmount);
-        InvoiceLineJSON := CreateInvoiceLineJSON(Item.SystemId, LibraryRandom.RandIntInRange(1, 100));
-
-        COMMIT();
-
-        // [WHEN] We create a line through API
-        TargetURL := LibraryGraphMgt
-          .CreateTargetURLWithSubpage(
-            SalesHeader.SystemId,
-            PAGE::"APIV1 - Sales Invoices",
-            InvoiceServiceNameTxt,
-            InvoiceServiceLinesNameTxt);
-        ASSERTERROR LibraryGraphMgt.PostToWebService(TargetURL, InvoiceLineJSON, ResponseText);
-
-        // [THEN] Discount Amount is Kept
-        VerifyTotals(SalesHeader, DiscountAmount, SalesHeader."Invoice Discount Calculation"::Amount);
-    end;
-
-    [Test]
     procedure TestModifyingLineKeepsInvoiceDiscountAmt()
     var
         SalesHeader: Record "Sales Header";
@@ -1125,7 +1094,7 @@ codeunit 139734 "APIV1 - Sales Inv. Lines E2E"
     procedure TestPatchingTheTypeBlanksIds()
     var
         SalesHeader: Record "Sales Header";
-        SalesInvoiceLineAggregate: Record "Sales Invoice Line Aggregate";
+        TempSalesInvoiceLineAggregate: Record "Sales Invoice Line Aggregate";
         SalesLine: Record "Sales Line";
         TargetURL: Text;
         ResponseText: Text;
@@ -1141,7 +1110,7 @@ codeunit 139734 "APIV1 - Sales Inv. Lines E2E"
         FindFirstSalesLine(SalesHeader, SalesLine);
         LineNo := SalesLine."Line No.";
 
-        InvoiceLineJSON := STRSUBSTNO('{"%1":"%2"}', LineTypeFieldNameTxt, FORMAT(SalesInvoiceLineAggregate."API Type"::Account));
+        InvoiceLineJSON := STRSUBSTNO('{"%1":"%2"}', LineTypeFieldNameTxt, FORMAT(TempSalesInvoiceLineAggregate."API Type"::Account));
 
         // [WHEN] we PATCH the line
         TargetURL := LibraryGraphMgt

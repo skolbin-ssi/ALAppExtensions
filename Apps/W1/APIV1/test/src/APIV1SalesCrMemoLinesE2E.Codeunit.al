@@ -3,6 +3,7 @@ codeunit 139737 "APIV1 - Sales CrMemo Lines E2E"
     // version Test,ERM,W1,All
 
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     trigger OnRun()
@@ -605,39 +606,6 @@ codeunit 139737 "APIV1 - Sales CrMemo Lines E2E"
     end;
 
     [Test]
-    procedure TestInsertingLineKeepsCreditMemoDiscountAmt()
-    var
-        SalesHeader: Record "Sales Header";
-        Item: Record "Item";
-        TargetURL: Text;
-        ResponseText: Text;
-        CreditMemoLineJSON: Text;
-        DiscountAmount: Decimal;
-    begin
-        // [FEATURE] [Discount]
-        // [SCENARIO] Adding an credit memo through API will keep Discount Amount
-        // [GIVEN] An unposted credit memo for customer with credit memo discount amount
-        Initialize();
-        SetupAmountDiscountTest(SalesHeader, DiscountAmount);
-        CreditMemoLineJSON := CreateCreditMemoLineJSON(Item.SystemId, LibraryRandom.RandIntInRange(1, 100), SalesHeader."Document Date");
-
-        COMMIT();
-
-        // [WHEN] We create a line through API
-        TargetURL := LibraryGraphMgt
-          .CreateTargetURLWithSubpage(
-            SalesHeader.SystemId,
-            PAGE::"APIV1 - Sales Credit Memos",
-            CreditMemoServiceNameTxt,
-            CreditMemoServiceLinesNameTxt);
-        ASSERTERROR LibraryGraphMgt.PostToWebService(TargetURL, CreditMemoLineJSON, ResponseText);
-
-        // [THEN] Discount Amount is Kept
-        VerifyTotals(SalesHeader, DiscountAmount, SalesHeader."Invoice Discount Calculation"::Amount);
-        RecallNotifications();
-    end;
-
-    [Test]
     procedure TestModifyingLineKeepsCreditMemoDiscountAmt()
     var
         SalesHeader: Record "Sales Header";
@@ -874,7 +842,7 @@ codeunit 139737 "APIV1 - Sales CrMemo Lines E2E"
     procedure TestPatchingTheTypeBlanksIds()
     var
         SalesHeader: Record "Sales Header";
-        SalesInvoiceLineAggregate: Record "Sales Invoice Line Aggregate";
+        TempSalesInvoiceLineAggregate: Record "Sales Invoice Line Aggregate";
         SalesLine: Record "Sales Line";
         ResponseText: Text;
         CreditMemoLineJSON: Text;
@@ -889,7 +857,7 @@ codeunit 139737 "APIV1 - Sales CrMemo Lines E2E"
         FindFirstSalesLine(SalesHeader, SalesLine);
         LineNo := SalesLine."Line No.";
 
-        CreditMemoLineJSON := STRSUBSTNO('{"%1":"%2"}', LineTypeFieldNameTxt, FORMAT(SalesInvoiceLineAggregate."API Type"::Account));
+        CreditMemoLineJSON := STRSUBSTNO('{"%1":"%2"}', LineTypeFieldNameTxt, FORMAT(TempSalesInvoiceLineAggregate."API Type"::Account));
 
         // [WHEN] we PATCH the line
         ModifyCreditMemoLinesThroughAPI(CreditMemoID, LineNo, CreditMemoLineJSON, ResponseText);

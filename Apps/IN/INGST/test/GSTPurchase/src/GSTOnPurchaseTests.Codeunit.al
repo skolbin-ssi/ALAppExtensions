@@ -3,6 +3,11 @@ codeunit 18131 "GST On Purchase Tests"
     Subtype = Test;
 
     var
+        GeneralLedgerSetup: Record "General Ledger Setup";
+        GSTDistributionHeader: Record "GST Distribution Header";
+        NoSeriesLine: Record "No. Series Line";
+        NoSeries: Record "No. Series";
+        LibraryAssert: Codeunit "Library Assert";
         LibraryGST: Codeunit "Library GST";
         LibraryPurchase: Codeunit "Library - Purchase";
         LibraryERM: Codeunit "Library - ERM";
@@ -13,6 +18,7 @@ codeunit 18131 "GST On Purchase Tests"
         ComponentPerArray: array[20] of Decimal;
         Storage: Dictionary of [Text, Text[20]];
         StorageBoolean: Dictionary of [Text, Boolean];
+        StorageDecimal: Dictionary of [Text, Decimal];
         AccountNoLbl: Label 'AccountNo', locked = true;
         NoOfLineLbl: Label 'NoOfLine', Locked = true;
         LocationStateCodeLbl: Label 'LocationStateCode', Locked = true;
@@ -26,6 +32,8 @@ codeunit 18131 "GST On Purchase Tests"
         FromStateCodeLbl: Label 'FromStateCode', Locked = true;
         ToStateCodeLbl: Label 'ToStateCode', Locked = true;
         PaymentDocNoLbl: Label 'PaymentDocNo', Locked = true;
+        GSTTaxPercentLbl: Label 'GSTTaxPercent', Locked = true;
+        LineAmountLbl: Label 'LineAmount', Locked = true;
         CGSTLbl: Label 'CGST';
         SGSTLbl: Label 'SGST';
         IGSTLbl: Label 'IGST';
@@ -37,6 +45,10 @@ codeunit 18131 "GST On Purchase Tests"
         NotPostedErr: Label 'The entries were not posted.', locked = true;
         VendLedgerEntryVerifyErr: Label '%1 is incorrect in %2.', Comment = '%1 and %2 = Field Caption and Table Caption';
         TaxTransactionValueEmptyErr: Label 'Tax Transaction Value cannot be empty for %1', Comment = '%1 = Purchase Line Archive Record ID';
+        IsInitialized: Boolean;
+        GSTDistributionNosCodeLbl: Label 'GST-DIST', Locked = true;
+        GSTReversalDistributionNosCodeLbl: Label 'GST-REV-DIST', Locked = true;
+        ReversalDistNosErr: Label 'GST Reversal Distribution Nos. must have a value in General Ledger Setup';
 
     // [SCENARIO] User can Apply Vendor Payments to invoice with different currency exchange rates
     // [FEATURE] [Adjust Exchange Rate] [FCY] [Post Application-Vendor]    
@@ -1179,6 +1191,529 @@ codeunit 18131 "GST On Purchase Tests"
         LibraryGST.VerifyGLEntries(VendorLedgerEntryPayment."Document Type", VendorLedgerEntryPayment."Document No.", 6);
     end;
 
+    [Test]
+    [HandlerFunctions('TaxRatePageHandler')]
+    procedure PostFromPurchInvServicesForRegVendorWithOfflineApplicationApplyPaymentToInvoice()
+    var
+        PurchaseHeader: Record "Purchase Header";
+        PurchaseLine: Record "Purchase Line";
+        GenJournalLine: Record "Gen. Journal Line";
+        GSTGroupType: Enum "GST Group Type";
+        GSTVendorType: Enum "GST Vendor Type";
+        DocumentType: Enum "Purchase Document Type";
+        LineType: Enum "Sales Line Type";
+        TemplateType: Enum "Gen. Journal Template Type";
+        GenJournalDocumentType: Enum "Gen. Journal Document Type";
+        PostedDocumentNo: Code[20];
+    begin
+        // [SCENARIO] [Check if the system is Successfully posting offline application of GST payment to Invoice of Services Registered Vendor where Input Tax Credit is available - Inter-State through Purchase Invoice]
+
+        // [GIVEN] Create GST Setup and tax rates for Registered Vendor with input Tax Credit is availment where Jurisdiction type is Interstate
+        InitializeShareStep(true, false, false);
+        CreateGSTSetup(GSTVendorType::Registered, GSTGroupType::Service, false, true);
+        Storage.Set(NoOfLineLbl, '1');
+
+        // [WHEN] Create and Post Bank Payment Voucher with GST Advance Payment
+        CreateGenJnlLineForVoucherWithAdvancePayment(GenJournalLine, TemplateType::"Bank Payment Voucher");
+        Storage.Set(PaymentDocNoLbl, GenJournalLine."Document No.");
+        LibraryERM.PostGeneralJnlLine(GenJournalLine);
+
+        // [WHEN] Create and Post Purchase Orderwhere line type is G/L account
+        PostedDocumentNo := CreateAndPostPurchaseDocument(PurchaseHeader, PurchaseLine, LineType::"G/L Account", DocumentType::Order);
+
+        // [THEN] Apply Vendor Ledger Entry and Verify
+        LibraryERM.ApplyVendorLedgerEntries(GenJournalDocumentType::Payment, GenJournalDocumentType::Invoice, (Storage.Get(PaymentDocNoLbl)), PostedDocumentNo);
+        VerifyAdvInvoiceApplied(PostedDocumentNo);
+    end;
+
+    [Test]
+    [HandlerFunctions('TaxRatePageHandler')]
+    procedure PostFromGSTPurchInvRegVendWithNonITCItemInterState()
+    var
+        PurchaseHeader: Record "Purchase Header";
+        PurchaseLine: Record "Purchase Line";
+        InventorySetup: Record "Inventory Setup";
+        LineType: Enum "Purchase Line Type";
+        GSTGroupType: Enum "GST Group Type";
+        DocumentType: Enum "Document Type enum";
+        GSTVendorType: Enum "GST Vendor Type";
+        DocumentNo: Code[20];
+    begin
+        // [SCENARIO] [381415] Check if system is calculating GST Amount for Registered Vendor Interstate with Goods on Purchase Invoice with Non-Availment and impact on Item Ledger Entries.
+        // [FEATURE] [Goods] [ITC Non Availment, Registered Vendor, Inter-State]
+
+        // [GIVEN] Created GST Setup and tax rates for Registered Vendor and GST Credit adjustment is Non Available with GST group type as Goods
+        CreateGeneralLedgerSetup();
+        InventorySetup."Automatic Cost Posting" := true;
+        InventorySetup."Automatic Cost Adjustment" := InventorySetup."Automatic Cost Adjustment"::Always;
+
+        CreateGSTSetup(GSTVendorType::Registered, GSTGroupType::Goods, false, false);
+        InitializeShareStep(false, false, false);
+        Storage.Set(NoOfLineLbl, '1');
+
+        // [WHEN] Create and Post Purchase Invoice with GST and Line type as item for Interstate Transactions.
+        DocumentNo := CreateAndPostPurchaseDocumentForPurchInv(PurchaseHeader, PurchaseLine, LineType::Item, DocumentType::Invoice);
+
+        // [THEN] GST ledger entries are created and Verified
+        VerifyGSTLedgerEntriesAmount(DocumentNo);
+    end;
+
+    [Test]
+    [HandlerFunctions('TaxRatePageHandler,ApplyDistributionEntries,ConfirmationHandler,DimensionHandler,NoSeriesHandler')]
+    procedure PostInterStateInvDistributionITCToITCWithLocationDistNo()
+    var
+        PurchaseHeader: Record "Purchase Header";
+        PurchaseLine: Record "Purchase Line";
+        GSTVendorType: Enum "GST Vendor Type";
+        LineType: Enum "Purchase Line Type";
+        DocumentType: Enum "Purchase Document Type";
+        GSTGroupType: Enum "GST Group Type";
+        DocType: Enum "BankCharges DocumentType";
+        DistGSTCredit: Enum "GST Credit";
+        RcptGSTCredit: Enum "GST Credit";
+    begin
+        // [SCENARIO]Check if the system is handling Interstate Distribution of Invoice with Input Tax Credit to Recipient location as Input Tax Credit is available
+        // [FEATURE] [ITC Distribution] [InterState Input Distribution]
+
+        // [GIVEN] Created GST Setup and tax rates for registered Vendor where input tax credit is available with GST Group Code type is Service
+        CreateGSTSetup(GSTVendorType::Registered, GSTGroupType::Service, false, false);
+        InitializeShareStep(true, false, false);
+        UpdateInputServiceDistributer(true);
+        Storage.Set(NoOfLineLbl, '1');
+
+        // [WHEN] Create and Post Purchase Order with GST and Line Type as Services for Interstate Transactions.
+        CreateAndPostPurchaseDocument(PurchaseHeader, PurchaseLine, LineType::"G/L Account", DocumentType::Order);
+
+        // [THEN] Create and Post Distribution Document with Document type Inoivce and Distribution GST Credit is Availment and Receipt GST Credit is Availment
+        CreateAndPostDistributionDocumentNo(DocType::Invoice, DistGSTCredit::Availment, RcptGSTCredit::Availment, false);
+    end;
+
+    [Test]
+    [HandlerFunctions('TaxRatePageHandler,ReferenceInvoiceNoPageHandler,ApplyDistributionEntries,ConfirmationHandler,DimensionHandler,NoSeriesHandler')]
+    procedure PostInterStateCrMemoDistributionITCToITCFromLocAsToLocforReverse()
+    var
+        PurchaseHeader: Record "Purchase Header";
+        PurchaseLine: Record "Purchase Line";
+        LineType: Enum "Purchase Line Type";
+        GSTGroupType: Enum "GST Group Type";
+        DocumentType: Enum "Document Type Enum";
+        GSTVendorType: Enum "GST Vendor Type";
+        DocType: Enum "BankCharges DocumentType";
+        DistGSTCredit: Enum "GST Credit";
+        RcptGSTCredit: Enum "GST Credit";
+    begin
+        // [Scenario] Check if the system is handling Interstate Distribution of Credit Memo with Input Tax Credit to Recipient location as Input Tax Credit is available
+        // [FEATURE] [Inter-State Services, Purchase Credit Memo] [ITC, Registered Vendor]
+
+        // [GIVEN] Created GST Setup and tax rates for registered Vendor where input tax credit is available with GST Group Code type is Service
+        CreateGSTSetup(GSTVendorType::Registered, GSTGroupType::Service, false, false);
+        InitializeShareStep(true, false, false);
+        UpdateInputServiceDistributer(true);
+        Storage.Set(NoOfLineLbl, '1');
+
+        // [WHEN] Create and Post Purchase Order with GST and Line Type as Services for Interstate Transactions.
+        CreateAndPostPurchaseDocument(PurchaseHeader, PurchaseLine, LineType::"G/L Account", DocumentType::Order);
+
+        // [THEN] Create and Post Distribution Document with Document type Inoivce and Distribution GST Credit is Availment and Receipt GST Credit is Availment
+        CreateAndPostDistributionDocumentNo(DocType::Invoice, DistGSTCredit::Availment, RcptGSTCredit::Availment, false);
+
+        // [THEN] Create and Post Distribution Document with Document type Inoivce and Distribution GST Credit is Availment and Receipt GST Credit is Availment
+        CreateAndPostDistributionDocument(DocType::"Credit Memo", DistGSTCredit::Availment, RcptGSTCredit::Availment, true);
+    end;
+
+    [Test]
+    [HandlerFunctions('TaxRatePageHandler,ApplyDistributionEntries,ConfirmationHandler,DimensionHandler,NoSeriesHandler')]
+    procedure PostInterStateInvDistributionITCToITCWithLocationDistNoWithCreditMemo()
+    var
+        PurchaseHeader: Record "Purchase Header";
+        PurchaseLine: Record "Purchase Line";
+        GSTVendorType: Enum "GST Vendor Type";
+        LineType: Enum "Purchase Line Type";
+        DocumentType: Enum "Purchase Document Type";
+        GSTGroupType: Enum "GST Group Type";
+        DocType: Enum "BankCharges DocumentType";
+        DistGSTCredit: Enum "GST Credit";
+        RcptGSTCredit: Enum "GST Credit";
+    begin
+        // [SCENARIO]ISD Distribution Posting Error for Credit Memo with Availment Credit Type
+        // [FEATURE] [ITC Distribution] [InterState Input Distribution]
+
+        // [GIVEN] Created GST Setup and tax rates for registered Vendor where input tax credit is available with GST Group Code type is Service
+        CreateGSTSetup(GSTVendorType::Registered, GSTGroupType::Service, false, false);
+        InitializeShareStep(true, false, false);
+        UpdateInputServiceDistributer(true);
+        Storage.Set(NoOfLineLbl, '1');
+
+        // [WHEN] Create and Post Purchase Order with GST and Line Type as Services for Interstate Transactions.
+        CreateAndPostPurchaseDocument(PurchaseHeader, PurchaseLine, LineType::"G/L Account", DocumentType::Order);
+
+        // [THEN] Create and Post Distribution Document with Document type Inoivce and Distribution GST Credit is Availment and Receipt GST Credit is Availment
+        CreateAndPostDistributionDocumentNo(DocType::"Credit Memo", DistGSTCredit::Availment, RcptGSTCredit::Availment, false);
+    end;
+
+    [Test]
+    procedure DistributionUsesCorrectNoSeriesWhenReversalFalse()
+    var
+        CreatedDistributionHeader: Record "GST Distribution Header";
+        DistributionNumber: Code[20];
+    begin
+        // [SCENARIO 626441] Verify that normal distribution uses correct number series
+
+        Initialize();
+
+        // [GIVEN] General Ledger Setup with GST Distribution Nos. configured
+        SetupGeneralLedgerWithNumberSeries();
+
+        // [WHEN] Create a distribution with Reversal = FALSE
+        CreatedDistributionHeader.Init();
+        CreatedDistributionHeader.Reversal := false;
+
+        // [WHEN] Set Posting No. Series conditionally based on Reversal flag
+        if CreatedDistributionHeader.Reversal = false then
+            CreatedDistributionHeader."Posting No. Series" := GSTDistributionNosCodeLbl;
+
+        CreatedDistributionHeader.Insert(true);
+        DistributionNumber := CreatedDistributionHeader."No.";
+
+        // [THEN] Verify number is assigned from GST Distribution Nos. series
+        LibraryAssert.AreNotEqual('', DistributionNumber, 'Distribution number should be assigned');
+        CreatedDistributionHeader.TestField("No. Series", GSTDistributionNosCodeLbl);
+        LibraryAssert.AreEqual(GSTDistributionNosCodeLbl, CreatedDistributionHeader."No. Series", 'Should use GST Distribution Nos. series');
+        LibraryAssert.AreEqual(GSTDistributionNosCodeLbl, CreatedDistributionHeader."Posting No. Series", 'Posting No. Series should be GST Distribution series');
+    end;
+
+    [Test]
+    procedure ReversalUsesCorrectNoSeriesWhenReversalTrue()
+    var
+        CreatedReversalHeader: Record "GST Distribution Header";
+        ReversalNumber: Code[20];
+    begin
+        // [SCENARIO 626441] Verify that reversal distribution uses correct number series
+
+        Initialize();
+
+        // [GIVEN] General Ledger Setup with GST Reversal Distribution Nos. configured
+        SetupGeneralLedgerWithNumberSeries();
+
+        // [WHEN] Create a distribution with Reversal = TRUE
+        CreatedReversalHeader.Init();
+        CreatedReversalHeader.Reversal := true;
+
+        // [WHEN] Set Posting No. Series conditionally based on Reversal flag
+        if CreatedReversalHeader.Reversal = true then
+            CreatedReversalHeader."Posting No. Series" := GSTReversalDistributionNosCodeLbl;
+
+        CreatedReversalHeader.Insert(true);
+        ReversalNumber := CreatedReversalHeader."No.";
+
+        // [THEN] Verify number is assigned from GST Reversal Distribution Nos. series
+        LibraryAssert.AreNotEqual('', ReversalNumber, 'Reversal number should be assigned');
+        CreatedReversalHeader.TestField("No. Series", GSTReversalDistributionNosCodeLbl);
+        LibraryAssert.AreEqual(GSTReversalDistributionNosCodeLbl, CreatedReversalHeader."No. Series", 'Should use GST Reversal Distribution Nos. series');
+        LibraryAssert.AreEqual(GSTReversalDistributionNosCodeLbl, CreatedReversalHeader."Posting No. Series", 'Posting No. Series should be GST Reversal Distribution series');
+    end;
+
+    [Test]
+    [HandlerFunctions('NoSeriesModalPageHandler')]
+    procedure ReversalAssistEditGeneratesNextNumber()
+    var
+        ReversalDistributionRec: Record "GST Distribution Header";
+        OriginalNumber: Code[20];
+        NewNumber: Code[20];
+        AssistEditResult: Boolean;
+    begin
+        // [SCENARIO 626441] Verify ReversalAssistEdit generates next number from series
+
+        Initialize();
+
+        // [GIVEN] General Ledger Setup with GST Reversal Distribution Nos. configured
+        SetupGeneralLedgerWithNumberSeries();
+
+        // [GIVEN] A reversal distribution header with initial number
+        ReversalDistributionRec.Init();
+        ReversalDistributionRec.Reversal := true;
+
+        // [WHEN] Set Posting No. Series conditionally based on Reversal flag
+        if ReversalDistributionRec.Reversal = true then
+            ReversalDistributionRec."Posting No. Series" := GSTReversalDistributionNosCodeLbl;
+
+        ReversalDistributionRec.Insert(true);
+        OriginalNumber := ReversalDistributionRec."No.";
+
+        // [WHEN] Call ReversalAssistEdit procedure
+        AssistEditResult := ReversalDistributionRec.ReversalAssistEdit(ReversalDistributionRec);
+        NewNumber := ReversalDistributionRec."No.";
+
+        // [THEN] Verify procedure returns TRUE and new number is generated
+        LibraryAssert.IsTrue(AssistEditResult, 'ReversalAssistEdit should return TRUE');
+        LibraryAssert.AreNotEqual('', NewNumber, 'New number should be assigned');
+        LibraryAssert.AreNotEqual(OriginalNumber, NewNumber, 'New number should be different from original');
+    end;
+
+    [Test]
+    procedure MultipleReversalsReceiveSequentialNumbers()
+    var
+        ReversalOne: Record "GST Distribution Header";
+        ReversalTwo: Record "GST Distribution Header";
+        ReversalThree: Record "GST Distribution Header";
+        FirstNumber: Code[20];
+        SecondNumber: Code[20];
+        ThirdNumber: Code[20];
+    begin
+        // [SCENARIO 626441] Verify multiple reversals receive sequential unique numbers
+
+        Initialize();
+
+        // [GIVEN] General Ledger Setup with GST Reversal Distribution Nos. configured
+        SetupGeneralLedgerWithNumberSeries();
+
+        // [WHEN] Create first reversal distribution
+        ReversalOne.Init();
+        ReversalOne.Reversal := true;
+        if ReversalOne.Reversal = true then
+            ReversalOne."Posting No. Series" := GSTReversalDistributionNosCodeLbl;
+        ReversalOne.Insert(true);
+        FirstNumber := ReversalOne."No.";
+
+        // [WHEN] Create second reversal distribution
+        ReversalTwo.Init();
+        ReversalTwo.Reversal := true;
+        if ReversalTwo.Reversal = true then
+            ReversalTwo."Posting No. Series" := GSTReversalDistributionNosCodeLbl;
+        ReversalTwo.Insert(true);
+        SecondNumber := ReversalTwo."No.";
+
+        // [WHEN] Create third reversal distribution
+        ReversalThree.Init();
+        ReversalThree.Reversal := true;
+        if ReversalThree.Reversal = true then
+            ReversalThree."Posting No. Series" := GSTReversalDistributionNosCodeLbl;
+        ReversalThree.Insert(true);
+        ThirdNumber := ReversalThree."No.";
+
+        // [THEN] Verify all numbers are unique and sequential
+        LibraryAssert.AreNotEqual('', FirstNumber, 'First number should be assigned');
+        LibraryAssert.AreNotEqual('', SecondNumber, 'Second number should be assigned');
+        LibraryAssert.AreNotEqual('', ThirdNumber, 'Third number should be assigned');
+        LibraryAssert.AreNotEqual(FirstNumber, SecondNumber, 'First and second numbers should be different');
+        LibraryAssert.AreNotEqual(SecondNumber, ThirdNumber, 'Second and third numbers should be different');
+        LibraryAssert.AreNotEqual(FirstNumber, ThirdNumber, 'First and third numbers should be different');
+    end;
+
+    [Test]
+    procedure GSTReversalDistributionNosFieldPersists()
+    var
+        TestSeriesCode: Code[20];
+    begin
+        // [SCENARIO 626441] Verify GST Reversal Distribution Nos. field persists correctly
+
+        Initialize();
+
+        // [GIVEN] General Ledger Setup record
+        GeneralLedgerSetup.Get();
+
+        // [WHEN] Set GST Reversal Distribution Nos. field
+        TestSeriesCode := 'TEST-REV-SERIES';
+        CreateNumberSeries(TestSeriesCode);
+        GeneralLedgerSetup."GST Reversal Distribution Nos." := TestSeriesCode;
+        GeneralLedgerSetup.Modify(true);
+
+        // [THEN] Verify value persists
+        GeneralLedgerSetup.Get();
+        LibraryAssert.AreEqual(TestSeriesCode, GeneralLedgerSetup."GST Reversal Distribution Nos.", 'GST Reversal Distribution Nos. should persist');
+    end;
+
+    [Test]
+    procedure ReversalInsertSucceedsWhenNoSeriesEmpty()
+    var
+        SuccessReversalHeader: Record "GST Distribution Header";
+        ReversalNumber: Code[20];
+    begin
+        // [SCENARIO 626441] Verify reversal insert succeeds even when series not configured, but no number is assigned
+
+        Initialize();
+
+        // [GIVEN] General Ledger Setup with empty GST Reversal Distribution Nos.
+        GeneralLedgerSetup.Get();
+        GeneralLedgerSetup."GST Reversal Distribution Nos." := '';
+        GeneralLedgerSetup.Modify(true);
+
+        // [WHEN] Try to insert reversal distribution
+        SuccessReversalHeader.Init();
+        SuccessReversalHeader.Reversal := true;
+        SuccessReversalHeader.Insert(true);
+        ReversalNumber := SuccessReversalHeader."No.";
+
+        // [THEN] Insert succeeds but number is not assigned from series
+        LibraryAssert.AreEqual('', ReversalNumber, 'When series is empty, no number should be assigned');
+    end;
+
+    [Test]
+    procedure ReversalAssistEditErrorsWhenSeriesNotConfigured()
+    var
+        TestReversalHeader: Record "GST Distribution Header";
+    begin
+        // [SCENARIO 626441] Verify ReversalAssistEdit errors when series not configured
+
+        Initialize();
+
+        // [GIVEN] General Ledger Setup with empty GST Reversal Distribution Nos.
+        GeneralLedgerSetup.Get();
+        GeneralLedgerSetup."GST Reversal Distribution Nos." := '';
+        GeneralLedgerSetup.Modify(true);
+
+        // [GIVEN] A reversal distribution header
+        TestReversalHeader.Init();
+
+        // [WHEN] Call ReversalAssistEdit procedure
+        asserterror TestReversalHeader.ReversalAssistEdit(TestReversalHeader);
+
+        // [THEN] Should throw TestField error about missing configuration
+        LibraryAssert.ExpectedError(ReversalDistNosErr);
+        LibraryAssert.ExpectedErrorCode('TestField');
+    end;
+
+    [Test]
+    procedure BothSeriesCoexistAndFunctionIndependently()
+    var
+        NormalDistributionRec: Record "GST Distribution Header";
+        ReversalDistributionRec: Record "GST Distribution Header";
+        NormalDistNumber: Code[20];
+        ReversalDistNumber: Code[20];
+    begin
+        // [SCENARIO 626441] Verify both series coexist and function independently
+
+        Initialize();
+
+        // [GIVEN] General Ledger Setup with both series configured
+        SetupGeneralLedgerWithNumberSeries();
+
+        // [WHEN] Create normal distribution
+        NormalDistributionRec.Init();
+        NormalDistributionRec.Reversal := false;
+
+        // [WHEN] Set Posting No. Series conditionally based on Reversal flag
+        if NormalDistributionRec.Reversal = false then
+            NormalDistributionRec."Posting No. Series" := GSTDistributionNosCodeLbl;
+
+        NormalDistributionRec.Insert(true);
+        NormalDistNumber := NormalDistributionRec."No.";
+
+        // [WHEN] Create reversal distribution
+        ReversalDistributionRec.Init();
+        ReversalDistributionRec.Reversal := true;
+
+        // [WHEN] Set Posting No. Series conditionally based on Reversal flag
+        if ReversalDistributionRec.Reversal = true then
+            ReversalDistributionRec."Posting No. Series" := GSTReversalDistributionNosCodeLbl;
+
+        ReversalDistributionRec.Insert(true);
+        ReversalDistNumber := ReversalDistributionRec."No.";
+
+        // [THEN] Verify both use correct series and don't interfere
+        LibraryAssert.AreEqual(GSTDistributionNosCodeLbl, NormalDistributionRec."No. Series", 'Normal distribution should use correct series');
+        LibraryAssert.AreEqual(GSTReversalDistributionNosCodeLbl, ReversalDistributionRec."No. Series", 'Reversal distribution should use correct series');
+        LibraryAssert.AreEqual(GSTDistributionNosCodeLbl, NormalDistributionRec."Posting No. Series", 'Normal distribution Posting No. Series should be correct');
+        LibraryAssert.AreEqual(GSTReversalDistributionNosCodeLbl, ReversalDistributionRec."Posting No. Series", 'Reversal distribution Posting No. Series should be correct');
+        LibraryAssert.AreNotEqual(NormalDistNumber, ReversalDistNumber, 'Series should not interfere with each other');
+    end;
+
+    [Test]
+    procedure CaseStatementRoutesCorrectlyBasedOnReversalFlag()
+    var
+        NormalDistribution: Record "GST Distribution Header";
+        ReversalDistribution: Record "GST Distribution Header";
+    begin
+        // [SCENARIO 626441] Verify case statement routes correctly based on Reversal flag
+
+        Initialize();
+
+        // [GIVEN] General Ledger Setup with both series configured
+        SetupGeneralLedgerWithNumberSeries();
+
+        // [WHEN] Create distribution with Reversal = FALSE
+        NormalDistribution.Init();
+        NormalDistribution.Reversal := false;
+
+        // [WHEN] Set Posting No. Series conditionally based on Reversal flag
+        if NormalDistribution.Reversal = false then
+            NormalDistribution."Posting No. Series" := GSTDistributionNosCodeLbl;
+
+        NormalDistribution.Insert(true);
+
+        // [THEN] Verify it uses GST Distribution Nos. series
+        NormalDistribution.TestField("No. Series", GSTDistributionNosCodeLbl);
+        LibraryAssert.AreEqual(GSTDistributionNosCodeLbl, NormalDistribution."No. Series", 'FALSE case: should route to GST Distribution Nos.');
+        LibraryAssert.AreEqual(GSTDistributionNosCodeLbl, NormalDistribution."Posting No. Series", 'FALSE case: Posting No. Series should be GST Distribution');
+
+        // [WHEN] Create distribution with Reversal = TRUE
+        ReversalDistribution.Init();
+        ReversalDistribution.Reversal := true;
+
+        // [WHEN] Set Posting No. Series conditionally based on Reversal flag
+        if ReversalDistribution.Reversal = true then
+            ReversalDistribution."Posting No. Series" := GSTReversalDistributionNosCodeLbl;
+
+        ReversalDistribution.Insert(true);
+
+        // [THEN] Verify it uses GST Reversal Distribution Nos. series
+        ReversalDistribution.TestField("No. Series", GSTReversalDistributionNosCodeLbl);
+        LibraryAssert.AreEqual(GSTReversalDistributionNosCodeLbl, ReversalDistribution."No. Series", 'TRUE case: should route to GST Reversal Distribution Nos.');
+        LibraryAssert.AreEqual(GSTReversalDistributionNosCodeLbl, ReversalDistribution."Posting No. Series", 'TRUE case: Posting No. Series should be GST Reversal Distribution');
+    end;
+
+    local procedure Initialize()
+    begin
+        if IsInitialized then
+            exit;
+
+        IsInitialized := true;
+
+        // Clean up test data if any exists
+        GSTDistributionHeader.DeleteAll(true);
+        NoSeriesLine.DeleteAll(true);
+        NoSeries.DeleteAll(true);
+
+        SetupGeneralLedgerWithNumberSeries();
+    end;
+
+    local procedure SetupGeneralLedgerWithNumberSeries()
+    begin
+        GeneralLedgerSetup.Get();
+
+        // Create and setup GST Distribution Nos. series
+        CreateNumberSeries(GSTDistributionNosCodeLbl);
+        GeneralLedgerSetup."GST Distribution Nos." := GSTDistributionNosCodeLbl;
+
+        // Create and setup GST Reversal Distribution Nos. series
+        CreateNumberSeries(GSTReversalDistributionNosCodeLbl);
+        GeneralLedgerSetup."GST Reversal Distribution Nos." := GSTReversalDistributionNosCodeLbl;
+
+        GeneralLedgerSetup.Modify(true);
+    end;
+
+    local procedure CreateNumberSeries(SeriesCode: Code[20])
+    var
+        NoSeriesRecord: Record "No. Series";
+        NoSeriesLineRecord: Record "No. Series Line";
+    begin
+        if NoSeriesRecord.Get(SeriesCode) then
+            exit;
+
+        NoSeriesRecord.Init();
+        NoSeriesRecord.Code := SeriesCode;
+        NoSeriesRecord.Description := SeriesCode;
+        if NoSeriesRecord.Insert(true) then;
+
+        NoSeriesLineRecord.Init();
+        NoSeriesLineRecord."Series Code" := SeriesCode;
+        NoSeriesLineRecord."Line No." := 10000;
+        NoSeriesLineRecord."Starting No." := CopyStr(SeriesCode + '-00001', 1, 20);
+        NoSeriesLineRecord."Ending No." := CopyStr(SeriesCode + '-99999', 1, 20);
+        NoSeriesLineRecord."Last No. Used" := CopyStr(SeriesCode + '-00000', 1, 20);
+        NoSeriesLineRecord.Insert(true);
+    end;
+
     local procedure VerifyTaxTransactionValueExist(DocumentType: Enum "Purchase Document Type"; DocumentNo: Code[20])
     var
         PurchaseLineArchive: Record "Purchase Line Archive";
@@ -1461,6 +1996,18 @@ codeunit 18131 "GST On Purchase Tests"
         Assert.AreNotEqual(VendorLedgerEntry.Amount, VendorLedgerEntry."Remaining Amount", StrSubstNo(VendLedgerEntryVerifyErr, VendorLedgerEntry.FieldName("Remaining Amount"), VendorLedgerEntry.TableCaption));
     end;
 
+    local procedure VerifyAdvInvoiceApplied(PostedDocumentNo: Code[20])
+    var
+        VendorLedgerEntry: Record "Vendor Ledger Entry";
+    begin
+        VendorLedgerEntry.SetRange("Document Type", VendorLedgerEntry."Document Type"::Invoice);
+        VendorLedgerEntry.SetRange("Document No.", PostedDocumentNo);
+        VendorLedgerEntry.FindFirst();
+        VendorLedgerEntry.CalcFields(Amount, "Remaining Amount");
+
+        Assert.AreNotEqual(VendorLedgerEntry.Amount, VendorLedgerEntry."Remaining Amount", StrSubstNo(VendLedgerEntryVerifyErr, VendorLedgerEntry.FieldName("Remaining Amount"), VendorLedgerEntry.TableCaption));
+    end;
+
     local procedure CalculateGST(GenJournalLine: Record "Gen. Journal Line")
     var
         CalculateTax: Codeunit "Calculate Tax";
@@ -1609,6 +2156,7 @@ codeunit 18131 "GST On Purchase Tests"
         Storage.Set(FromStateCodeLbl, FromState);
         Storage.Set(ToStateCodeLbl, ToState);
         GSTTaxPercent := LibraryRandom.RandDecInRange(10, 18, 0);
+        StorageDecimal.Set(GSTTaxPercentLbl, GSTTaxPercent);
         if IntraState then begin
             ComponentPerArray[1] := (GSTTaxPercent / 2);
             ComponentPerArray[2] := (GSTTaxPercent / 2);
@@ -1705,6 +2253,7 @@ codeunit 18131 "GST On Purchase Tests"
                     PurchaseLine.Validate("Custom Duty Amount", LibraryRandom.RandInt(1000));
                 end;
             PurchaseLine.Validate("Direct Unit Cost", LibraryRandom.RandInt(1000));
+            StorageDecimal.set(LineAmountLbl, PurchaseLine."Line Amount");
             PurchaseLine.Modify(true);
         end;
     end;
@@ -1729,6 +2278,33 @@ codeunit 18131 "GST On Purchase Tests"
         if not PostingNoSeries.FindFirst() then begin
             PostingNoSeries.Init();
             PostingNoSeries.Validate("Document Type", PostingNoSeries."Document Type"::"GST Distribution");
+            PostingNoSeries.Validate("Posting No. Series", LibraryERM.CreateNoSeriesCode());
+            PostingNoSeries.Insert(true);
+        end;
+
+        SetupGSTComponentMapping();
+    end;
+
+    local procedure CreateInitialSetupForGSTDistributionLine()
+    var
+        SourceCodeSetup: Record "Source Code Setup";
+        SourceCode: Record "Source Code";
+        PostingNoSeries: Record "Posting No. Series";
+    begin
+        if SourceCodeSetup."GST Distribution" = '' then begin
+            SourceCode.Init();
+            SourceCode.Code := (LibraryRandom.RandText(10));
+            SourceCode.Insert();
+
+            SourceCodeSetup."GST Distribution" := SourceCode.Code;
+            SourceCodeSetup.Modify();
+        end;
+
+        PostingNoSeries.SetRange("Document Type", PostingNoSeries."Document Type"::"GST Distribution Line");
+        PostingNoSeries.SetFilter("Posting No. Series", '<>%1', '');
+        if not PostingNoSeries.FindFirst() then begin
+            PostingNoSeries.Init();
+            PostingNoSeries.Validate("Document Type", PostingNoSeries."Document Type"::"GST Distribution Line");
             PostingNoSeries.Validate("Posting No. Series", LibraryERM.CreateNoSeriesCode());
             PostingNoSeries.Insert(true);
         end;
@@ -1820,21 +2396,23 @@ codeunit 18131 "GST On Purchase Tests"
 
     local procedure CreateToLocation(): Code[20]
     var
-        State: Record State;
+        CompanyInformation: Record "Company information";
+        //State: Record State;
         TaxComponent: Record "Tax Component";
         LocationGSTRegNo: Code[15];
         LocPANNo: Code[20];
         LocationCode: Code[10];
+        StateCode: Code[10];
     begin
-        LocPANNo := LibraryGST.CreatePANNos();
-        LibraryGST.CreateState(State);
-        LocationGSTRegNo := LibraryGST.CreateGSTRegistrationNos(State.Code, LocPANNo);
-        LocationCode := LibraryGST.CreateLocationSetup(State.Code, LocationGSTRegNo, false);
-
+        CompanyInformation.Get();
+        LocPANNo := CompanyInformation."P.A.N. No.";
+        StateCode := LibraryGST.CreateGSTStateCode();
+        LocationGSTRegNo := LibraryGST.CreateGSTRegistrationNos(StateCode, LocPANNo);
+        LocationCode := LibraryGST.CreateLocationSetup(StateCode, LocationGSTRegNo, false);
         TaxComponent.SetFilter(Name, '%1|%2|%3', CGSTLbl, SGSTLbl, IGSTLbl);
         if TaxComponent.FindSet() then
             repeat
-                LibraryGST.CreateGSTPostingSetup(TaxComponent, State.Code)
+                LibraryGST.CreateGSTPostingSetup(TaxComponent, StateCode)
             until TaxComponent.Next() = 0;
 
         exit(LocationCode);
@@ -1852,6 +2430,59 @@ codeunit 18131 "GST On Purchase Tests"
         DocumentNo: Code[20];
     begin
         CreateInitialSetupForGSTDistribution();
+        GSTDistributionHeader.Init();
+        GSTDistributionHeader.Insert(true);
+        GSTDistributionHeader.Validate("Posting Date", WorkDate());
+        if Reversal then begin
+            GSTDistributionHeader.Validate(Reversal, Reversal);
+            GSTDistributionHeader.Validate("Reversal Invoice No.", Storage.Get(PostedDistributionNoLbl));
+        end else begin
+            if DocType = DocType::Invoice then
+                GSTDistributionHeader.Validate("ISD Document Type", GSTDistributionHeader."ISD Document Type"::Invoice)
+            else
+                GSTDistributionHeader.Validate("ISD Document Type", GSTDistributionHeader."ISD Document Type"::"Credit Memo");
+            GSTDistributionHeader.Validate("From Location Code", Storage.Get(LocationCodeLbl));
+            GSTDistributionHeader.Validate("Dist. Document Type", DocType);
+            GSTDistributionHeader.Validate("Dist. Credit Type", DistGSTCredit);
+        end;
+        GSTDistributionHeader.Modify(true);
+
+        if not Reversal then begin
+            GSTDistributionLine.Init();
+            GSTDistributionLine.Validate("Distribution No.", GSTDistributionHeader."No.");
+            GSTDistributionLine.Validate("To Location Code", CreateToLocation());
+            GSTDistributionLine.Validate("Rcpt. Credit Type", RcptGSTCredit);
+            GSTDistributionLine.Validate("Distribution %", 100);
+            GSTDistributionLine.Insert(true);
+        end;
+
+        DimensionValue.SetRange("Global Dimension No.", 1);
+        if DimensionValue.FindFirst() then
+            GSTDistributionHeader.Validate("Shortcut Dimension 1 Code", DimensionValue.Code);
+
+        DimensionValue.SetRange("Global Dimension No.", 2);
+        if DimensionValue.FindFirst() then
+            GSTDistributionHeader.Validate("Shortcut Dimension 2 Code", DimensionValue.Code);
+        GSTDistributionHeader.Modify(true);
+
+        DocumentNo := GSTDistributionHeader."No.";
+        ApplyAndPostEntries(GSTDistributionHeader."No.", Reversal);
+        VerifyGSTDistribution(DocumentNo);
+    end;
+
+    local procedure CreateAndPostDistributionDocumentNo(
+            DocType: Enum "BankCharges DocumentType";
+                         DistGSTCredit: Enum "GST Credit";
+                         RcptGSTCredit: Enum "GST Credit";
+                         Reversal: Boolean)
+    var
+        GSTDistributionHeader: Record "GST Distribution Header";
+        GSTDistributionLine: Record "GST Distribution Line";
+        DimensionValue: Record "Dimension Value";
+        DocumentNo: Code[20];
+    begin
+        CreateInitialSetupForGSTDistribution();
+        CreateInitialSetupForGSTDistributionLine();
         GSTDistributionHeader.Init();
         GSTDistributionHeader.Insert(true);
         GSTDistributionHeader.Validate("Posting Date", WorkDate());
@@ -1970,6 +2601,63 @@ codeunit 18131 "GST On Purchase Tests"
         Assert.RecordIsNotEmpty(PurchCrMemoHdr);
     end;
 
+    local procedure CreateGeneralLedgerSetup()
+    var
+        GeneralLedgerSetup: Record "General Ledger Setup";
+    begin
+        GeneralLedgerSetup.Get();
+        GeneralLedgerSetup."Inv. Rounding Precision (LCY)" := 1;
+        GeneralLedgerSetup."Unit-Amount Rounding Precision" := 0.00001;
+        GeneralLedgerSetup."Inv. Rounding Type (LCY)" := GeneralLedgerSetup."Inv. Rounding Type (LCY)"::Nearest;
+        GeneralLedgerSetup.Modify();
+    end;
+
+    local procedure CreateAndPostPurchaseDocumentForPurchInv(
+        var PurchaseHeader: Record "Purchase Header";
+        var PurchaseLine: Record "Purchase Line";
+        LineType: Enum "Purchase Line Type";
+                      DocumentType: Enum "Purchase Document Type"): Code[20];
+    var
+        VendorNo: Code[20];
+        LocationCode: Code[10];
+        DocumentNo: Code[20];
+        PurchaseInvoiceType: Enum "GST Invoice Type";
+    begin
+        Evaluate(VendorNo, Storage.Get(VendorNoLbl));
+        Evaluate(LocationCode, Storage.Get(LocationCodeLbl));
+        CreatePurchaseHeaderWithGST(PurchaseHeader, VendorNo, DocumentType, LocationCode, PurchaseInvoiceType::" ");
+        CreatePurchaseLineWithGST(PurchaseHeader, PurchaseLine, LineType, LibraryRandom.RandDecInRange(2, 10, 0), StorageBoolean.Get(InputCreditAvailmentLbl), StorageBoolean.Get(ExemptedLbl), StorageBoolean.Get(LineDiscountLbl));
+
+        LibraryGST.CreateGeneralPostingSetup(PurchaseLine."Gen. Bus. Posting Group", PurchaseLine."VAT Prod. Posting Group");
+        if not (PurchaseHeader."Document Type" = PurchaseHeader."Document Type"::Quote) then begin
+            DocumentNo := LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, true);
+            Storage.Set(PostedDocumentNoLbl, DocumentNo);
+            exit(DocumentNo);
+        end;
+    end;
+
+    local procedure VerifyGSTLedgerEntriesAmount(DocumentNo: Code[20])
+    var
+        DummyGLEntry: Record "G/L entry";
+        GenLedgerSetup: Record "General Ledger Setup";
+        PurchaseInvoiceHeader: Record "Purch. Inv. Header";
+        GSTBaseAmount: Decimal;
+        GSTTaxRate: Decimal;
+        TotalAmount: Decimal;
+    begin
+        GenLedgerSetup.Get();
+        DummyGLEntry.SetCurrentKey("Document No.");
+        DummyGLEntry.SetRange("Document No.", DocumentNo);
+        DummyGLEntry.SetRange("Document Type", DummyGLEntry."Document Type"::" ");
+        DummyGLEntry.FindFirst();
+        PurchaseInvoiceHeader.Get(DocumentNo);
+        GSTBaseAmount := StorageDecimal.Get(LineAmountLbl);
+        GSTTaxRate := StorageDecimal.Get(GSTTaxPercentLbl);
+        TotalAmount := GSTBaseAmount + (GSTBaseAmount * GSTTaxRate / 100);
+
+        Assert.AreNearlyEqual(TotalAmount, DummyGLEntry.Amount, GenLedgerSetup."Inv. Rounding Precision (LCY)", '');
+    end;
+
     [ModalPageHandler]
     procedure ReferenceInvoiceNoPageHandler(var VendorLedgerEntries: TestPage "Vendor Ledger Entries")
     begin
@@ -2051,6 +2739,12 @@ codeunit 18131 "GST On Purchase Tests"
     procedure NoSeriesHandler(var NoSeriesList: TestPage "No. Series")
     begin
         NoSeriesList.Cancel().Invoke();
+    end;
+
+    [ModalPageHandler]
+    procedure NoSeriesModalPageHandler(var NoSeriesList: TestPage "No. Series")
+    begin
+        NoSeriesList.OK().Invoke();
     end;
 
     [PageHandler]

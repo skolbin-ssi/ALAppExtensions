@@ -8,12 +8,12 @@ using Microsoft.Finance.Dimension;
 using Microsoft.Finance.GeneralLedger.Journal;
 using Microsoft.Finance.GeneralLedger.Posting;
 using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.GST.Application;
 using Microsoft.Finance.GST.Base;
 using Microsoft.Finance.TaxBase;
 using Microsoft.Finance.TaxEngine.TaxTypeHandler;
 using Microsoft.Foundation.AuditCodes;
 using Microsoft.Foundation.NoSeries;
-using Microsoft.Finance.GST.Application;
 using Microsoft.Inventory.Item;
 using Microsoft.Inventory.Ledger;
 using Microsoft.Inventory.Location;
@@ -35,6 +35,7 @@ codeunit 18391 "GST Transfer Order Shipment"
         GSTBaseValidation: Codeunit "GST Base Validation";
         TransferCost: Decimal;
         TransferQuantity: Decimal;
+        UndoCorrectionDocLineNos: List of [Integer];
         GSTGroupServiceErr: Label 'You canNot select GST Group Type Service for transfer.';
         LocGSTRegNoARNNoErr: Label 'Location must have either GST Registration No. or Location ARN No.';
         TransferShipmentNoLbl: Label 'Transfer - %1', Comment = '%1= Transfer Shipment No.';
@@ -1239,11 +1240,42 @@ codeunit 18391 "GST Transfer Order Shipment"
                 NewDetailedGSTLedgerEntry."Custom Duty Amount" := -1 * OldDetailedGSTLedgerEntry."Custom Duty Amount";
                 OnBeforeInsertNewDetailedGSTLedgerEntry(NewDetailedGSTLedgerEntry, OldDetailedGSTLedgerEntry, TransferShipmentLineNew, TransShptLine);
                 NewDetailedGSTLedgerEntry.Insert(true);
-                PostUndoTransShipmentLineToGenJnlLine(NewDetailedGSTLedgerEntry, TransferShipmentLineNew);
-                PostGeneralEntriesUndoShipment(NewDetailedGSTLedgerEntry, TransferShipmentLineNew);
                 InsertGSTLedgerEntryTransferUndoShipment(NewDetailedGSTLedgerEntry, TransferShipmentLineNew);
                 InsertDetailedGSTEntryInfoUndoTransferShipment(OldDetailedGSTLedgerEntry, NewDetailedGSTLedgerEntry, TransShptLine, TransferShipmentLineNew);
             until OldDetailedGSTLedgerEntry.Next() = 0;
+
+        UndoCorrectionDocLineNos.Add(DocLineNo);
+    end;
+
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Undo Transfer Shipment", 'OnAfterCode', '', false, false)]
+    local procedure OnCodeOnAfterUndoTransferShpt(var TransShptLine: Record "Transfer Shipment Line")
+    var
+        DetailedGSTLedgerEntry: Record "Detailed GST Ledger Entry";
+        TransferShipmentLineNew: Record "Transfer Shipment Line";
+        CorrDocLineNo: Integer;
+        IsHandled: Boolean;
+    begin
+        if UndoCorrectionDocLineNos.Count() = 0 then
+            exit;
+
+        OnBeforePostGLEntriesUndoTransferShipment(TransShptLine, UndoCorrectionDocLineNos, IsHandled);
+        if IsHandled then begin
+            Clear(UndoCorrectionDocLineNos);
+            exit;
+        end;
+
+        foreach CorrDocLineNo in UndoCorrectionDocLineNos do
+            if TransferShipmentLineNew.Get(TransShptLine."Document No.", CorrDocLineNo) then begin
+                DetailedGSTLedgerEntry.SetRange("Document No.", TransferShipmentLineNew."Document No.");
+                DetailedGSTLedgerEntry.SetRange("Document Line No.", TransferShipmentLineNew."Line No.");
+                if DetailedGSTLedgerEntry.FindSet() then
+                    repeat
+                        PostUndoTransShipmentLineToGenJnlLine(DetailedGSTLedgerEntry, TransferShipmentLineNew);
+                        PostGeneralEntriesUndoShipment(DetailedGSTLedgerEntry, TransferShipmentLineNew);
+                    until DetailedGSTLedgerEntry.Next() = 0;
+            end;
+
+        Clear(UndoCorrectionDocLineNos);
     end;
 
     local procedure InsertGSTLedgerEntryTransferUndoShipment(NewDetailedGSTLedgerEntry: Record "Detailed GST Ledger Entry"; TransferShipmentLineNew: Record "Transfer Shipment Line")
@@ -1542,6 +1574,11 @@ codeunit 18391 "GST Transfer Order Shipment"
 
     [IntegrationEvent(false, false)]
     local procedure OnBeforePostGeneralEntriesUndoShipment(var GenJournalLine: Record "Gen. Journal Line"; NewDetailedGSTLedgerEntry: Record "Detailed GST Ledger Entry"; TransferShipmentLineNew: Record "Transfer Shipment Line"; var IsHandled: Boolean)
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforePostGLEntriesUndoTransferShipment(var TransferShipmentLine: Record "Transfer Shipment Line"; var CorrectionDocLineNos: List of [Integer]; var IsHandled: Boolean)
     begin
     end;
 }

@@ -10,6 +10,7 @@ tableextension 5284 "Audit File Export Header SAF-T" extends "Audit File Export 
     {
         field(5280; "Export Currency Information"; Boolean)
         {
+            Caption = 'Export Currency Information';
             DataClassification = CustomerContent;
             InitValue = true;
         }
@@ -20,11 +21,15 @@ tableextension 5284 "Audit File Export Header SAF-T" extends "Audit File Export 
         }
         field(5282; "Total G/L Entry Debit"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';;
             Caption = 'Total G/L Entry Debit';
             DataClassification = CustomerContent;
         }
         field(5283; "Total G/L Entry Credit"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';;
             Caption = 'Total G/L Entry Credit';
             DataClassification = CustomerContent;
         }

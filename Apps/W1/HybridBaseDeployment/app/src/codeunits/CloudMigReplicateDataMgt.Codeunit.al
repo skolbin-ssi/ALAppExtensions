@@ -1,9 +1,15 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 namespace Microsoft.DataMigration;
 
 using System.Environment;
 using System.Environment.Configuration;
 using System.Integration;
 using System.Reflection;
+using System.Telemetry;
 using System.Text;
 
 codeunit 40021 "Cloud Mig. Replicate Data Mgt."
@@ -14,7 +20,7 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
     var
         TableMetadata: Record "Table Metadata";
     begin
-        if ((TableID >= 2000000000) and (TableID <= 2000100000) and (not (TableID in [Database::"Tenant Media", Database::"Tenant Media Set", Database::"Tenant Media Thumbnails"]))) then
+        if ((TableID >= 2000000000) and (TableID <= 2000100000) and (not (TableID in [Database::"Tenant Feature Key", Database::"Tenant Media", Database::"Tenant Media Set", Database::"Tenant Media Thumbnails", Database::"Record Link"]))) then
             exit(false);
 
         if not TableMetadata.Get(TableID) then
@@ -22,6 +28,44 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
 
         IsObsolete := TableMetadata.ObsoleteState = TableMetadata.ObsoleteState::Removed;
         exit(true);
+    end;
+
+    internal procedure CheckCanChangeAllIntelligentCloudStatus()
+    var
+        IntelligentCloudStatus: Record "Intelligent Cloud Status";
+        IsObsoleted: Boolean;
+        TablesThatCannotBeChanged: Text;
+        TableCount: Integer;
+        MaxTablesForBatchCheck: Integer;
+    begin
+        // Only check tables that have replication enabled
+        IntelligentCloudStatus.SetRange("Replicate Data", true);
+        if not IntelligentCloudStatus.FindSet() then
+            exit;
+
+        MaxTablesForBatchCheck := 200000;
+        TableCount := IntelligentCloudStatus.Count();
+
+        // If too many tables, check one by one and throw on first error
+        if TableCount > MaxTablesForBatchCheck then begin
+            repeat
+                if not CanChangeIntelligentCloudStatus(IntelligentCloudStatus."Table Id", IsObsoleted) then
+                    Error(TableReplicationPropertiesCannotBeChangedErr, IntelligentCloudStatus."Table Name");
+            until IntelligentCloudStatus.Next() = 0;
+            exit;
+        end;
+
+        // If reasonable number of tables, collect all errors
+        repeat
+            if not CanChangeIntelligentCloudStatus(IntelligentCloudStatus."Table Id", IsObsoleted) then begin
+                if TablesThatCannotBeChanged <> '' then
+                    TablesThatCannotBeChanged += ', ';
+                TablesThatCannotBeChanged += IntelligentCloudStatus."Table Name";
+            end;
+        until IntelligentCloudStatus.Next() = 0;
+
+        if TablesThatCannotBeChanged <> '' then
+            Error(TablesReplicationPropertiesCannotBeChangedErr, TablesThatCannotBeChanged);
     end;
 
     internal procedure LoadRecords(var IntelligentCloudStatus: Record "Intelligent Cloud Status")
@@ -66,15 +110,49 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
     internal procedure CheckRecordCanBeModified(TableID: Integer): Boolean
     var
         CanBeIncluded: Boolean;
+        IsObsolete: Boolean;
     begin
+        // First check if the table is a system table that cannot be modified
+        if not CanChangeIntelligentCloudStatus(TableID, IsObsolete) then
+            exit(false);
+
         OnCanIntelligentCloudSetupTableBeModified(TableID, CanBeIncluded);
         exit(CanBeIncluded);
     end;
 
+    procedure IncludeTableToReplication(TableID: Integer; CompanyName: Text[30])
+    begin
+        IncludeExcludeTableFromReplication(TableID, CompanyName, true);
+    end;
+
+    procedure ExcludeTableFromReplication(TableID: Integer; CompanyName: Text[30])
+    begin
+        IncludeExcludeTableFromReplication(TableID, CompanyName, false);
+    end;
+
+    local procedure IncludeExcludeTableFromReplication(TableID: Integer; CompanyName: Text[30]; NewReplicateData: Boolean)
+    var
+        IntelligentCloudStatus: Record "Intelligent Cloud Status";
+        TablesModified: Text;
+        SeparatorChar: Char;
+    begin
+        IntelligentCloudStatus.SetRange("Table Id", TableID);
+        IntelligentCloudStatus.SetRange("Company Name", CompanyName);
+        if not IntelligentCloudStatus.FindSet() then
+            exit;
+
+        CheckCanChangeTheTable(IntelligentCloudStatus);
+        SeparatorChar := ',';
+        IntelligentCloudStatus.FindSet();
+        repeat
+            UpdateReplicateDataForTable(IntelligentCloudStatus, TablesModified, SeparatorChar, NewReplicateData);
+        until IntelligentCloudStatus.Next() = 0;
+
+        LogMessageForChangedReplicateData(Format(TableID), NewReplicateData);
+    end;
+
     internal procedure IncludeExcludeTablesFromCloudMigration(var IntelligentCloudStatus: Record "Intelligent Cloud Status"; NewReplicateData: Boolean)
     var
-        HybridCloudManagement: Codeunit "Hybrid Cloud Management";
-        TelemetryDictionary: Dictionary of [Text, Text];
         TablesModified: Text;
         SeparatorChar: Char;
     begin
@@ -83,26 +161,76 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
 
         SeparatorChar := ',';
         repeat
-            if IntelligentCloudStatus."Replicate Data" <> NewReplicateData then begin
-                InsertInitialLog(IntelligentCloudStatus);
-                IntelligentCloudStatus."Replicate Data" := NewReplicateData;
-                IntelligentCloudStatus.Modify();
-                InsertModifyLog(IntelligentCloudStatus);
-                TablesModified += IntelligentCloudStatus."Table Name" + SeparatorChar;
-            end;
+            UpdateReplicateDataForTable(IntelligentCloudStatus, TablesModified, SeparatorChar, NewReplicateData);
         until IntelligentCloudStatus.Next() = 0;
 
         TablesModified := TablesModified.TrimEnd(SeparatorChar);
+        LogMessageForChangedReplicateData(TablesModified, NewReplicateData);
+    end;
+
+    local procedure UpdateReplicateDataForTable(var IntelligentCloudStatus: Record "Intelligent Cloud Status"; var TablesModified: Text; SeparatorChar: Char; NewReplicateData: Boolean)
+    var
+        IsObsolete: Boolean;
+    begin
+        // Security check: Validate the table can be modified
+        if not CanChangeIntelligentCloudStatus(IntelligentCloudStatus."Table Id", IsObsolete) then
+            Error(TableReplicationPropertiesCannotBeChangedErr, IntelligentCloudStatus."Table Name");
+
+        if IntelligentCloudStatus."Replicate Data" <> NewReplicateData then begin
+            InsertInitialLog(IntelligentCloudStatus);
+            IntelligentCloudStatus."Replicate Data" := NewReplicateData;
+            IntelligentCloudStatus.Modify();
+            InsertModifyLog(IntelligentCloudStatus);
+            TablesModified += IntelligentCloudStatus."Table Name" + SeparatorChar;
+        end;
+    end;
+
+    local procedure LogMessageForChangedReplicateData(TablesModified: Text; NewReplicateData: Boolean)
+    var
+        AuditLog: Codeunit "Audit Log";
+        HybridCloudManagement: Codeunit "Hybrid Cloud Management";
+        TelemetryDictionary: Dictionary of [Text, Text];
+    begin
         TelemetryDictionary.Add('Category', HybridCloudManagement.GetTelemetryCategory());
         TelemetryDictionary.Add('TablesModified', TablesModified);
         TelemetryDictionary.Add('ReplicateData', Format(NewReplicateData, 0, 9));
         Session.LogMessage('0000MRJ', ChangedReplicationPropertyLbl, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, TelemetryDictionary);
+        AuditLog.LogAuditMessage(StrSubstNo(ReplicationPropertyChangedLbl, UserSecurityId()), SecurityOperationResult::Success, AuditCategory::ApplicationManagement, 6, 0, TelemetryDictionary);
+    end;
+
+    procedure SetPreserveDataForTable(TableID: Integer; CompanyName: Text[30])
+    begin
+        SetResetPreserveDataForTable(TableID, CompanyName, true);
+    end;
+
+    procedure ResetPreserveDataForTable(TableID: Integer; CompanyName: Text[30])
+    begin
+        SetResetPreserveDataForTable(TableID, CompanyName, false);
+    end;
+
+    local procedure SetResetPreserveDataForTable(TableID: Integer; CompanyName: Text[30]; NewPreserveCloudData: Boolean)
+    var
+        IntelligentCloudStatus: Record "Intelligent Cloud Status";
+        TablesModified: Text;
+        SeparatorChar: Char;
+    begin
+        IntelligentCloudStatus.SetRange("Table Id", TableID);
+        IntelligentCloudStatus.SetRange("Company Name", CompanyName);
+        if not IntelligentCloudStatus.FindSet() then
+            exit;
+
+        CheckCanChangeTheTable(IntelligentCloudStatus);
+        SeparatorChar := ',';
+        IntelligentCloudStatus.FindSet();
+        repeat
+            UpdatePreserveDataForTable(IntelligentCloudStatus, TablesModified, SeparatorChar, NewPreserveCloudData);
+        until IntelligentCloudStatus.Next() = 0;
+
+        LogMessageForChangedPreserveData(Format(TableID), NewPreserveCloudData);
     end;
 
     internal procedure ChangePreserveCloudData(var IntelligentCloudStatus: Record "Intelligent Cloud Status"; NewPreserveCloudData: Boolean)
     var
-        HybridCloudManagement: Codeunit "Hybrid Cloud Management";
-        TelemetryDictionary: Dictionary of [Text, Text];
         TablesModified: Text;
         SeparatorChar: Char;
     begin
@@ -111,21 +239,41 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
 
         SeparatorChar := ',';
         repeat
-            if IntelligentCloudStatus."Preserve Cloud Data" <> NewPreserveCloudData then begin
-                if (not NewPreserveCloudData) and (IntelligentCloudStatus."Table Id" = Database::"Tenant Media") then
-                    Error(NotPossibleToReplaceTenantMediaTableErr);
-
-                if (NewPreserveCloudData) and (IntelligentCloudStatus."Company Name" = '') then
-                    Error(NotPossibleToDeltaSyncDataPerCompanyErr);
-
-                InsertInitialLog(IntelligentCloudStatus);
-                IntelligentCloudStatus."Preserve Cloud Data" := NewPreserveCloudData;
-                IntelligentCloudStatus.Modify();
-                InsertModifyLog(IntelligentCloudStatus);
-            end;
+            UpdatePreserveDataForTable(IntelligentCloudStatus, TablesModified, SeparatorChar, NewPreserveCloudData);
         until IntelligentCloudStatus.Next() = 0;
 
         TablesModified := TablesModified.TrimEnd(SeparatorChar);
+        LogMessageForChangedPreserveData(TablesModified, NewPreserveCloudData);
+    end;
+
+    local procedure UpdatePreserveDataForTable(var IntelligentCloudStatus: Record "Intelligent Cloud Status"; var TablesModified: Text; SeparatorChar: Char; NewPreserveCloudData: Boolean)
+    var
+        IsObsolete: Boolean;
+    begin
+        // Security check: Validate the table can be modified
+        if not CanChangeIntelligentCloudStatus(IntelligentCloudStatus."Table Id", IsObsolete) then
+            Error(TableReplicationPropertiesCannotBeChangedErr, IntelligentCloudStatus."Table Name");
+
+        if IntelligentCloudStatus."Preserve Cloud Data" <> NewPreserveCloudData then begin
+            if (not NewPreserveCloudData) and (IntelligentCloudStatus."Table Id" = Database::"Tenant Media") then
+                Error(NotPossibleToReplaceTenantMediaTableErr);
+
+            if (NewPreserveCloudData) and (IntelligentCloudStatus."Company Name" <> '') then
+                Error(NotPossibleToDeltaSyncDataPerCompanyErr);
+
+            InsertInitialLog(IntelligentCloudStatus);
+            IntelligentCloudStatus."Preserve Cloud Data" := NewPreserveCloudData;
+            IntelligentCloudStatus.Modify();
+            InsertModifyLog(IntelligentCloudStatus);
+            TablesModified += IntelligentCloudStatus."Table Name" + SeparatorChar;
+        end;
+    end;
+
+    local procedure LogMessageForChangedPreserveData(TablesModified: Text; NewPreserveCloudData: Boolean)
+    var
+        HybridCloudManagement: Codeunit "Hybrid Cloud Management";
+        TelemetryDictionary: Dictionary of [Text, Text];
+    begin
         TelemetryDictionary.Add('Category', HybridCloudManagement.GetTelemetryCategory());
         TelemetryDictionary.Add('TablesModified', TablesModified);
         TelemetryDictionary.Add('PreserveCloudData', Format(NewPreserveCloudData, 0, 9));
@@ -157,7 +305,7 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
 
     procedure ShowDocumentation(Notification: Notification)
     begin
-        HyperLink(DocumentationURLLbl);
+        HyperLink(OverrideReplicationSetupDocumentationURLLbl);
     end;
 
     procedure DontShowDocumentationNotificationAgain(Notification: Notification)
@@ -166,7 +314,7 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
     begin
         if not MyNotifications.SetStatus(GetDocumentationNotificationID(), false) then
             MyNotifications.InsertDefault(
-              GetDocumentationNotificationID(), DocumentationNotificationTxt, DocumentationNotificationDescriptionTxt, false);
+              GetDocumentationNotificationID(), OverrideReplicationSeteupDocumentationNotificationTxt, OverrideReplicationSetupDocumentationNotificationDescriptionTxt, false);
     end;
 
     local procedure InsertInitialLog(var IntelligentCloudStatus: Record "Intelligent Cloud Status")
@@ -180,6 +328,43 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
             CloudMigrationOverrideLogInitialEntry."Change Type" := CloudMigrationOverrideLogInitialEntry."Change Type"::"Initial Entry";
             CloudMigrationOverrideLogInitialEntry.Insert(true);
         end;
+    end;
+
+    local procedure GetAddTableMappingsNotificationID(): Guid
+    begin
+        exit('16fd70ce-a173-4068-a3b7-305429a0054f')
+    end;
+
+    internal procedure ShowAddTableMappingsNotification()
+    var
+        MyNotifications: Record "My Notifications";
+        AddTableMappingsNotification: Notification;
+    begin
+        if MyNotifications.Get(UserId(), GetAddTableMappingsNotificationID()) then
+            if MyNotifications.Enabled = false then
+                exit;
+
+        AddTableMappingsNotification.Id := GetAddTableMappingsNotificationID();
+        if AddTableMappingsNotification.Recall() then;
+        AddTableMappingsNotification.Message(AddTableMappingsNotificationMessageTxt);
+        AddTableMappingsNotification.Scope(NotificationScope::LocalScope);
+        AddTableMappingsNotification.AddAction(LearnMoreTxt, Codeunit::"Cloud Mig. Replicate Data Mgt.", 'ShowDocumentation');
+        AddTableMappingsNotification.AddAction(DontShowAgainTxt, Codeunit::"Cloud Mig. Replicate Data Mgt.", 'DontShowAddTableMappingsNotificationAgain');
+        AddTableMappingsNotification.Send();
+    end;
+
+    procedure ShowAddTableMappingsNotificationDocumentation(Notification: Notification)
+    begin
+        HyperLink(AddMigrationTableMappingsDocumentationURLLbl);
+    end;
+
+    procedure DontShowAddTableMappingsNotificationAgain(Notification: Notification)
+    var
+        MyNotifications: Record "My Notifications";
+    begin
+        if not MyNotifications.SetStatus(GetAddTableMappingsNotificationID(), false) then
+            MyNotifications.InsertDefault(
+              GetAddTableMappingsNotificationID(), AddTableMappingsNotificationTitleTxt, AddTableMappingsDescriptionTxt, false);
     end;
 
     local procedure InsertResetToDefaultLog(var IntelligentCloudStatus: Record "Intelligent Cloud Status")
@@ -325,11 +510,105 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
     begin
     end;
 
+    internal procedure ValidateCustomMigrationTables()
+    var
+        IncludedMappingTableNames: Dictionary of [Text[128], Boolean];
+        MissingTables: TextBuilder;
+        TablesCannotBeEnabled: TextBuilder;
+        CannotEnableTable: Boolean;
+        TableDoesNotExist: Boolean;
+        TableName: Text[128];
+        TableSeparatorTok: Label ', ', Locked = true;
+    begin
+        LoadIncludedTableNamesFromMappings(IncludedMappingTableNames);
+
+        foreach TableName in IncludedMappingTableNames.Keys() do begin
+            ValidateAndEnableTableReplication(TableName, CannotEnableTable, TableDoesNotExist);
+            if CannotEnableTable then
+                TablesCannotBeEnabled.Append(TableName + TableSeparatorTok);
+
+            if TableDoesNotExist then
+                MissingTables.Append(TableName + TableSeparatorTok);
+        end;
+
+        if (TablesCannotBeEnabled.Length() > 0) or (MissingTables.Length() > 0) then
+            Error(TableMappingsIncorrectErr, GetTablesCannotBeEnabledErrorPart(TablesCannotBeEnabled.ToText().TrimEnd(TableSeparatorTok)), GetMissingTablesErrorPart(MissingTables.ToText().TrimEnd(TableSeparatorTok)));
+    end;
+
+    local procedure LoadIncludedTableNamesFromMappings(var IncludedMappingTableNames: Dictionary of [Text[128], Boolean])
+    var
+        ReplicationTableMap: Record "Replication Table Mapping";
+        SetupMap: Record "Migration Setup Table Mapping";
+    begin
+        Clear(IncludedMappingTableNames);
+
+        ReplicationTableMap.SetLoadFields("Destination Sql Table Name");
+        if ReplicationTableMap.FindSet() then
+            repeat
+                if not IncludedMappingTableNames.ContainsKey(ReplicationTableMap."Destination Sql Table Name") then
+                    IncludedMappingTableNames.Add(ReplicationTableMap."Destination Sql Table Name", true);
+            until ReplicationTableMap.Next() = 0;
+
+        SetupMap.SetLoadFields("Destination Sql Table Name");
+        if SetupMap.FindSet() then
+            repeat
+                if not IncludedMappingTableNames.ContainsKey(SetupMap."Destination Sql Table Name") then
+                    IncludedMappingTableNames.Add(SetupMap."Destination Sql Table Name", true);
+            until SetupMap.Next() = 0;
+    end;
+
+    local procedure EnableReplicateDataForTable(var IntelligentCloudStatus: Record "Intelligent Cloud Status"): Boolean
+    var
+        IsObsolete: Boolean;
+    begin
+        if not CanChangeIntelligentCloudStatus(IntelligentCloudStatus."Table Id", IsObsolete) then
+            exit(false);
+
+        IntelligentCloudStatus."Replicate Data" := true;
+        IntelligentCloudStatus.Modify();
+        exit(true);
+    end;
+
+    internal procedure ValidateAndEnableTableReplication(TableName: Text[128]; var CannotEnableTable: Boolean; var TableDoesNotExist: Boolean)
+    var
+        IntelligentCloudStatus: Record "Intelligent Cloud Status";
+    begin
+        IntelligentCloudStatus.SetRange("Table Name", TableName);
+        if not IntelligentCloudStatus.FindSet() then begin
+            TableDoesNotExist := true;
+            exit;
+        end;
+
+        repeat
+            if not IntelligentCloudStatus."Replicate Data" then
+                if not EnableReplicateDataForTable(IntelligentCloudStatus) then
+                    CannotEnableTable := true;
+        until IntelligentCloudStatus.Next() = 0;
+    end;
+
+    local procedure GetTablesCannotBeEnabledErrorPart(TablesCannotBeEnabled: Text): Text
+    begin
+        if TablesCannotBeEnabled = '' then
+            exit('');
+
+        exit(StrSubstNo(TablesCannotBeEnabledForReplicationErr, TablesCannotBeEnabled));
+    end;
+
+    local procedure GetMissingTablesErrorPart(MissingTables: Text): Text
+    begin
+        if MissingTables = '' then
+            exit('');
+
+        exit(StrSubstNo(TablesNotInSaaSErr, MissingTables));
+    end;
+
     var
         TableReplicationPropertiesCannotBeChangedErr: Label 'The replication properties of the table %1 cannot be changed because it is internal. Changing the replication of the sensitive tables is not allowed.', Comment = '%1 - Table name, e.g. CRONUS International Ltd_$Activity Step$437dbf0e-84ff-417a-965d-ed2bb9650972';
-        DocumentationURLLbl: Label 'https://go.microsoft.com/fwlink/?linkid=2248572', Locked = true;
-        DocumentationNotificationTxt: Label 'Cloud Mig. Replication Rules';
-        DocumentationNotificationDescriptionTxt: Label 'Notification to learn more about how to configure which data is replicated and how.';
+        TablesReplicationPropertiesCannotBeChangedErr: Label 'The replication properties of the following tables cannot be changed because they are internal. Changing the replication of the sensitive tables is not allowed: %1', Comment = '%1 - Comma-separated list of table names';
+        OverrideReplicationSetupDocumentationURLLbl: Label 'https://go.microsoft.com/fwlink/?linkid=2248572', Locked = true;
+        AddMigrationTableMappingsDocumentationURLLbl: Label 'https://go.microsoft.com/fwlink/?linkid=2296587', Locked = true;
+        OverrideReplicationSeteupDocumentationNotificationTxt: Label 'Cloud Mig. Replication Rules';
+        OverrideReplicationSetupDocumentationNotificationDescriptionTxt: Label 'Notification to learn more about how to configure which data is replicated and how.';
         LearnMoreTxt: Label 'Learn more';
         DontShowAgainTxt: Label 'Don''t show again';
         NotPossibleToReplaceTenantMediaTableErr: Label 'It is not possible to overwrite the data in the Tenant Media table as it contains the data needed for the system to run correctly.';
@@ -337,4 +616,11 @@ codeunit 40021 "Cloud Mig. Replicate Data Mgt."
         NotPossibleToDeltaSyncDataPerCompanyErr: Label 'Delta syncing per-company data is not supported. This process is not supported by the service, because it could result in slower replication and incorrect data replication.';
         ChangedReplicationPropertyLbl: Label 'The replication property has been changed.', Locked = true;
         ChangedPreserveCloudDataPropertyLbl: Label 'The Preserve Cloud Data property has been changed.', Locked = true;
+        AddTableMappingsNotificationMessageTxt: Label 'We strongly recommend using "Add Table Mappings" action to add table mapping definitions. It will help you to enter the table mappings correctly and avoid any issues during replication.';
+        AddTableMappingsNotificationTitleTxt: Label 'Add Migration Table Mappings';
+        AddTableMappingsDescriptionTxt: Label 'Notification to learn more about how to configure table mappings instead of entering the data manually.';
+        ReplicationPropertyChangedLbl: Label 'The replication property has been changed by UserSecurityId %1.', Comment = '%1 - User Security ID';
+        TableMappingsIncorrectErr: Label 'Table mappings provided are incorrect.%1%2', Comment = '%1 - Error part about tables that cannot be enabled, %2 - Error part about missing tables';
+        TablesCannotBeEnabledForReplicationErr: Label '\\The following tables cannot be included in migration: %1.', Comment = '%1 - Comma-separated list of table names';
+        TablesNotInSaaSErr: Label '\\The following tables do not exist in SaaS: %1.', Comment = '%1 - Comma-separated list of table names';
 }

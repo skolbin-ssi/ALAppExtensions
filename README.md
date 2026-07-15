@@ -1,46 +1,34 @@
-# Microsoft AL application add-ons for Microsoft Dynamics 365 Business Central
-Welcome to the ALAppExtension repository!
+# Business Central extensibility requests
 
-This repo is a platform for Microsoft and our vibrant partner channel and community to work together to develop add-on apps in the AL language and to enable the general extensibility of Microsoft Dynamics 365 Business Central.
+This repository is now solely for extensibility requests for Microsoft Dynamics 365 Business Central.
 
-We’re working to make the core application thinner, more extensible, and easier to localize extracting business logic into add-on and localization apps. As we go, we’ll publish the source code for the apps in this repo. The apps are open for contributions and can furthermore serve as starting point for verticalizations or just as samples for developing apps.
+It is no longer a place to contribute to Microsoft AL application add-ons or other Business Central application code. New pull requests are no longer accepted here and will be closed automatically.
 
-⚠ This repository is no longer a place to develop on the System Application or Developer Tools! The System Application is now fully developed in the [BCApps](https://github.com/microsoft/BCApps) repository. Please use that repository for all contributions to the System Application and Developer Tools. ⚠
+For Business Central application contributions, use the [BCApps](https://github.com/microsoft/BCApps) repository.
 
-Microsoft will ship the contributions in upcoming releases of [Microsoft Dynamics 365 Business Central](https://dynamics.microsoft.com/en-us/business-central), where you’ll get to enjoy the effect of your contributions.
+## What to request here
 
-## Contributing
+Create an extensibility request issue when you need Microsoft to make the application easier to extend, for example:
 
-In this repository, we welcome contributions to **Microsoft's application add-ons**.
+- Add a new integration event.
+- Change function visibility, for example by making a function external.
+- Replace an option with an extensible enum.
+- Make another extensibility enhancement that helps unblock your app.
 
-* If you are looking to contribute to the **System Application** or **Developer Tools** you can do so in the [BCApps](https://github.com/microsoft/BCApps) repository. 
-* If you are looking to contribute to the **Base Application** you can do so in the [BusinessCentralApps](https://github.com/microsoft/BusinessCentralApps/) repository. Please note, that this repository is private but you can request access by filling out [this form](https://forms.office.com/pages/responsepage.aspx?id=v4j5cvGGr0GRqy180BHbR_Qj5hjzNeNOhBcvBoRIOltUOVBVTklZN1hBOTZJUU40OE5CUzNWNk1FQy4u). 
+Before creating a request, search existing issues to avoid duplicates and read the guidance for [creating extensibility requests](https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/create-extensibility-request).
 
+## What not to file here
 
-**⚠IMPORTANT⚠:**  This is not the right place to report product defects with customer impact to Microsoft! Issues created in this repository might not get picked up by the Microsoft engineering team and issues reported in this repository do not fall under SLAs (Service Level Agreements) and hence have no guaranteed time to mitigation, just as provided fixes won't get backported to all supported versions of the product.
+- **Code contributions and pull requests:** Use [BCApps](https://github.com/microsoft/BCApps).
+- **Product ideas:** Use [BC Ideas](https://aka.ms/bcideas).
+- **Product defects or customer-impacting issues:** Use [Business Central support](https://aka.ms/bcsupport).
 
-## Types of engagements
-There are a couple of ways to engage with us here:  
-  
-* You can grab the code and contribute to the published apps. For more information, see the [_Contributing_](./CONTRIBUTING.md) guidelines or watch this video: [_The Contribution Process_](https://youtu.be/a1p8fTFPVwI?t=3496).
-* If you’re building your own app and need something specific from us, like an event, you can help improve the general extensibility of the business logic. For more information, see the [_Extensibility requests_](#extensibility-requests) section below.
+Issues in this repository do not fall under SLAs (Service Level Agreements), have no guaranteed time to mitigation, and provided fixes are not guaranteed to be backported to all supported versions of the product.
 
+## Data Collection
 
-### Extensibility requests
-The following are the types of requests you can submit to unblock your app:  
+The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off telemetry as described [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/administration/disable-limit-telemetry-events). Some features may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users together with a copy of Microsoft’s privacy statement. The Microsoft privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=824704.
 
-* Add new integration events – Get the event you need to hook-in to a process.  
-* Change function visibility – For example, make a public function external or a similar change so you can call it from your extension and reuse the business logic.  
-* Replace Option with Enum – Replace a specific option with an enum that supports your extension. The new type enum is extensible, but all code was written for non-extensible options.  
-* Extensibility enhancements – Request changes in the application code that will improve extensibility.  
-  
-We’ll have a look at your request, and if we can we’ll implement it asap. If we can’t we’ll let you know and briefly explain why not. When that happens, don’t be discouraged. Go back to the drawing board, see if you can work it out, and then come back and submit another request.
+## Trademarks
 
-### Data Collection
-The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/administration/disable-limit-telemetry-events). There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft’s privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=824704. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
-
-### Trademarks 
 This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow Microsoft’s Trademark & Brand Guidelines. Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos are subject to those third-party’s policies.
-
-## See Also
-[FAQ](FAQ.md)

@@ -16,7 +16,7 @@ using System.Utilities;
 
 report 11776 "Acc. Schedule Export File CZL"
 {
-    Caption = 'Account Schedule Export File';
+    Caption = 'Fin. Report Export File';
     ProcessingOnly = true;
 
     dataset
@@ -138,9 +138,9 @@ report 11776 "Acc. Schedule Export File CZL"
                     field(AccSchedNameCZL; AccSchedName)
                     {
                         ApplicationArea = Basic, Suite;
-                        Caption = 'Acc. Schedule Name';
+                        Caption = 'Fin. Report Name';
                         TableRelation = "Acc. Schedule Name";
-                        ToolTip = 'Specifies the name of the account schedule to be shown in the report.';
+                        ToolTip = 'Specifies the name of the financial report to be shown in the report.';
 
                         trigger OnLookup(var Text: Text): Boolean
                         var
@@ -191,7 +191,7 @@ report 11776 "Acc. Schedule Export File CZL"
                         ApplicationArea = Basic, Suite;
                         Caption = 'Excel Template';
                         TableRelation = "Excel Template CZL";
-                        ToolTip = 'Specifies the excel template for the account schedule export.';
+                        ToolTip = 'Specifies the excel template for the financial report export.';
                         Visible = TemplateIsVisible;
 
                         trigger OnValidate()
@@ -344,6 +344,7 @@ report 11776 "Acc. Schedule Export File CZL"
                 AnalysisView."Dimension 2 Code" := GeneralLedgerSetup."Global Dimension 2 Code";
             end;
 
+            RemoveDimFilters();
             UpdateEnabledControls();
         end;
     }
@@ -508,6 +509,14 @@ report 11776 "Acc. Schedule Export File CZL"
     local procedure PageGetCaptionClass(DimNo: Integer): Text[250]
     begin
         exit(AnalysisView.GetCaptionClassCZL(DimNo));
+    end;
+
+    local procedure RemoveDimFilters()
+    begin
+        Dim1Filter := '';
+        Dim2Filter := '';
+        Dim3Filter := '';
+        Dim4Filter := '';
     end;
 
     local procedure UpdateEnabledControls()

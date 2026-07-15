@@ -1,13 +1,10 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
 namespace System.Security.User;
 
 using Microsoft.Finance.Dimension;
-#if not CLEAN24
-using Microsoft.Finance.GeneralLedger.Setup;
-#endif
 using Microsoft.HumanResources.Employee;
 
 tableextension 11717 "User Setup CZL" extends "User Setup"
@@ -54,52 +51,24 @@ tableextension 11717 "User Setup CZL" extends "User Setup"
             Caption = 'Allow Posting to Closed Period';
             DataClassification = CustomerContent;
         }
+#if not CLEANSCHEMA27
         field(11778; "Allow VAT Posting From CZL"; Date)
         {
             Caption = 'Allow VAT Posting From';
             DataClassification = CustomerContent;
-#if not CLEAN24
-            ObsoleteState = Pending;
-            ObsoleteTag = '24.0';
-#else
             ObsoleteState = Removed;
             ObsoleteTag = '27.0';
-#endif
             ObsoleteReason = 'Replaced by "Allow VAT Date From" field.';
-#if not CLEAN24
-
-            trigger OnValidate()
-            var
-                GLSetup: Record "General Ledger Setup";
-            begin
-                GLSetup.Get();
-                GLSetup.TestIsVATDateEnabledCZL();
-            end;
-#endif
         }
         field(11779; "Allow VAT Posting To CZL"; Date)
         {
             Caption = 'Allow VAT Posting To';
             DataClassification = CustomerContent;
-#if not CLEAN24
-            ObsoleteState = Pending;
-            ObsoleteTag = '24.0';
-#else
             ObsoleteState = Removed;
             ObsoleteTag = '27.0';
-#endif
             ObsoleteReason = 'Replaced by "Allow VAT Date To" field.';
-#if not CLEAN24
-
-            trigger OnValidate()
-            var
-                GLSetup: Record "General Ledger Setup";
-            begin
-                GLSetup.Get();
-                GLSetup.TestIsVATDateEnabledCZL();
-            end;
-#endif
         }
+#endif
         field(11780; "Allow Complete Job CZL"; Boolean)
         {
             Caption = 'Allow Complete Job';
@@ -110,6 +79,20 @@ tableextension 11717 "User Setup CZL" extends "User Setup"
             Caption = 'Employee No.';
             TableRelation = Employee;
             DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            var
+                Employee: Record Employee;
+            begin
+                if ("Employee No. CZL" = '') or ("Employee No. CZL" = xRec."Employee No. CZL") then
+                    exit;
+
+                if Employee.Get("Employee No. CZL") then begin
+                    "User Name CZL" := Employee.FullName();
+                    "Phone No." := Employee."Phone No.";
+                    "E-Mail" := Employee."Company E-Mail";
+                end;
+            end;
         }
         field(11782; "User Name CZL"; Text[100])
         {
@@ -141,7 +124,27 @@ tableextension 11717 "User Setup CZL" extends "User Setup"
             Caption = 'Allow VAT Date Changing';
             DataClassification = CustomerContent;
         }
+        field(11788; "Allow Orig Doc VAT Date Ch CZL"; Boolean)
+        {
+            Caption = 'Allow Orig. Doc. VAT Date Changing';
+            DataClassification = CustomerContent;
+        }
+        field(11789; "Allow Ext.Doc.No. Changing CZL"; Boolean)
+        {
+            Caption = 'Allow External Document No. Changing';
+            DataClassification = CustomerContent;
+        }
     }
+
+    trigger OnDelete()
+    var
+        UserSetupLineCZL: Record "User Setup Line CZL";
+    begin
+        UserSetupLineCZL.Reset();
+        UserSetupLineCZL.SetRange("User ID", Rec."User ID");
+        UserSetupLineCZL.DeleteAll();
+    end;
+
     procedure CopyToCZL(ToUserId: Code[50])
     var
         FromUserSetupLine: Record "User Setup Line CZL";
@@ -163,6 +166,10 @@ tableextension 11717 "User Setup CZL" extends "User Setup"
 
         UserSetup.Init();
         UserSetup := Rec;
+        UserSetup."Salespers./Purch. Code" := OldUserSetup."Salespers./Purch. Code";
+        UserSetup."Employee No. CZL" := OldUserSetup."Employee No. CZL";
+        UserSetup."Phone No." := OldUserSetup."Phone No.";
+        UserSetup."E-Mail" := OldUserSetup."E-Mail";
         UserSetup."User Name CZL" := OldUserSetup."User Name CZL";
         UserSetup."User ID" := ToUserId;
         if not UserSetup.Insert() then

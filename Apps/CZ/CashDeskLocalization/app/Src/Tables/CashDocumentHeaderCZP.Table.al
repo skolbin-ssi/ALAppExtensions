@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -100,6 +100,8 @@ table 11732 "Cash Document Header CZP"
         }
         field(7; Amount; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = Rec."Currency Code";
             Caption = 'Amount';
             CalcFormula = Sum("Cash Document Line CZP".Amount where("Cash Desk No." = field("Cash Desk No."), "Cash Document No." = field("No.")));
             Editable = false;
@@ -107,6 +109,8 @@ table 11732 "Cash Document Header CZP"
         }
         field(8; "Amount (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Amount (LCY)';
             CalcFormula = Sum("Cash Document Line CZP"."Amount (LCY)" where("Cash Desk No." = field("Cash Desk No."), "Cash Document No." = field("No.")));
             Editable = false;
@@ -181,7 +185,8 @@ table 11732 "Cash Document Header CZP"
         {
             CaptionClass = '1,2,1';
             Caption = 'Shortcut Dimension 1 Code';
-            TableRelation = "Dimension Value".Code where("Global Dimension No." = const(1));
+            TableRelation = "Dimension Value".Code where("Global Dimension No." = const(1),
+                                                          Blocked = const(false));
             DataClassification = CustomerContent;
 
             trigger OnValidate()
@@ -193,7 +198,8 @@ table 11732 "Cash Document Header CZP"
         {
             CaptionClass = '1,2,2';
             Caption = 'Shortcut Dimension 2 Code';
-            TableRelation = "Dimension Value".Code where("Global Dimension No." = const(2));
+            TableRelation = "Dimension Value".Code where("Global Dimension No." = const(2),
+                                                          Blocked = const(false));
             DataClassification = CustomerContent;
 
             trigger OnValidate()
@@ -203,6 +209,7 @@ table 11732 "Cash Document Header CZP"
         }
         field(25; "Currency Factor"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Currency Factor';
             DataClassification = CustomerContent;
 
@@ -261,6 +268,8 @@ table 11732 "Cash Document Header CZP"
         }
         field(50; "Released Amount"; Decimal)
         {
+            AutoFormatExpression = "Currency Code";
+            AutoFormatType = 1;
             Caption = 'Released Amount';
             Editable = false;
             DataClassification = CustomerContent;
@@ -285,6 +294,8 @@ table 11732 "Cash Document Header CZP"
         }
         field(55; "VAT Base Amount (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = Sum("Cash Document Line CZP"."VAT Base Amount (LCY)" where("Cash Desk No." = field("Cash Desk No."), "Cash Document No." = field("No.")));
             Caption = 'VAT Base Amount (LCY)';
             Editable = false;
@@ -292,6 +303,8 @@ table 11732 "Cash Document Header CZP"
         }
         field(56; "Amount Including VAT (LCY)"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = Sum("Cash Document Line CZP"."Amount Including VAT (LCY)" where("Cash Desk No." = field("Cash Desk No."), "Cash Document No." = field("No.")));
             Caption = 'Amount Including VAT (LCY)';
             Editable = false;
@@ -611,7 +624,7 @@ table 11732 "Cash Document Header CZP"
         CashDocumentPostCZP: Codeunit "Cash Document-Post CZP";
     begin
         TestField(Status, Status::Open);
-        if not ConfirmManagement.GetResponseOrDefault(DeleteQst, false) then
+        if not ConfirmManagement.GetResponseOrDefault(StrSubstNo(DeleteQst, "No."), false) then
             Error('');
 
         DeleteRecordInApprovalRequest();
@@ -625,15 +638,14 @@ table 11732 "Cash Document Header CZP"
         CashDocumentLineCZP.SetRange("Cash Desk No.", "Cash Desk No.");
         CashDocumentLineCZP.SetRange("Cash Document No.", "No.");
         CashDocumentLineCZP.DeleteAll(true);
+
+        Message(PostedDocsToPrintCreatedMsg);
     end;
 
     trigger OnInsert()
     var
         CashDeskUserCZP: Record "Cash Desk User CZP";
         NoSeries: Codeunit "No. Series";
-#if not CLEAN24
-        IsHandled: Boolean;
-#endif
     begin
         TestField("Cash Desk No.");
         TestField("Document Type");
@@ -655,34 +667,18 @@ table 11732 "Cash Document Header CZP"
                 "Document Type"::Receipt:
                     begin
                         CashDeskCZP.TestField("Cash Document Receipt Nos.");
-#if not CLEAN24
-                        NoSeriesManagement.RaiseObsoleteOnBeforeInitSeries(CashDeskCZP."Cash Document Receipt Nos.", xRec."No. Series", WorkDate(), "No.", "No. Series", IsHandled);
-                        if not IsHandled then begin
-#endif
-                            "No. Series" := CashDeskCZP."Cash Document Receipt Nos.";
-                            if NoSeries.AreRelated("No. Series", xRec."No. Series") then
-                                "No. Series" := xRec."No. Series";
-                            "No." := NoSeries.GetNextNo("No. Series");
-#if not CLEAN24
-                            NoSeriesManagement.RaiseObsoleteOnAfterInitSeries("No. Series", CashDeskCZP."Cash Document Receipt Nos.", WorkDate(), "No.");
-                        end;
-#endif
+                        "No. Series" := CashDeskCZP."Cash Document Receipt Nos.";
+                        if NoSeries.AreRelated("No. Series", xRec."No. Series") then
+                            "No. Series" := xRec."No. Series";
+                        "No." := NoSeries.GetNextNo("No. Series");
                     end;
                 "Document Type"::Withdrawal:
                     begin
                         CashDeskCZP.TestField("Cash Document Withdrawal Nos.");
-#if not CLEAN24
-                        NoSeriesManagement.RaiseObsoleteOnBeforeInitSeries(CashDeskCZP."Cash Document Withdrawal Nos.", xRec."No. Series", WorkDate(), "No.", "No. Series", IsHandled);
-                        if not IsHandled then begin
-#endif
-                            "No. Series" := CashDeskCZP."Cash Document Withdrawal Nos.";
-                            if NoSeries.AreRelated("No. Series", xRec."No. Series") then
-                                "No. Series" := xRec."No. Series";
-                            "No." := NoSeries.GetNextNo("No. Series");
-#if not CLEAN24
-                            NoSeriesManagement.RaiseObsoleteOnAfterInitSeries("No. Series", CashDeskCZP."Cash Document Withdrawal Nos.", WorkDate(), "No.");
-                        end;
-#endif
+                        "No. Series" := CashDeskCZP."Cash Document Withdrawal Nos.";
+                        if NoSeries.AreRelated("No. Series", xRec."No. Series") then
+                            "No. Series" := xRec."No. Series";
+                        "No." := NoSeries.GetNextNo("No. Series");
                     end;
             end;
 
@@ -726,9 +722,6 @@ table 11732 "Cash Document Header CZP"
         Contact: Record Contact;
         SalespersonPurchaser: Record "Salesperson/Purchaser";
         Employee: Record Employee;
-#if not CLEAN24
-        NoSeriesManagement: Codeunit NoSeriesManagement;
-#endif
         DimensionManagement: Codeunit DimensionManagement;
         ConfirmManagement: Codeunit "Confirm Management";
         CashDeskManagementCZP: Codeunit "Cash Desk Management CZP";
@@ -741,10 +734,13 @@ table 11732 "Cash Document Header CZP"
         RespCenterDeleteErr: Label 'You cannot delete this document. Your identification is set up to process from %1 %2 only.', Comment = '%1 = fieldcaption of Responsibility Center; %2 = Responsibility Center';
         RespCreateErr: Label 'You are not allowed create %1 on %2 %3.', Comment = '%1 = TableCaption, %2 = Cash Desk TableCaption, %3= Cash Desk No.';
         CreateQst: Label 'Do you want to create %1 at Cash Desk %2?', Comment = '%1 = Cash Document Type, %2 = Cash Desk No.';
-        DeleteQst: Label 'Deleting this document will cause a gap in the number series for posted cash documents.\Do you want continue?';
+        DeleteQst: Label 'Deleting this document will cause a gap in the number series for posted cash documents. An empty posted cash document %1 will be created to fill this gap in the number series.\\Do you want to continue?', Comment = '%1 = Document No.';
+        PostedDocsToPrintCreatedMsg: Label 'One or more related posted documents have been generated during deletion to fill gaps in the number series. You can view or print the documents from the respective document archive.';
         CurrencyDate: Date;
-        SkipLineNo: Integer;
         HideValidationDialog: Boolean;
+
+    protected var
+        SkipLineNo: Integer;
 
     procedure AssistEdit(OldCashDocumentHeaderCZP: Record "Cash Document Header CZP"): Boolean
     var
@@ -855,7 +851,8 @@ table 11732 "Cash Document Header CZP"
             Modify();
 
         if OldDimSetID <> "Dimension Set ID" then begin
-            Modify();
+            if not IsNullGuid(Rec.SystemId) then
+                Modify();
             if CashDocLinesExist() then
                 UpdateAllLineDim("Dimension Set ID", OldDimSetID);
         end;
@@ -1182,9 +1179,7 @@ table 11732 "Cash Document Header CZP"
 
     procedure SignAmount(): Integer
     begin
-        if "Document Type" = "Document Type"::Receipt then
-            exit(-1);
-        exit(1);
+        exit("Document Type" = "Document Type"::Receipt ? -1 : 1);
     end;
 
     procedure SetHideValidationDialog(NewHideValidationDialog: Boolean)

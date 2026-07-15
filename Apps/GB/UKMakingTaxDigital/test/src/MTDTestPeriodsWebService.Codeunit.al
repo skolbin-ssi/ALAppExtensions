@@ -6,6 +6,7 @@
 codeunit 148084 "MTDTestPeriodsWebService"
 {
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     trigger OnRun()
@@ -14,6 +15,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     var
+        MTDHttpClientMockService: Codeunit MTDHttpClientMockService;
         LibraryMakingTaxDigital: Codeunit "Library - Making Tax Digital";
         LibraryUtility: Codeunit "Library - Utility";
         LibraryVariableStorage: Codeunit "Library - Variable Storage";
@@ -26,7 +28,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
         FeatureConsentErr: Label 'The Making Tax Digital feature is not enabled. To enable it, on the VAT Report Setup page, on the Making Tax Digital FastTab, turn on the Enabled toggle.';
 
     [Test]
-    [HandlerFunctions('MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_Negative_DisabledOutput()
     var
@@ -44,7 +46,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_Negative_Reason()
     var
@@ -65,7 +67,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_Negative_BlankedJsonResponse()
     var
@@ -81,7 +83,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_Negative_WrongJsonResponse()
     var
@@ -97,7 +99,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_OneNewPeriod_DisabledOutput()
     var
@@ -115,7 +117,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('GetMTDRecords_RPH,MessageHandler,SendNotificationHandler,RecallNotificationHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('GetMTDRecords_RPH,MessageHandler,SendNotificationHandler,RecallNotificationHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_OneNewPeriod_UI()
     var
@@ -137,7 +139,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_OneNewPeriod_ExpiredToken()
     var
@@ -159,7 +161,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_OneUpToDatePeriod()
     var
@@ -169,7 +171,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
         // <parse key="Packet340" compare="333333340" response="MakingTaxDigital\200_period_open.txt"/>
         InitGetOnePeriodScenario(DummyVATReturnPeriod, '333333340', false);
         with DummyVATReturnPeriod do
-            MockVATPeriod(DummyVATReturnPeriod, "Due Date", "Period Key", Status, "Received Date");
+            MockVATPeriod(DummyVATReturnPeriod, "Due Date", "Period Key", Enum::"VAT Report Status"::"Open", "Received Date");
 
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod, 1, 0, 0);
 
@@ -177,7 +179,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_OneModifiedPeriod_OrgAmt()
     var
@@ -187,7 +189,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
         // <parse key="Packet340" compare="333333340" response="MakingTaxDigital\200_period_open.txt"/>
         InitGetOnePeriodScenario(DummyVATReturnPeriod, '333333340', false);
         with DummyVATReturnPeriod do
-            MockVATPeriod(DummyVATReturnPeriod, "Due Date" + 1, "Period Key", Status, "Received Date");
+            MockVATPeriod(DummyVATReturnPeriod, "Due Date" + 1, "Period Key", Enum::"VAT Report Status"::"Open", "Received Date");
 
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod, 1, 0, 1);
 
@@ -195,7 +197,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_OneModifiedPeriod_PeriodKey()
     var
@@ -205,7 +207,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
         // <parse key="Packet340" compare="333333340" response="MakingTaxDigital\200_period_open.txt"/>
         InitGetOnePeriodScenario(DummyVATReturnPeriod, '333333340', false);
         with DummyVATReturnPeriod do
-            MockVATPeriod(DummyVATReturnPeriod, "Due Date", LibraryUtility.GenerateGUID(), Status, "Received Date");
+            MockVATPeriod(DummyVATReturnPeriod, "Due Date", LibraryUtility.GenerateGUID(), Enum::"VAT Report Status"::"Open", "Received Date");
 
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod, 1, 0, 1);
 
@@ -213,7 +215,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_OneModifiedPeriod_Status()
     var
@@ -223,7 +225,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
         // <parse key="Packet341" compare="333333341" response="MakingTaxDigital\200_period_closed.txt"/>
         InitGetOnePeriodScenario(DummyVATReturnPeriod, '333333341', true);
         with DummyVATReturnPeriod do
-            MockVATPeriod(DummyVATReturnPeriod, "Due Date", "Period Key", Status::Open, "Received Date");
+            MockVATPeriod(DummyVATReturnPeriod, "Due Date", "Period Key", Enum::"VAT Report Status"::Open, "Received Date");
 
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod, 1, 0, 1);
 
@@ -231,7 +233,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_OneModifiedPeriod_ReceivedDate()
     var
@@ -241,7 +243,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
         // <parse key="Packet341" compare="333333341" response="MakingTaxDigital\200_period_closed.txt"/>
         InitGetOnePeriodScenario(DummyVATReturnPeriod, '333333341', true);
         with DummyVATReturnPeriod do
-            MockVATPeriod(DummyVATReturnPeriod, "Due Date", "Period Key", Status, "Received Date" + 1);
+            MockVATPeriod(DummyVATReturnPeriod, "Due Date", "Period Key", Enum::"VAT Report Status"::"Open", "Received Date" + 1);
 
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod, 1, 0, 1);
 
@@ -249,7 +251,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_TwoNewPeriods()
     var
@@ -265,7 +267,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_TwoUpToDatePeriods()
     var
@@ -273,19 +275,20 @@ codeunit 148084 "MTDTestPeriodsWebService"
     begin
         // [SCENARIO 258181] COD 10530 MTDMgt.RetrieveVATReturnPeriods() in case of a two up to date return periods
         // <parse key="Packet342" compare="333333342" response="MakingTaxDigital\200_periods.txt"/>
+#pragma warning disable AL0603
         InitGetTwoPeriodsScenario(DummyVATReturnPeriod, '333333342');
         with DummyVATReturnPeriod[1] do
             MockVATPeriod(DummyVATReturnPeriod[1], "Due Date", "Period Key", Status, "Received Date");
         with DummyVATReturnPeriod[2] do
             MockVATPeriod(DummyVATReturnPeriod[2], "Due Date", "Period Key", Status, "Received Date");
-
+#pragma warning restore AL0603
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod[1], 2, 0, 0);
 
         VerifyGetTwoPeriodsScenario(DummyVATReturnPeriod, RetrievePeriodsUpToDateMsg);
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_TwoModifiedPeriods()
     var
@@ -295,9 +298,9 @@ codeunit 148084 "MTDTestPeriodsWebService"
         //<parse key="Packet342" compare="333333342" response="MakingTaxDigital\200_periods.txt"/>
         InitGetTwoPeriodsScenario(DummyVATReturnPeriod, '333333342');
         with DummyVATReturnPeriod[1] do
-            MockVATPeriod(DummyVATReturnPeriod[1], "Due Date" + 1, "Period Key", Status, "Received Date");
+            MockVATPeriod(DummyVATReturnPeriod[1], "Due Date" + 1, "Period Key", Enum::"VAT Report Status"::"Open", "Received Date");
         with DummyVATReturnPeriod[2] do
-            MockVATPeriod(DummyVATReturnPeriod[2], "Due Date", "Period Key", Status::Closed, "Received Date");
+            MockVATPeriod(DummyVATReturnPeriod[2], "Due Date", "Period Key", Enum::"VAT Report Status"::Closed, "Received Date");
 
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod[1], 2, 0, 2);
 
@@ -305,7 +308,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_TwoPeriodsInclOneNew()
     var
@@ -314,16 +317,17 @@ codeunit 148084 "MTDTestPeriodsWebService"
         // [SCENARIO 258181] COD 10530 MTDMgt.RetrieveVATReturnPeriods() in case of a two return periods including one new
         // <parse key="Packet342" compare="333333342" response="MakingTaxDigital\200_periods.txt"/>
         InitGetTwoPeriodsScenario(DummyVATReturnPeriod, '333333342');
+#pragma warning disable AL0603
         with DummyVATReturnPeriod[1] do
             MockVATPeriod(DummyVATReturnPeriod[1], "Due Date", "Period Key", Status, "Received Date");
-
+#pragma warning restore AL0603
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod[1], 2, 1, 0);
 
         VerifyGetTwoPeriodsScenario(DummyVATReturnPeriod, LibraryMakingTaxDigital.GetRetrievePeriodsMsg(1, 0));
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_TwoPeriodsInclOneModified()
     var
@@ -332,10 +336,12 @@ codeunit 148084 "MTDTestPeriodsWebService"
         // [SCENARIO 258181] COD 10530 MTDMgt.RetrieveVATReturnPeriods() in case of a two return periods including one modified
         // <parse key="Packet342" compare="333333342" response="MakingTaxDigital\200_periods.txt"/>
         InitGetTwoPeriodsScenario(DummyVATReturnPeriod, '333333342');
+#pragma warning disable AL0603
         with DummyVATReturnPeriod[1] do
             MockVATPeriod(DummyVATReturnPeriod[1], "Due Date", "Period Key", Status, "Received Date");
         with DummyVATReturnPeriod[2] do
             MockVATPeriod(DummyVATReturnPeriod[2], "Due Date", "Period Key", Status::Closed, "Received Date");
+#pragma warning restore AL0603
 
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod[1], 2, 0, 1);
 
@@ -343,7 +349,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_TwoPeriodsInclOneNewAndOneModified()
     var
@@ -353,7 +359,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
         // <parse key="Packet342" compare="333333342" response="MakingTaxDigital\200_periods.txt"/>
         InitGetTwoPeriodsScenario(DummyVATReturnPeriod, '333333342');
         with DummyVATReturnPeriod[1] do
-            MockVATPeriod(DummyVATReturnPeriod[1], "Due Date", "Period Key", Status::Open, "Received Date");
+            MockVATPeriod(DummyVATReturnPeriod[1], "Due Date", "Period Key", Enum::"VAT Report Status"::Open, "Received Date");
 
         GetVATReturnPeriodsAndShowResult(DummyVATReturnPeriod[1], 2, 1, 1);
 
@@ -361,7 +367,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_AutoReceiveJob_Negative()
     var
@@ -381,7 +387,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MessageHandler,MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure GetVATPeriods_AutoReceiveJob_Positive()
     var
@@ -402,7 +408,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     end;
 
     [Test]
-    [HandlerFunctions('MTDWebClientFPHeaders_MPH')]
+    [HandlerFunctions('MTDWebClientFPHeaders_MPH,HttpClientHandler')]
     [Scope('OnPrem')]
     procedure MarkAcceptedVATReturnAsClosed()
     var
@@ -413,7 +419,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
         // <parse key="Packet341" compare="333333341" response="MakingTaxDigital\200_period_closed.txt"/>
         InitGetOnePeriodScenario(VATReturnPeriod, '333333341', false);
         with VATReturnPeriod do
-            MockAndGetVATPeriod(VATReturnPeriod, "Start Date", "End Date", "Due Date", "Period Key", Status::Open, "Received Date");
+            MockAndGetVATPeriod(VATReturnPeriod, "Start Date", "End Date", "Due Date", "Period Key", Enum::"VAT Report Status"::Open, "Received Date");
         LibraryMakingTaxDigital.MockLinkedVATReturnHeader(VATReportHeader, VATReturnPeriod, VATReportHeader.Status::Accepted);
 
         GetVATReturnPeriods(VATReturnPeriod, false, true, 1, 0, 1);
@@ -445,6 +451,7 @@ codeunit 148084 "MTDTestPeriodsWebService"
     begin
         LibraryVariableStorage.Clear();
         ClearRecords();
+        MTDHttpClientMockService.ClearUnauthorizedVRNCalls();
 
         if IsInitialized then
             exit;
@@ -502,13 +509,13 @@ codeunit 148084 "MTDTestPeriodsWebService"
         end;
     end;
 
-    local procedure MockAndGetVATPeriod(var VATReturnPeriod: Record "VAT Return Period"; StartDate: Date; EndDate: Date; DueDate: Date; PeriodKey: Code[10]; Status: Option; ReceivedDate: Date)
+    local procedure MockAndGetVATPeriod(var VATReturnPeriod: Record "VAT Return Period"; StartDate: Date; EndDate: Date; DueDate: Date; PeriodKey: Code[10]; Status: Enum "VAT Report Status"; ReceivedDate: Date)
     begin
         LibraryMakingTaxDigital.MockVATReturnPeriod(
-          VATReturnPeriod, StartDate, EndDate, DueDate, PeriodKey, Status, ReceivedDate);
+          VATReturnPeriod, StartDate, EndDate, DueDate, PeriodKey, Status.AsInteger(), ReceivedDate);
     end;
 
-    local procedure MockVATPeriod(DummyVATReturnPeriod: Record "VAT Return Period"; DueDate: Date; PeriodKey: Code[10]; Status: Option; ReceivedDate: Date)
+    local procedure MockVATPeriod(DummyVATReturnPeriod: Record "VAT Return Period"; DueDate: Date; PeriodKey: Code[10]; Status: Enum "VAT Report Status"; ReceivedDate: Date)
     var
         VATReturnPeriod: Record "VAT Return Period";
     begin
@@ -696,5 +703,12 @@ codeunit 148084 "MTDTestPeriodsWebService"
     [ModalPageHandler]
     procedure MTDWebClientFPHeaders_MPH(var MTDWebClientFPHeaders: TestPage "MTD Web Client FP Headers")
     begin
+    end;
+
+    [HttpClientHandler]
+    internal procedure HttpClientHandler(Request: TestHttpRequestMessage; var Response: TestHttpResponseMessage): Boolean
+    begin
+        MTDHttpClientMockService.HandleRequest(Request, Response);
+        exit(false);
     end;
 }

@@ -1,4 +1,18 @@
 #if not CLEANSCHEMA26
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
+namespace Microsoft.DemoData.Warehousing;
+
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.VAT.Setup;
+using Microsoft.Inventory.Item;
+using Microsoft.Inventory.Location;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Sales.Customer;
+
 table 4763 "Whse Demo Data Setup"
 {
     DataClassification = CustomerContent;
@@ -7,6 +21,7 @@ table 4763 "Whse Demo Data Setup"
     InherentPermissions = rimdX;
     ObsoleteState = Removed;
     ObsoleteTag = '26.0';
+    ReplicateData = false;
 
     fields
     {
@@ -72,12 +87,14 @@ table 4763 "Whse Demo Data Setup"
         }
         field(38; "Price Factor"; Decimal)
         {
+            AutoFormatType = 0;
             DataClassification = CustomerContent;
             InitValue = 1;
             Caption = 'Price Factor';
         }
         field(39; "Rounding Precision"; Decimal)
         {
+            AutoFormatType = 0;
             DataClassification = CustomerContent;
             Caption = 'Rounding Precision';
             InitValue = 0.01;

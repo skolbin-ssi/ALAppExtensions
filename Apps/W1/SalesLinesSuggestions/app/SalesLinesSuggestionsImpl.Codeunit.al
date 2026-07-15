@@ -4,11 +4,11 @@
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.Sales.Document;
 
+using Microsoft.Sales.Document.Attachment;
 using System;
 using System.AI;
-using System.Telemetry;
 using System.Environment;
-using Microsoft.Sales.Document.Attachment;
+using System.Telemetry;
 
 codeunit 7275 "Sales Lines Suggestions Impl."
 {
@@ -75,7 +75,13 @@ codeunit 7275 "Sales Lines Suggestions Impl."
         FeatureTelemetryCustomDimension: Dictionary of [Text, Text];
         ErrorTxt: Text;
     begin
-        SalesLine.TestStatusOpen();
+        if not SalesHeader.Get(SalesLine."Document Type", SalesLine."Document No.") then begin
+            ErrorTxt := StrSubstNo(SalesHeaderNotInitializedErr, SalesLine."Document Type");
+            FeatureTelemetry.LogError('0000ME6', SalesLineAISuggestionImpl.GetFeatureName(), 'Get the source sales header', ErrorTxt);
+            Error(ErrorTxt);
+        end;
+
+        SalesHeader.TestStatusOpen(true);
         if not AzureOpenAI.IsEnabled(Enum::"Copilot Capability"::"Sales Lines Suggestions") then
             exit;
 
@@ -85,16 +91,10 @@ codeunit 7275 "Sales Lines Suggestions Impl."
         if not ALSearch.IsItemSearchReady() then
             ALSearch.EnableItemSearch();
 
-        if SalesHeader.Get(SalesLine."Document Type", SalesLine."Document No.") then begin
-            SalesLineAISuggestions.SetSalesHeader(SalesHeader);
-            SalesLineAISuggestions.LookupMode := true;
-            FeatureTelemetry.LogUptake('0000MEC', SalesLineAISuggestionImpl.GetFeatureName(), Enum::"Feature Uptake Status"::"Set up", FeatureTelemetryCustomDimension);
-            SalesLineAISuggestions.Run();
-        end else begin
-            ErrorTxt := StrSubstNo(SalesHeaderNotInitializedErr, SalesLine."Document Type");
-            FeatureTelemetry.LogError('0000ME6', SalesLineAISuggestionImpl.GetFeatureName(), 'Get the source sales header', ErrorTxt);
-            Error(ErrorTxt);
-        end;
+        SalesLineAISuggestions.SetSalesHeader(SalesHeader);
+        SalesLineAISuggestions.LookupMode := true;
+        FeatureTelemetry.LogUptake('0000MEC', SalesLineAISuggestionImpl.GetFeatureName(), Enum::"Feature Uptake Status"::"Set up", FeatureTelemetryCustomDimension);
+        SalesLineAISuggestions.Run();
     end;
 
     [NonDebuggable]
@@ -136,7 +136,7 @@ codeunit 7275 "Sales Lines Suggestions Impl."
             exit;
 
         // Generate OpenAI Completion
-        AzureOpenAI.SetAuthorization(Enum::"AOAI Model Type"::"Chat Completions", AOAIDeployments.GetGPT4oLatest());
+        AzureOpenAI.SetAuthorization(Enum::"AOAI Model Type"::"Chat Completions", AOAIDeployments.GetGPT41Latest());
         AzureOpenAI.SetCopilotCapability(Enum::"Copilot Capability"::"Sales Lines Suggestions");
 
         AOAIChatCompletionParams.SetMaxTokens(MaxTokens());
@@ -212,7 +212,7 @@ codeunit 7275 "Sales Lines Suggestions Impl."
             exit;
 
         // Generate OpenAI Completion
-        AzureOpenAI.SetAuthorization(Enum::"AOAI Model Type"::"Chat Completions", AOAIDeployments.GetGPT4oLatest());
+        AzureOpenAI.SetAuthorization(Enum::"AOAI Model Type"::"Chat Completions", AOAIDeployments.GetGPT41Latest());
         AzureOpenAI.SetCopilotCapability(Enum::"Copilot Capability"::"Sales Lines Suggestions");
 
         AOAIChatCompletionParams.SetMaxTokens(MaxTokens());

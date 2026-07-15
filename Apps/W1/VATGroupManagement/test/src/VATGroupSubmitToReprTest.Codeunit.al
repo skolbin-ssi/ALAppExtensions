@@ -1,6 +1,7 @@
 codeunit 139740 "VAT Group Submit To Repr. Test"
 {
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     var
@@ -29,7 +30,7 @@ codeunit 139740 "VAT Group Submit To Repr. Test"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler')]
+    [HandlerFunctions('MessageHandler,HttpClientHandler')]
     procedure TestFailureInSend()
     var
         VATReportHeader: Record "VAT Report Header";
@@ -49,7 +50,7 @@ codeunit 139740 "VAT Group Submit To Repr. Test"
     end;
 
     [Test]
-    [HandlerFunctions('MessageHandler')]
+    [HandlerFunctions('MessageHandler,HttpClientHandler')]
     procedure TestFailureInSendMissingApprovedMember()
     var
         VATReportHeader: Record "VAT Report Header";
@@ -73,6 +74,7 @@ codeunit 139740 "VAT Group Submit To Repr. Test"
     end;
 
     [Test]
+    [HandlerFunctions('HttpClientHandler')]
     procedure TestSuccessfulSend()
     var
         VATReportHeader: Record "VAT Report Header";
@@ -145,5 +147,14 @@ codeunit 139740 "VAT Group Submit To Repr. Test"
     procedure MessageHandler(Message: Text[1024])
     begin
         LibraryVariableStorage.Enqueue(Message);
+    end;
+
+    [HttpClientHandler]
+    internal procedure HttpClientHandler(Request: TestHttpRequestMessage; var Response: TestHttpResponseMessage): Boolean
+    var
+        VATGroupHttpMockService: Codeunit "VAT Group Http Mock Service";
+    begin
+        VATGroupHttpMockService.HandleRequest(Request, Response);
+        exit(false);
     end;
 }

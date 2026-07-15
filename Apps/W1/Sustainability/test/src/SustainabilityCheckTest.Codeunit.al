@@ -1,3 +1,11 @@
+namespace Microsoft.Test.Sustainability;
+
+using Microsoft.Sustainability.Account;
+using Microsoft.Sustainability.Emission;
+using Microsoft.Sustainability.Journal;
+using Microsoft.Sustainability.Posting;
+using System.Utilities;
+
 codeunit 148183 "Sustainability Check Test"
 {
     Subtype = Test;

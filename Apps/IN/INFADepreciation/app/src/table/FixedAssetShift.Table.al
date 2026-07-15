@@ -4,9 +4,9 @@
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.FixedAssets.FADepreciation;
 
-using Microsoft.FixedAssets.Ledger;
-using Microsoft.FixedAssets.FixedAsset;
 using Microsoft.FixedAssets.Depreciation;
+using Microsoft.FixedAssets.FixedAsset;
+using Microsoft.FixedAssets.Ledger;
 using Microsoft.FixedAssets.Maintenance;
 
 table 18633 "Fixed Asset Shift"
@@ -57,6 +57,7 @@ table 18633 "Fixed Asset Shift"
         }
         field(5; "Straight-Line %"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Straight-Line %';
             DecimalPlaces = 2 : 8;
             MinValue = 0;
@@ -75,6 +76,7 @@ table 18633 "Fixed Asset Shift"
         }
         field(6; "No. of Depreciation Years"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'No. of Depreciation Years';
             DecimalPlaces = 2 : 8;
             MinValue = 0;
@@ -94,6 +96,7 @@ table 18633 "Fixed Asset Shift"
         }
         field(7; "No. of Depreciation Months"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'No. of Depreciation Months';
             DecimalPlaces = 2 : 8;
             MinValue = 0;
@@ -114,6 +117,7 @@ table 18633 "Fixed Asset Shift"
         field(8; "Fixed Depr. Amount"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Fixed Depr. Amount';
             MinValue = 0;
             DataClassification = CustomerContent;
@@ -129,6 +133,7 @@ table 18633 "Fixed Asset Shift"
         }
         field(9; "Declining-Balance %"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Declining-Balance %';
             DecimalPlaces = 2 : 8;
             MaxValue = 100;
@@ -164,6 +169,7 @@ table 18633 "Fixed Asset Shift"
         field(11; "Final Rounding Amount"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Final Rounding Amount';
             MinValue = 0;
             DataClassification = CustomerContent;
@@ -176,6 +182,7 @@ table 18633 "Fixed Asset Shift"
         field(12; "ending Book Value"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'ending Book Value';
             MinValue = 0;
             DataClassification = CustomerContent;
@@ -185,14 +192,17 @@ table 18633 "Fixed Asset Shift"
                 ModifyDeprFields();
             end;
         }
+#if not CLEANSCHEMA26
         field(13; "FA Posting Group"; Code[10])
         {
             Caption = 'FA Posting Group';
             DataClassification = CustomerContent;
-            ObsoleteState = Pending;
             ObsoleteReason = 'New field introduced as Fixed Asset Posting Group';
-            ObsoleteTag = '23.0';
-
+            ObsoleteState = Removed;
+#pragma warning disable AS0072
+            ObsoleteTag = '26.0';
+#pragma warning restore AS0072
+#endif
             trigger OnValidate()
             begin
                 ModifyDeprFields();
@@ -213,6 +223,7 @@ table 18633 "Fixed Asset Shift"
         field(15; "Acquisition Cost"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             FieldClass = FlowField;
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
@@ -226,6 +237,7 @@ table 18633 "Fixed Asset Shift"
         field(16; Depreciation; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -239,6 +251,7 @@ table 18633 "Fixed Asset Shift"
         field(17; "Book Value"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -251,6 +264,7 @@ table 18633 "Fixed Asset Shift"
         field(18; "Proceeds on Disposal"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -264,6 +278,7 @@ table 18633 "Fixed Asset Shift"
         field(19; "Gain/Loss"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -277,6 +292,7 @@ table 18633 "Fixed Asset Shift"
         field(20; "Write-Down"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -290,6 +306,7 @@ table 18633 "Fixed Asset Shift"
         field(21; Appreciation; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -303,6 +320,7 @@ table 18633 "Fixed Asset Shift"
         field(22; "Custom 1"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -316,6 +334,7 @@ table 18633 "Fixed Asset Shift"
         field(23; "Custom 2"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -329,6 +348,7 @@ table 18633 "Fixed Asset Shift"
         field(24; "Depreciable Basis"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -341,6 +361,7 @@ table 18633 "Fixed Asset Shift"
         field(25; "Salvage Value"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -354,6 +375,7 @@ table 18633 "Fixed Asset Shift"
         field(26; "Book Value on Disposal"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("FA Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -367,6 +389,7 @@ table 18633 "Fixed Asset Shift"
         field(27; Maintenance; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             CalcFormula = sum("Maintenance Ledger Entry".Amount where(
                 "FA No." = field("FA No."),
                 "Depreciation Book Code" = field("Depreciation Book Code"),
@@ -449,6 +472,7 @@ table 18633 "Fixed Asset Shift"
         }
         field(40; "FA Exchange Rate"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'FA Exchange Rate';
             DataClassification = CustomerContent;
             DecimalPlaces = 4 : 4;
@@ -457,6 +481,7 @@ table 18633 "Fixed Asset Shift"
         field(41; "Fixed Depr. Amount below Zero"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             BlankZero = true;
             Caption = 'Fixed Depr. Amount below Zero';
             DataClassification = CustomerContent;
@@ -516,6 +541,7 @@ table 18633 "Fixed Asset Shift"
         }
         field(46; "Depr. below Zero %"; Decimal)
         {
+            AutoFormatType = 0;
             BlankZero = true;
             Caption = 'Depr. below Zero %';
             DataClassification = CustomerContent;
@@ -541,6 +567,7 @@ table 18633 "Fixed Asset Shift"
         field(48; "Projected Proceeds on Disposal"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             BlankZero = true;
             Caption = 'Projected Proceeds on Disposal';
             DataClassification = CustomerContent;
@@ -568,6 +595,7 @@ table 18633 "Fixed Asset Shift"
         }
         field(52; "Accum. Depr. % (Custom 1)"; Decimal)
         {
+            AutoFormatType = 0;
             BlankZero = true;
             Caption = 'Accum. Depr. % (Custom 1)';
             DataClassification = CustomerContent;
@@ -582,6 +610,7 @@ table 18633 "Fixed Asset Shift"
         }
         field(53; "Depr. This Year % (Custom 1)"; Decimal)
         {
+            AutoFormatType = 0;
             BlankZero = true;
             Caption = 'Depr. This Year % (Custom 1)';
             DataClassification = CustomerContent;
@@ -620,6 +649,7 @@ table 18633 "Fixed Asset Shift"
         }
         field(58; "FA Add.-Currency Factor"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'FA Add.-Currency Factor';
             DataClassification = CustomerContent;
             DecimalPlaces = 0 : 15;
@@ -658,6 +688,7 @@ table 18633 "Fixed Asset Shift"
         field(62; "Temp. Fixed Depr. Amount"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Temp. Fixed Depr. Amount';
             DataClassification = CustomerContent;
         }

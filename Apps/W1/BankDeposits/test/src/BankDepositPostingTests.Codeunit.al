@@ -1,6 +1,7 @@
 codeunit 139769 "Bank Deposit Posting Tests"
 {
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     trigger OnRun()
@@ -26,9 +27,11 @@ codeunit 139769 "Bank Deposit Posting Tests"
         PostedDepositLinkErr: Label 'Posted Deposit is missing a link.', Locked = true;
         SingleHeaderAllowedErr: Label 'Only one %1 is allowed for each %2. Choose Change Batch action if you want to create a new bank deposit.', Locked = true;
         BatchNameErr: Label 'Batch Name must be %1 on %2', Comment = '%1 - Batch Name , %2 - Field Name';
+        RemainingAmountErr: Label 'Remaining amount must be 0.';
+        CustLedgerEntryOpenErr: Label 'Cust. Ledger Entry must be close.';
 
     [Test]
-    [HandlerFunctions('GeneralJournalBatchesPageHandler,ConfirmHandler')]
+    [HandlerFunctions('ConfirmHandler,GeneralJournalBatchesPageHandler')]
     procedure GLBankDeposit()
     var
         GLAccount: Record "G/L Account";
@@ -43,7 +46,7 @@ codeunit 139769 "Bank Deposit Posting Tests"
         Initialize();
         LibraryERM.CreateGLAccount(GLAccount);
         LibraryPurchase.CreateVendor(Vendor);
-        LibraryERM.CreateBankAccount(BankAccount);
+        LibraryERM.CreateBankAccount(BankAccount, GLAccount);
 
         // Exercise.
         SetupAndPostBankDeposit(BankDepositHeader, GLAccount."No.", Vendor."No.", BankAccount."No.");
@@ -361,7 +364,7 @@ codeunit 139769 "Bank Deposit Posting Tests"
         Initialize();
         LibraryERM.CreateGLAccount(GLAccount);
         LibraryPurchase.CreateVendor(Vendor);
-        LibraryERM.CreateBankAccount(BankAccount);
+        LibraryERM.CreateBankAccount(BankAccount, GLAccount);
 
         // Exercise.
         SetupAndPostBankDeposit(BankDepositHeader, GLAccount."No.", Vendor."No.", BankAccount."No.");
@@ -674,6 +677,7 @@ codeunit 139769 "Bank Deposit Posting Tests"
         BankDeposit.Subform."Credit Amount".SetValue(1010);
         PostedBankDeposit.Trap();
         BankDeposit.Post.Invoke();
+        PostedBankDeposit.Last();
         // [WHEN] Navigate action is invoked from the posted bank deposit
         Navigate.Trap();
         PostedBankDeposit."&Navigate".Invoke();
@@ -705,7 +709,7 @@ codeunit 139769 "Bank Deposit Posting Tests"
         GenJournalLine: Record "Gen. Journal Line";
         CustLedgerEntry: Record "Cust. Ledger Entry";
         PaymentCustLedgerEntry: Record "Cust. Ledger Entry";
-        AppliedCustLedgerEntry: Record "Cust. Ledger Entry" temporary;
+        TempAppliedCustLedgerEntry: Record "Cust. Ledger Entry" temporary;
         BankDeposit: Report "Bank Deposit";
         EntryApplicationMgt: Codeunit "Entry Application Mgt";
         InvoiceEntryNo: Integer;
@@ -713,6 +717,7 @@ codeunit 139769 "Bank Deposit Posting Tests"
         // [SCENARIO 542679] Applications on Customer Ledger Entries are correctly retrieved for posted bank deposits
         // [GIVEN] A posted bank deposit fully applied to an open sales document.
         Initialize();
+        ClearPostedData();
         LibraryERM.CreateTaxGroup(TaxGroup);
         LibrarySales.CreateCustomer(Customer);
         LibraryInventory.CreateItem(Item);
@@ -737,9 +742,9 @@ codeunit 139769 "Bank Deposit Posting Tests"
         Assert.RecordCount(PaymentCustLedgerEntry, 1);
         PaymentCustLedgerEntry.FindFirst();
         // [THEN] Only one invoice entry is found as applied
-        EntryApplicationMgt.GetAppliedCustEntries(AppliedCustLedgerEntry, PaymentCustLedgerEntry, false);
-        Assert.RecordCount(AppliedCustLedgerEntry, 1);
-        Assert.AreEqual(AppliedCustLedgerEntry."Entry No.", InvoiceEntryNo, 'The found entry should be the invoice.');
+        EntryApplicationMgt.GetAppliedCustEntries(TempAppliedCustLedgerEntry, PaymentCustLedgerEntry, false);
+        Assert.RecordCount(TempAppliedCustLedgerEntry, 1);
+        Assert.AreEqual(TempAppliedCustLedgerEntry."Entry No.", InvoiceEntryNo, 'The found entry should be the invoice.');
     end;
 
     [Test]
@@ -753,7 +758,7 @@ codeunit 139769 "Bank Deposit Posting Tests"
         PaymentVendorLedgerEntry: Record "Vendor Ledger Entry";
         VendorLedgerEntry: Record "Vendor Ledger Entry";
         PostedBankDepositLine: Record "Posted Bank Deposit Line";
-        AppliedVendorLedgerEntry: Record "Vendor Ledger Entry" temporary;
+        TempAppliedVendorLedgerEntry: Record "Vendor Ledger Entry" temporary;
         BankDeposit: Report "Bank Deposit";
         EntryApplicationMgt: Codeunit "Entry Application Mgt";
         InvoiceEntryNo: Integer;
@@ -761,6 +766,7 @@ codeunit 139769 "Bank Deposit Posting Tests"
         // [SCENARIO 542679] Applications on Vendor Ledger Entries are correctly retrieved for posted bank deposits
         // [GIVEN] A posted bank deposit fully applied to an open purchase document.
         Initialize();
+        ClearPostedData();
         LibraryPurchase.CreatePurchaseInvoice(PurchaseHeader);
         LibraryPurchase.PostPurchaseDocument(PurchaseHeader, true, true);
         LibraryERM.FindVendorLedgerEntry(VendorLedgerEntry, VendorLedgerEntry."Document Type"::Invoice, PurchaseHeader."Last Posting No.");
@@ -781,9 +787,9 @@ codeunit 139769 "Bank Deposit Posting Tests"
         // [THEN] Only one entry is attached to the deposit line
         Assert.RecordCount(PaymentVendorLedgerEntry, 1);
         // [THEN] Only one invoice entry is found as applied
-        EntryApplicationMgt.GetAppliedVendEntries(AppliedVendorLedgerEntry, PaymentVendorLedgerEntry, false);
-        Assert.RecordCount(AppliedVendorLedgerEntry, 1);
-        Assert.AreEqual(AppliedVendorLedgerEntry."Entry No.", InvoiceEntryNo, 'The found entry should be the invoice.');
+        EntryApplicationMgt.GetAppliedVendEntries(TempAppliedVendorLedgerEntry, PaymentVendorLedgerEntry, false);
+        Assert.RecordCount(TempAppliedVendorLedgerEntry, 1);
+        Assert.AreEqual(TempAppliedVendorLedgerEntry."Entry No.", InvoiceEntryNo, 'The found entry should be the invoice.');
     end;
 
     [Test]
@@ -799,12 +805,11 @@ codeunit 139769 "Bank Deposit Posting Tests"
     begin
         // [SCENARIO 551014] Reversed field shows correct value on posted bank deposits
         Initialize();
-        PostedBankDepositHeader.DeleteAll();
 
         // [GIVEN] Create GL Account X, Vendor X and Bank Account X
         LibraryERM.CreateGLAccount(GLAccount);
         LibraryPurchase.CreateVendor(Vendor);
-        LibraryERM.CreateBankAccount(BankAccount);
+        LibraryERM.CreateBankAccount(BankAccount, GLAccount);
 
         // [GIVEN] Create and post Bank Deposit X, Y and Z
         for i := 1 to ArrayLen(BankDepositHeader) do
@@ -817,7 +822,12 @@ codeunit 139769 "Bank Deposit Posting Tests"
         // [THEN] Posted Bank Deposit X has reversed = false
         // [THEN] Posted Bank Deposit Y has reversed = true
         // [THEN] Posted Bank Deposit Z has reversed = false
-        VerifyReversedOnPostedBankDepositList();
+        PostedBankDepositHeader.Get(BankDepositHeader[1]."No.");
+        VerifyReversedOnPostedBankDepositCard(PostedBankDepositHeader, false);
+        PostedBankDepositHeader.Get(BankDepositHeader[2]."No.");
+        VerifyReversedOnPostedBankDepositCard(PostedBankDepositHeader, true);
+        PostedBankDepositHeader.Get(BankDepositHeader[3]."No.");
+        VerifyReversedOnPostedBankDepositCard(PostedBankDepositHeader, false);
     end;
 
     [Test]
@@ -944,6 +954,175 @@ codeunit 139769 "Bank Deposit Posting Tests"
         PostedBankDepositLine.TestField("Reason Code", ReasonCode.Code);
     end;
 
+    [Test]
+    [HandlerFunctions('GeneralJournalBatchesPageHandler')]
+    procedure NoPostedBankDepositLinesWhenPostingFails()
+    var
+        BankDepositHeader: Record "Bank Deposit Header";
+        GenJournalTemplate: Record "Gen. Journal Template";
+        GenJournalBatch: Record "Gen. Journal Batch";
+        GenJournalLine: Record "Gen. Journal Line";
+        Customer: Record Customer;
+        PostedBankDepositHeader: Record "Posted Bank Deposit Header";
+        PostedBankDepositLine: Record "Posted Bank Deposit Line";
+    begin
+        // [FEATURE] [AI test]
+        // [SCENARIO 614900] Posted Bank Deposit Lines are not created when Bank Deposit posting fails
+        Initialize();
+
+        // [GIVEN] Bank Deposit "BD" with Customer "C" payment line with amount 100
+        CreateGenJournalBatch(GenJournalBatch, GenJournalTemplate.Type::"Bank Deposits");
+        CreateBankDepositHeaderWithBankAccount(BankDepositHeader, GenJournalBatch);
+        LibrarySales.CreateCustomer(Customer);
+        LibraryERM.CreateGeneralJnlLine(
+            GenJournalLine,
+            BankDepositHeader."Journal Template Name",
+            BankDepositHeader."Journal Batch Name",
+            GenJournalLine."Document Type"::" ",
+            GenJournalLine."Account Type"::Customer,
+            Customer."No.",
+            -100);
+
+        // [GIVEN] Total Deposit Amount is set to incorrect value 200
+        BankDepositHeader.Validate("Total Deposit Amount", -200);
+        BankDepositHeader.Modify(true);
+
+        // [WHEN] Posting Bank Deposit "BD" fails due to amount mismatch
+        asserterror PostBankDeposit(BankDepositHeader);
+
+        // [THEN] No Posted Bank Deposit Header is created
+        Assert.IsFalse(PostedBankDepositHeader.Get(BankDepositHeader."No."), 'Posted Bank Deposit Header should not exist after failed posting');
+
+        // [THEN] No Posted Bank Deposit Lines are created
+        PostedBankDepositLine.SetRange("Bank Deposit No.", BankDepositHeader."No.");
+        Assert.RecordCount(PostedBankDepositLine, 0);
+    end;
+
+    [Test]
+    [HandlerFunctions('GeneralJournalBatchesPageHandler')]
+    procedure PostingFailureInBatchRollsBackAllChanges()
+    var
+        BankDepositHeader: Record "Bank Deposit Header";
+        GenJournalTemplate: Record "Gen. Journal Template";
+        GenJournalBatch: Record "Gen. Journal Batch";
+        GenJournalLine: Record "Gen. Journal Line";
+        GLAccount: Record "G/L Account";
+        BankAccount: Record "Bank Account";
+        BankAccountPostingGroup: Record "Bank Account Posting Group";
+        PostedBankDepositHeader: Record "Posted Bank Deposit Header";
+        PostedBankDepositLine: Record "Posted Bank Deposit Line";
+    begin
+        // [FEATURE] [AI test]
+        // [SCENARIO 614900] When bank deposit posting fails during batch posting, all gen. journal line modifications are rolled back
+        Initialize();
+
+        // [GIVEN] Bank Deposit "BD" with a G/L Account "G" line
+        LibraryERM.CreateGLAccount(GLAccount);
+        CreateGenJournalBatch(GenJournalBatch, GenJournalTemplate.Type::"Bank Deposits");
+        CreateBankDepositHeaderWithBankAccount(BankDepositHeader, GenJournalBatch);
+        LibraryERM.CreateGeneralJnlLine(
+            GenJournalLine,
+            BankDepositHeader."Journal Template Name",
+            BankDepositHeader."Journal Batch Name",
+            GenJournalLine."Document Type"::Payment,
+            GenJournalLine."Account Type"::"G/L Account",
+            GLAccount."No.",
+            -LibraryRandom.RandInt(1000));
+        UpdateBankDepositHeaderWithAmount(BankDepositHeader);
+
+        // [GIVEN] Bank Account Posting Group is deleted to cause failure during batch posting
+        BankAccount.Get(BankDepositHeader."Bank Account No.");
+        BankAccountPostingGroup.Get(BankAccount."Bank Acc. Posting Group");
+        BankAccountPostingGroup.Delete();
+        Commit();
+
+        // [WHEN] Posting Bank Deposit "BD" fails during Gen. Jnl.-Post Batch
+        asserterror Codeunit.Run(Codeunit::"Bank Deposit-Post", BankDepositHeader);
+
+        // [THEN] Bank Deposit Header "BD" still exists
+        Assert.IsTrue(BankDepositHeader.Get(BankDepositHeader."No."), 'Bank Deposit Header should still exist after failed posting');
+
+        // [THEN] Gen. Journal Lines still exist with original values
+        GenJournalLine.SetRange("Journal Template Name", BankDepositHeader."Journal Template Name");
+        GenJournalLine.SetRange("Journal Batch Name", BankDepositHeader."Journal Batch Name");
+        GenJournalLine.FindFirst();
+
+        // [THEN] Bal. Account No. is empty proving modifications were rolled back
+        Assert.AreEqual('', GenJournalLine."Bal. Account No.", 'Bal. Account No. should be rolled back to empty after posting failure');
+
+        // [THEN] No Posted Bank Deposit Header or Lines exist
+        Assert.IsFalse(PostedBankDepositHeader.Get(BankDepositHeader."No."), 'Posted Bank Deposit Header should not exist after failed posting');
+        PostedBankDepositLine.SetRange("Bank Deposit No.", BankDepositHeader."No.");
+        Assert.RecordCount(PostedBankDepositLine, 0);
+    end;
+
+    [HandlerFunctions('GeneralJournalBatchesPageHandler,ConfirmHandler')]
+    procedure VerifyCustomerLedgerEntryClosedWithApplyToOldestBankDeposit()
+    var
+        BankDepositHeader: Record "Bank Deposit Header";
+        Customer: Record Customer;
+        GenJournalLine: Record "Gen. Journal Line";
+        GLAccount: Record "G/L Account";
+        InvoiceAmount: Decimal;
+    begin
+        // [SCENARIO 606537] When Posting a Bank Deposit with several lines the Apply to Oldest is not applied properly.
+        Initialize();
+
+        // [GIVEN] Create GL Account and Customer with Application Method Apply to Oldest.
+        LibraryERM.CreateGLAccount(GLAccount);
+        CreateCustomerWithApplicationMethod(Customer);
+
+        // [GIVEN] Create and post sales order.
+        CreateandPostSalesOrder(Customer."No.", InvoiceAmount);
+
+        // [GIVEN] Create Bank Deposit with Customer Line and G/L Line.
+        CreateDepositDocument(BankDepositHeader, Customer."No.", GenJournalLine."Account Type"::Customer, InvoiceAmount);
+
+        // [WHEN] Update Total Deposit Amount on Bank Deposit Header and Post Bank Deposit.
+        UpdateBankDepositHeaderWithAmount(BankDepositHeader);
+        PostBankDeposit(BankDepositHeader);
+
+        // [THEN] Verify Customer Ledger Entry is closed.
+        VerifyCustomerLedgerEntry(Customer."No.");
+    end;
+
+    [Test]
+    [HandlerFunctions('GeneralJournalBatchesPageHandler,ConfirmHandler')]
+    procedure PostedBankDepositPageShowsCorrectRecordAfterPosting()
+    var
+        BankDepositHeader: Record "Bank Deposit Header";
+        BankDepositHeader2: Record "Bank Deposit Header";
+        GLAccount: Record "G/L Account";
+        GenJournalLine: Record "Gen. Journal Line";
+        PostedBankDeposit: TestPage "Posted Bank Deposit";
+        PostedBankDepositHeaderNo: Code[20];
+    begin
+        // [FEATURE] [AI test 0.4]
+        // [SCENARIO 630225] After posting a bank deposit, the Posted Bank Deposit page shows the just-posted deposit
+        Initialize();
+
+        // [GIVEN] G/L Account "G"
+        LibraryERM.CreateGLAccount(GLAccount);
+
+        // [GIVEN] Posted Bank Deposit "BD1"
+        CreateBankDeposit(BankDepositHeader, GLAccount."No.", GenJournalLine."Account Type"::"G/L Account", -1);
+        UpdateBankDepositHeaderWithAmount(BankDepositHeader);
+        PostBankDeposit(BankDepositHeader);
+
+        // [GIVEN] Bank Deposit "BD2"
+        CreateBankDeposit(BankDepositHeader2, GLAccount."No.", GenJournalLine."Account Type"::"G/L Account", -1);
+        UpdateBankDepositHeaderWithAmount(BankDepositHeader2);
+
+        // [WHEN] Posting Bank Deposit "BD2"
+        PostedBankDeposit.Trap();
+        Codeunit.Run(Codeunit::"Bank Deposit-Post (Yes/No)", BankDepositHeader2);
+
+        // [THEN] Posted Bank Deposit page shows deposit "BD2"
+        PostedBankDepositHeaderNo := CopyStr(PostedBankDeposit."No.".Value(), 1, MaxStrLen(PostedBankDepositHeaderNo));
+        Assert.AreEqual(BankDepositHeader2."No.", PostedBankDepositHeaderNo, 'Posted Bank Deposit page should show the just-posted deposit');
+        PostedBankDeposit.Close();
+    end;
+
     local procedure Initialize()
     var
         InventorySetup: Record "Inventory Setup";
@@ -951,6 +1130,7 @@ codeunit 139769 "Bank Deposit Posting Tests"
         LibrarySetupStorage.Restore();
 
         OnBeforeInitialize(InitializeHandled);
+        ClearPostedData();
         if InitializeHandled then
             exit;
 
@@ -967,17 +1147,25 @@ codeunit 139769 "Bank Deposit Posting Tests"
         OnAfterInitialize(InitializeHandled);
     end;
 
-    local procedure CalcGLEntryAmount(BalAccountNo: Code[20]; BalAccountType: Enum "Gen. Journal Account Type"; DocumentType: Enum "Gen. Journal Document Type") Amount: Decimal
+    local procedure ClearPostedData()
+    var
+        PostedBankDepositHeader: Record "Posted Bank Deposit Header";
+        PostedBankDepositLine: Record "Posted Bank Deposit Line";
+    begin
+        PostedBankDepositHeader.DeleteAll();
+        PostedBankDepositLine.DeleteAll();
+    end;
+
+    local procedure CalcGLEntryAmount(BalAccountNo: Code[20]; BalAccountType: Enum "Gen. Journal Account Type"; DocumentType: Enum "Gen. Journal Document Type"): Decimal
     var
         GLEntry: Record "G/L Entry";
     begin
+        GLEntry.SetLoadFields(Amount);
         GLEntry.SetRange("Bal. Account No.", BalAccountNo);
         GLEntry.SetRange("Bal. Account Type", BalAccountType);
         GLEntry.SetRange("Document Type", DocumentType);
-        GLEntry.FindSet();
-        repeat
-            Amount += GLEntry.Amount;
-        until GLEntry.Next() = 0;
+        GLEntry.CalcSums(Amount);
+        exit(GLEntry.Amount);
     end;
 
     local procedure CreateAndPostSalesDocument(var SalesLine: Record "Sales Line"; CustomerNo: Code[20]; DocumentType: Enum "Sales Document Type"; Type: Enum "Sales Line Type"; No: Code[20]; Quantity: Decimal; UnitPrice: Decimal): Code[20]
@@ -1028,8 +1216,10 @@ codeunit 139769 "Bank Deposit Posting Tests"
     local procedure CreateBankDepositHeaderWithBankAccount(var BankDepositHeader: Record "Bank Deposit Header"; GenJournalBatch: Record "Gen. Journal Batch")
     var
         BankAccount: Record "Bank Account";
+        GLAccount: Record "G/L Account";
     begin
-        LibraryERM.CreateBankAccount(BankAccount);
+        LibraryERM.CreateGLAccount(GLAccount);
+        LibraryERM.CreateBankAccount(BankAccount, GLAccount);
         CreateBankDepositHeader(BankDepositHeader, GenJournalBatch);
         BankDepositHeader.Validate("Bank Account No.", BankAccount."No.");
         BankDepositHeader.Modify(true);
@@ -1175,6 +1365,7 @@ codeunit 139769 "Bank Deposit Posting Tests"
         PostedBankDeposit.Trap();
         BankDepositHeaderNo := BankDepositHeader."No.";
         Codeunit.Run(Codeunit::"Bank Deposit-Post (Yes/No)", BankDepositHeader);
+        PostedBankDeposit.Last();
         PostedBankDepositHeaderNo := COPYSTR(PostedBankDeposit."No.".Value(), 1, MaxStrLen(PostedBankDepositHeaderNo));
         PostedBankDeposit.Close();
         Assert.AreEqual(BankDepositHeaderNo, PostedBankDepositHeaderNo, '');
@@ -1218,19 +1409,81 @@ codeunit 139769 "Bank Deposit Posting Tests"
         exit(GenJournalBatch.Name);
     end;
 
-    local procedure VerifyReversedOnPostedBankDepositList()
+    local procedure VerifyReversedOnPostedBankDepositCard(var PostedBankDepositHeader: Record "Posted Bank Deposit Header"; ExpectedReversed: Boolean)
     var
-        PostedBankDepositList: TestPage "Posted Bank Deposit List";
+        PostedBankDepositCard: TestPage "Posted Bank Deposit";
+        ActualReversedValue: Boolean;
         ReversedErr: Label 'Reversed field is not calculated correctly.';
     begin
-        PostedBankDepositList.OpenEdit();
-        PostedBankDepositList.First();
-        Assert.IsFalse(PostedBankDepositList.Reversed.AsBoolean(), ReversedErr);
-        PostedBankDepositList.Next();
-        Assert.IsTrue(PostedBankDepositList.Reversed.AsBoolean(), ReversedErr);
-        PostedBankDepositList.Next();
-        Assert.IsFalse(PostedBankDepositList.Reversed.AsBoolean(), ReversedErr);
-        PostedBankDepositList.Close();
+        PostedBankDepositCard.OpenView();
+        PostedBankDepositCard.GoToRecord(PostedBankDepositHeader);
+        ActualReversedValue := PostedBankDepositCard.Reversed.AsBoolean();
+        PostedBankDepositCard.Close();
+        Assert.AreEqual(ActualReversedValue, ExpectedReversed, ReversedErr);
+    end;
+
+    local procedure VerifyCustomerLedgerEntry(CustomerNo: Code[20])
+    var
+        CustLedgerEntry: Record "Cust. Ledger Entry";
+    begin
+        CustLedgerEntry.SetRange("Customer No.", CustomerNo);
+        CustLedgerEntry.SetRange("Document Type", CustLedgerEntry."Document Type"::Payment);
+        CustLedgerEntry.FindSet();
+        repeat
+            CustLedgerEntry.CalcFields("Remaining Amount");
+            Assert.AreEqual(0, CustLedgerEntry."Remaining Amount", RemainingAmountErr);
+            Assert.AreEqual(false, CustLedgerEntry.Open, CustLedgerEntryOpenErr);
+        until CustLedgerEntry.Next() = 0;
+    end;
+
+    local procedure CreateDepositDocument(var BankDepositHeader: Record "Bank Deposit Header"; AccountNo: Code[20]; AccountType: Enum "Gen. Journal Account Type"; Amount: Decimal)
+    var
+        GenJournalTemplate: Record "Gen. Journal Template";
+        GenJournalBatch: Record "Gen. Journal Batch";
+        BankDeposit: TestPage "Bank Deposit";
+    begin
+        CreateGenJournalBatch(GenJournalBatch, GenJournalTemplate.Type::"Bank Deposits");
+        CreateBankDepositHeaderWithBankAccount(BankDepositHeader, GenJournalBatch);
+
+        BankDeposit.Trap();
+        BankDepositHeader.SetRecFilter();
+        Page.Run(Page::"Bank Deposit", BankDepositHeader);
+        BankDeposit.Subform.Next();
+        BankDeposit.Subform."Account Type".SetValue(AccountType);
+        BankDeposit.Subform."Account No.".SetValue(AccountNo);
+        BankDeposit.Subform."Credit Amount".SetValue(Amount);
+        BankDeposit.Close();
+    end;
+
+    local procedure CreateandPostSalesOrder(CustomerNo: Code[20]; var Amount: Decimal)
+    var
+        Item: Record Item;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+    begin
+        LibraryInventory.CreateItem(Item);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, CustomerNo);
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 1);
+        SalesLine.Validate("Unit Price", LibraryRandom.RandDec(1000, 2));
+        SalesLine.Modify(true);
+
+        Amount := SalesLine.Amount;
+        LibrarySales.PostSalesDocument(SalesHeader, true, true);
+    end;
+
+    local procedure CreateCustomerWithApplicationMethod(var Customer: Record Customer)
+    var
+        PaymentTerms: Record "Payment Terms";
+        PaymentMethod: Record "Payment Method";
+    begin
+        LibraryERM.CreatePaymentTerms(PaymentTerms);
+        LibraryERM.CreatePaymentMethod(PaymentMethod);
+        LibrarySales.CreateCustomer(Customer);
+
+        Customer.Validate("Payment Method Code", PaymentMethod.Code);
+        Customer.Validate("Payment Terms Code", PaymentTerms.Code);
+        Customer.Validate("Application Method", Customer."Application Method"::"Apply to Oldest");
+        Customer.Modify();
     end;
 
     [ModalPageHandler]

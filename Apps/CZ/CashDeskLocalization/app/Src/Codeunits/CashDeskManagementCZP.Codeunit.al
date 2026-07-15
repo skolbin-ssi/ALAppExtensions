@@ -85,6 +85,9 @@ codeunit 11724 "Cash Desk Management CZP"
 
         CheckCashDesks();
         SetCashDeskFilter(CashDeskCZP);
+        CashDeskCZP.FilterGroup(2);
+        CashDeskCZP.SetRange(Blocked, false);
+        CashDeskCZP.FilterGroup(0);
 
         case CashDeskCZP.Count() of
             0:
@@ -621,27 +624,33 @@ codeunit 11724 "Cash Desk Management CZP"
     var
         CashDeskCZP: Record "Cash Desk CZP";
     begin
+        CashDeskCueCZP.FilterGroup(2);
         SetCashDeskFilter(CashDeskCZP);
         CashDeskCZP.FilterGroup(2);
         CashDeskCZP.CopyFilter("No.", CashDeskCueCZP."Cash Desk Filter");
+        CashDeskCueCZP.FilterGroup(0);
     end;
 
     procedure SetCashDeskFilter(var CashDocumentHeaderCZP: Record "Cash Document Header CZP")
     var
         CashDeskCZP: Record "Cash Desk CZP";
     begin
+        CashDocumentHeaderCZP.FilterGroup(2);
         SetCashDeskFilter(CashDeskCZP);
         CashDeskCZP.FilterGroup(2);
         CashDeskCZP.CopyFilter("No.", CashDocumentHeaderCZP."Cash Desk No.");
+        CashDocumentHeaderCZP.FilterGroup(0);
     end;
 
     procedure SetCashDeskFilter(var PostedCashDocumentHdrCZP: Record "Posted Cash Document Hdr. CZP")
     var
         CashDeskCZP: Record "Cash Desk CZP";
     begin
+        PostedCashDocumentHdrCZP.FilterGroup(2);
         SetCashDeskFilter(CashDeskCZP);
         CashDeskCZP.FilterGroup(2);
         CashDeskCZP.CopyFilter("No.", PostedCashDocumentHdrCZP."Cash Desk No.");
+        PostedCashDocumentHdrCZP.FilterGroup(0);
     end;
 
     local procedure IsCashDeskUserEmpty(): Boolean
@@ -726,6 +735,7 @@ codeunit 11724 "Cash Desk Management CZP"
                 CashDesksFilter += '|' + TempCashDeskCZP."No.";
             until TempCashDeskCZP.Next() = 0;
         CashDesksFilter := CopyStr(CashDesksFilter, 2);
+        OnAfterGetCashDesksFilterFromBuffer(TempCashDeskCZP, CashDesksFilter);
     end;
 
     procedure IsEntityBlocked(AccountType: Enum "Cash Document Account Type CZP"; AccountNo: Code[20]): Boolean
@@ -818,6 +828,11 @@ codeunit 11724 "Cash Desk Management CZP"
 
     [IntegrationEvent(false, false)]
     local procedure OnBeforeCheckResponsibilityCenter(RespCenter: Code[10]; UserCode: Code[50]; var IsHandled: Boolean; var Result: Boolean)
+    begin
+    end;
+
+    [IntegrationEvent(true, false)]
+    local procedure OnAfterGetCashDesksFilterFromBuffer(var TempCashDeskCZP: Record "Cash Desk CZP" temporary; var CashDesksFilter: Text)
     begin
     end;
 }

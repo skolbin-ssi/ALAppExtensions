@@ -930,9 +930,8 @@ codeunit 18792 "TDS On Purchase Order"
     end;
 
     [Test]
-
-    [HandlerFunctions('TaxRatePageHandler,PurchaseOrderStatsHandler')]
-    procedure VerifyPurchaseOrderStatisticsWithItem()
+    [HandlerFunctions('TaxRatePageHandler,PurchOrderStatsHandler')]
+    procedure VerifyPurchOrderStatisticsWithItem()
     var
         ConcessionalCode: Record "Concessional Code";
         TDSPostingSetup: Record "TDS Posting Setup";
@@ -955,12 +954,12 @@ codeunit 18792 "TDS On Purchase Order"
             false);
 
         // [THEN] Statistics Verified
-        VerifyStatisticsForTDS(PurchaseHeader);
+        VerifyStatsForTDS(PurchaseHeader);
     end;
 
     [Test]
-    [HandlerFunctions('TaxRatePageHandler,PurchaseOrderStatsHandler')]
-    procedure VerifyPurchaseOrderStatisticsWithGLAccount()
+    [HandlerFunctions('TaxRatePageHandler,PurchOrderStatsHandler')]
+    procedure VerifyPurchOrderStatisticsWithGLAccount()
     var
         ConcessionalCode: Record "Concessional Code";
         TDSPostingSetup: Record "TDS Posting Setup";
@@ -984,12 +983,12 @@ codeunit 18792 "TDS On Purchase Order"
             false);
 
         // [THEN] Statistics Verified
-        VerifyStatisticsForTDS(PurchaseHeader);
+        VerifyStatsForTDS(PurchaseHeader);
     end;
 
     [Test]
-    [HandlerFunctions('TaxRatePageHandler,PurchaseOrderStatsHandler')]
-    procedure VerifyPurchaseOrderStatisticsWithFixedAsset()
+    [HandlerFunctions('TaxRatePageHandler,PurchOrderStatsHandler')]
+    procedure VerifyPurchOrderStatisticsWithFixedAsset()
     var
         ConcessionalCode: Record "Concessional Code";
         TDSPostingSetup: Record "TDS Posting Setup";
@@ -1013,12 +1012,12 @@ codeunit 18792 "TDS On Purchase Order"
             false);
 
         // [THEN] StatistiCS Verified
-        VerifyStatisticsForTDS(PurchaseHeader);
+        VerifyStatsForTDS(PurchaseHeader);
     end;
 
     [Test]
-    [HandlerFunctions('TaxRatePageHandler,PurchaseOrderStatsHandler')]
-    procedure VerifyPurchaseOrderStatisticsWithChargeItem()
+    [HandlerFunctions('TaxRatePageHandler,PurchOrderStatsHandler')]
+    procedure VerifyPurchOrderStatisticsWithChargeItem()
     var
         ConcessionalCode: Record "Concessional Code";
         TDSPostingSetup: Record "TDS Posting Setup";
@@ -1042,7 +1041,7 @@ codeunit 18792 "TDS On Purchase Order"
             false);
 
         // [THEN] Statistics Verified
-        VerifyStatisticsForTDS(PurchaseHeader);
+        VerifyStatsForTDS(PurchaseHeader);
     end;
 
     [Test]
@@ -1705,7 +1704,7 @@ codeunit 18792 "TDS On Purchase Order"
         PageTaxtype.TaxRates.Invoke();
     end;
 
-    local procedure VerifyStatisticsForTDS(var PurchaseHeader: Record "Purchase Header")
+    local procedure VerifyStatsForTDS(var PurchaseHeader: Record "Purchase Header")
     var
         PurchaseLine: Record "Purchase Line";
         TaxTransactionValue: Record "Tax Transaction Value";
@@ -1738,8 +1737,8 @@ codeunit 18792 "TDS On Purchase Order"
         PurchaseOrder.OpenEdit();
         PurchaseOrder.GoToRecord(PurchaseHeader);
         PurchaseOrderStatistics.OpenEdit();
-        PurchaseOrder.Statistics.Invoke();
-        PurchaseOrder.Statistics.Invoke();
+        PurchaseOrder.PurchaseOrderStatistics.Invoke();
+        PurchaseOrder.PurchaseOrderStatistics.Invoke();
         Evaluate(ActualAmount, Storage.Get(TDSAmountLbl));
         Assert.AreNearlyEqual(Round(ExpectedTDSAmount, 0.01, '='), ActualAmount, LibraryTDS.GetTDSRoundingPrecision(),
         StrSubstNo(AmountErr, ActualAmount, PurchaseOrderStatistics."TDS Amount".Caption()));
@@ -2028,8 +2027,8 @@ codeunit 18792 "TDS On Purchase Order"
         Assert.RecordCount(ToPurchaseLine, ExpectedCount);
     end;
 
-    [ModalPageHandler]
-    procedure PurchaseOrderStatsHandler(var PurchaseOrderStatistics: TestPage "Purchase Order Statistics")
+    [PageHandler]
+    procedure PurchOrderStatsHandler(var PurchaseOrderStatistics: TestPage "Purchase Order Statistics")
     var
         Amt: Text;
     begin

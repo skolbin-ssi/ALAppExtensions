@@ -7,7 +7,6 @@ namespace Microsoft.EServices.EDocument;
 using Microsoft.Finance.GeneralLedger.Journal;
 using Microsoft.Finance.GeneralLedger.Ledger;
 using Microsoft.Finance.GeneralLedger.Posting;
-using Microsoft.Service.Posting;
 using Microsoft.Finance.GeneralLedger.Reports;
 using Microsoft.Foundation.AuditCodes;
 using Microsoft.Foundation.Reporting;
@@ -22,6 +21,7 @@ using Microsoft.Sales.Posting;
 using Microsoft.Sales.Receivables;
 using Microsoft.Service.Document;
 using Microsoft.Service.History;
+using Microsoft.Service.Posting;
 using System.Email;
 using System.Environment.Configuration;
 using System.Media;
@@ -94,7 +94,7 @@ codeunit 5579 "Digital Voucher Impl."
             exit;
         DigitalVoucherCheck := DigitalVoucherEntrySetup."Check Type";
         FindGenJournalLineFromGLEntry(ConnectedGenJournalLine, GenJournalLine, GLEntry);
-        if not (GenJournalLine."Document Type" in [GenJournalLine."Document Type"::Invoice, GenJournalLine."Document Type"::"Credit Memo"]) then
+        if not ShouldGenJnlLineHasDigitalVoucher(ConnectedGenJournalLine, DigitalVoucherEntrySetup) then
             exit;
         RecRef.GetTable(ConnectedGenJournalLine);
         DigitalVoucherCheck.GenerateDigitalVoucherForPostedDocument(DigitalVoucherEntrySetup."Entry Type", RecRef);
@@ -151,10 +151,16 @@ codeunit 5579 "Digital Voucher Impl."
             Database::"Purch. Inv. Header":
                 begin
                     RecRef.SetTable(PurchInvHeader);
-                    AttachDigitalVoucherFromReportPDF(
-                        ReportSelections.Usage::"P.Invoice", RecRef, true,
-                        PurchInvHeader."Posting Date", PurchInvHeader."No.", Database::Vendor,
-                        PurchInvHeader."Pay-to Vendor No.", report::"Purchase - Invoice");
+                    if PurchInvHeader."Self-Billing Invoice" then
+                        AttachDigitalVoucherFromReportPDF(
+                            ReportSelections.Usage::"P.Self Billing Invoice", RecRef, true,
+                            PurchInvHeader."Posting Date", PurchInvHeader."No.", Database::Vendor,
+                            PurchInvHeader."Pay-to Vendor No.", report::"Self Billing Invoice")
+                    else
+                        AttachDigitalVoucherFromReportPDF(
+                            ReportSelections.Usage::"P.Invoice", RecRef, true,
+                            PurchInvHeader."Posting Date", PurchInvHeader."No.", Database::Vendor,
+                            PurchInvHeader."Pay-to Vendor No.", report::"Purchase - Invoice");
                     RestoreNoPrintedToOriginal(RecRef, PurchInvHeader.FieldNo("No. Printed"), PurchInvHeader."No. Printed");
                 end;
             Database::"Purch. Cr. Memo Hdr.":
@@ -260,6 +266,7 @@ codeunit 5579 "Digital Voucher Impl."
     var
         IncomingDocumentAttachment: Record "Incoming Document Attachment";
     begin
+        IncomingDocumentAttachment.ReadIsolation := IsolationLevel::ReadUncommitted;
         if not FilterIncomingDocumentRecordFromRecordRef(IncomingDocumentAttachment, IncomingDocument, MainRecordRef) then
             exit(false);
         exit(not IncomingDocumentAttachment.IsEmpty());
@@ -294,6 +301,7 @@ codeunit 5579 "Digital Voucher Impl."
 
     local procedure FindGenJournalLineFromGLEntry(var ConnectedGenJnlLine: Record "Gen. Journal Line"; CurrGenJnlLine: Record "Gen. Journal Line"; GLEntry: Record "G/L Entry")
     begin
+        ConnectedGenJnlLine.SetLoadFields("Journal Template Name", "Journal Batch Name", "Posting Date", "Document Type", "Document No.");
         ConnectedGenJnlLine.SetRange("Journal Template Name", CurrGenJnlLine."Journal Template Name");
         ConnectedGenJnlLine.SetRange("Journal Batch Name", CurrGenJnlLine."Journal Batch Name");
         ConnectedGenJnlLine.SetRange("Posting Date", GLEntry."Posting Date");
@@ -330,6 +338,36 @@ codeunit 5579 "Digital Voucher Impl."
         exit(InvIncomingDocumentAttachment."Incoming Document Entry No.");
     end;
 
+    local procedure CopyIncomingDocForPrepmtDoc(PurchHeader: Record "Purchase Header"; PostedDocNo: Code[20]; PostedPostingDate: Date)
+    var
+        DigitalVoucherEntrySetup: Record "Digital Voucher Entry Setup";
+        SourceIncomingDocument: Record "Incoming Document";
+        TargetIncomingDocument: Record "Incoming Document";
+        SourceIncomingDocAttach: Record "Incoming Document Attachment";
+        TargetIncomingDocAttach: Record "Incoming Document Attachment";
+    begin
+        if not GetDigitalVoucherEntrySetup(DigitalVoucherEntrySetup, "Digital Voucher Entry Type"::"Purchase Document") then
+            exit;
+        if DigitalVoucherEntrySetup."Generate Automatically" then
+            exit;
+        if PurchHeader."Incoming Document Entry No." = 0 then
+            exit;
+        if not SourceIncomingDocument.Get(PurchHeader."Incoming Document Entry No.") then
+            exit;
+        SourceIncomingDocAttach.SetRange("Incoming Document Entry No.", SourceIncomingDocument."Entry No.");
+        if not SourceIncomingDocAttach.FindSet() then
+            exit;
+        TargetIncomingDocument.Init();
+        TargetIncomingDocument."Document No." := PostedDocNo;
+        TargetIncomingDocument."Posting Date" := PostedPostingDate;
+        TargetIncomingDocument.Insert(true);
+        repeat
+            TargetIncomingDocAttach := SourceIncomingDocAttach;
+            TargetIncomingDocAttach."Incoming Document Entry No." := TargetIncomingDocument."Entry No.";
+            TargetIncomingDocAttach.Insert(true);
+        until SourceIncomingDocAttach.Next() = 0;
+    end;
+
     local procedure IsPaymentReconciliationJournal(DigitalVoucherEntryType: Enum "Digital Voucher Entry Type"; RecRef: RecordRef): Boolean
     var
         SourceCodeSetup: Record "Source Code Setup";
@@ -357,6 +395,7 @@ codeunit 5579 "Digital Voucher Impl."
             exit(false);
         RecRef.SetTable(GenJournalLine);
         AdjacentGenJournalLine.ReadIsolation(IsolationLevel::ReadCommitted);
+        AdjacentGenJournalLine.SetLoadFields(AdjacentGenJournalLine."Incoming Document Entry No.");
         AdjacentGenJournalLine.SetRange("Journal Template Name", GenJournalLine."Journal Template Name");
         AdjacentGenJournalLine.SetRange("Journal Batch Name", GenJournalLine."Journal Batch Name");
         AdjacentGenJournalLine.SetRange("Posting Date", GenJournalLine."Posting Date");
@@ -404,6 +443,15 @@ codeunit 5579 "Digital Voucher Impl."
         TempAttachReportSelections.Usage := ReportUsage;
         TempAttachReportSelections."Report ID" := StandardReportID;
         TempAttachReportSelections.Insert();
+    end;
+
+    local procedure ShouldGenJnlLineHasDigitalVoucher(GenJournalLine: Record "Gen. Journal Line"; DigitalVoucherEntrySetup: Record "Digital Voucher Entry Setup"): Boolean
+    begin
+        if GenJournalLine."Document Type" in [GenJournalLine."Document Type"::Invoice, GenJournalLine."Document Type"::"Credit Memo"] then
+            exit(true);
+        if DigitalVoucherEntrySetup."Consider Blank Doc. Type" and (GenJournalLine."Document Type" = GenJournalLine."Document Type"::" ") then
+            exit(true);
+        exit(false);
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Guided Experience", 'OnRegisterAssistedSetup', '', true, true)]
@@ -501,9 +549,9 @@ codeunit 5579 "Digital Voucher Impl."
             exit;
         if GenJournalLine."System-Created Entry" then
             exit;
-        if not (GenJournalLine."Document Type" in [GenJournalLine."Document Type"::Invoice, GenJournalLine."Document Type"::"Credit Memo"]) then
-            exit;
         if not GetDigitalVoucherEntrySetup(DigitalVoucherEntrySetup, DigitalVoucherEntry.GetVoucherEntryTypeFromGenJnlLine(GenJournalLine)) then
+            exit;
+        if not ShouldGenJnlLineHasDigitalVoucher(GenJournalLine, DigitalVoucherEntrySetup) then
             exit;
         HandleDigitalVoucherForEntryTypeAndDoc(ErrorMessageMgt, DigitalVoucherEntrySetup, GenJournalLine);
     end;
@@ -575,10 +623,14 @@ codeunit 5579 "Digital Voucher Impl."
     begin
         if not DigitalVoucherFeature.IsFeatureEnabled() then
             exit;
-        if PurchInvHeader."No." <> '' then
+        if PurchInvHeader."No." <> '' then begin
+            CopyIncomingDocForPrepmtDoc(PurchHeader, PurchInvHeader."No.", PurchInvHeader."Posting Date");
             HandleDigitalVoucherForPostedDocument("Digital Voucher Entry Type"::"Purchase Document", PurchInvHeader);
-        if PurchCrMemoHdr."No." <> '' then
+        end;
+        if PurchCrMemoHdr."No." <> '' then begin
+            CopyIncomingDocForPrepmtDoc(PurchHeader, PurchCrMemoHdr."No.", PurchCrMemoHdr."Posting Date");
             HandleDigitalVoucherForPostedDocument("Digital Voucher Entry Type"::"Purchase Document", PurchCrMemoHdr);
+        end;
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Gen. Jnl.-Post Batch", 'OnProcessLinesOnAfterPostGenJnlLines', '', true, true)]
@@ -595,7 +647,8 @@ codeunit 5579 "Digital Voucher Impl."
         if not DigitalVoucherFeature.IsFeatureEnabled() then
             exit;
         GLRegister.Get(GLRegNo);
-        GLEntry.SetCurrentKey("Document No.", "Posting Date");
+        GLEntry.ReadIsolation := IsolationLevel::ReadCommitted;
+        GLEntry.SetLoadFields("Entry No.", "Posting Date", "Document No.", "Source Type", "Source Code", "System-Created Entry");
         GLEntry.SetRange("Entry No.", GLRegister."From Entry No.", GLRegister."To Entry No.");
         if not GLEntry.FindSet() then
             exit;

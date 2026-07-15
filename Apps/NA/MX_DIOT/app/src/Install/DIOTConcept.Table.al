@@ -9,6 +9,7 @@ using System.Utilities;
 table 27030 "DIOT Concept"
 {
     Caption = 'DIOT Concept';
+    DataClassification = CustomerContent;
 
     fields
     {
@@ -67,6 +68,7 @@ table 27030 "DIOT Concept"
 
         field(6; "Non-Deductible Pct"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Non-Deductible percent';
             MinValue = 0;
 
@@ -80,7 +82,7 @@ table 27030 "DIOT Concept"
         {
             Caption = 'VAT Links Count';
             FieldClass = FlowField;
-            CalcFormula = Count("DIOT Concept Link" WHERE("DIOT Concept No." = FIELD("Concept No.")));
+            CalcFormula = count("DIOT Concept Link" where("DIOT Concept No." = field("Concept No.")));
         }
     }
 

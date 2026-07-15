@@ -3,6 +3,7 @@ codeunit 139837 "APIV2 - Sales CrMemo Lines E2E"
     // version Test,ERM,W1,All
 
     Subtype = Test;
+    TestType = Uncategorized;
     TestPermissions = Disabled;
 
     trigger OnRun()
@@ -856,7 +857,7 @@ codeunit 139837 "APIV2 - Sales CrMemo Lines E2E"
     procedure TestPatchingTheTypeBlanksIds()
     var
         SalesHeader: Record "Sales Header";
-        SalesInvoiceLineAggregate: Record "Sales Invoice Line Aggregate";
+        TempSalesInvoiceLineAggregate: Record "Sales Invoice Line Aggregate";
         SalesLine: Record "Sales Line";
         ResponseText: Text;
         CreditMemoLineJSON: Text;
@@ -869,7 +870,7 @@ codeunit 139837 "APIV2 - Sales CrMemo Lines E2E"
         Assert.AreNotEqual('', CreditMemoID, 'ID should not be empty');
         FindFirstSalesLine(SalesHeader, SalesLine);
 
-        CreditMemoLineJSON := StrSubstNo('{"%1":"%2"}', LineTypeFieldNameTxt, Format(SalesInvoiceLineAggregate."API Type"::Account));
+        CreditMemoLineJSON := StrSubstNo('{"%1":"%2"}', LineTypeFieldNameTxt, Format(TempSalesInvoiceLineAggregate."API Type"::Account));
 
         // [WHEN] we PATCH the line
         ModifyCreditMemoLinesThroughAPI(CreditMemoID, SalesLine.SystemId, CreditMemoLineJSON, ResponseText);

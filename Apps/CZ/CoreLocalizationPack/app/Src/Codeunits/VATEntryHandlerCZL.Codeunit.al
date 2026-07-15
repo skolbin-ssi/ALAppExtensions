@@ -15,6 +15,8 @@ codeunit 11741 "VAT Entry Handler CZL"
             exit;
         Rec."Original VAT Base CZL" := Rec.CalcOriginalVATBaseCZL();
         Rec."Original VAT Amount CZL" := Rec.CalcOriginalVATAmountCZL();
+        Rec."Original VAT Base ACY CZL" := Rec.CalcOriginalVATBaseACYCZL();
+        Rec."Original VAT Amount ACY CZL" := Rec.CalcOriginalVATAmountACYCZL();
     end;
 
     [EventSubscriber(ObjectType::Table, Database::"VAT Entry", 'OnBeforeValidateEvent', 'EU 3-Party Trade', false, false)]
@@ -40,5 +42,7 @@ codeunit 11741 "VAT Entry Handler CZL"
     local procedure EditEU3PartyIntermedRoleOnBeforeVATEntryModify(var VATEntry: Record "VAT Entry"; FromVATEntry: Record "VAT Entry")
     begin
         VATEntry."EU 3-Party Intermed. Role CZL" := FromVATEntry."EU 3-Party Intermed. Role CZL";
+        VATEntry."External Document No." := FromVATEntry."External Document No.";
+        VATEntry."Original Doc. VAT Date CZL" := FromVATEntry."Original Doc. VAT Date CZL";
     end;
 }

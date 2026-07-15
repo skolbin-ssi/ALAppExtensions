@@ -121,6 +121,7 @@ table 40137 "GP POP10100"
         }
         field(75; XCHGRATE; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'XCHGRATE';
             DataClassification = CustomerContent;
         }
@@ -136,6 +137,10 @@ table 40137 "GP POP10100"
         key(PK; PONUMBER)
         {
             Clustered = true;
+        }
+        key(Key2; PYMTRMID)
+        {
+
         }
     }
 }

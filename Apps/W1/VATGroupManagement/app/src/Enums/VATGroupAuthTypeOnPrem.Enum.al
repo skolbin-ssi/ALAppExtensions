@@ -6,22 +6,8 @@ namespace Microsoft.Finance.VAT.Group;
 
 enum 4704 "VAT Group Auth Type OnPrem"
 {
-    value(0; WebServiceAccessKey)
-    {
-        Caption = 'Web Service Access Key';
-        ObsoleteState = Pending;
-        ObsoleteReason = 'OAuth2 is the only authentication option for making a Business Central API call.';
-        ObsoleteTag = '25.0';
-    }
     value(1; OAuth2)
     {
         Caption = 'OAuth2';
-    }
-    value(2; WindowsAuthentication)
-    {
-        Caption = 'Windows Authentication';
-        ObsoleteState = Pending;
-        ObsoleteReason = 'OAuth2 is the only authentication option for making a Business Central API call.';
-        ObsoleteTag = '25.0';
     }
 }

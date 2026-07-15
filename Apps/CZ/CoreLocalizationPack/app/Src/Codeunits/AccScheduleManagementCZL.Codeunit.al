@@ -5,7 +5,6 @@
 namespace Microsoft.Finance.FinancialReports;
 
 using Microsoft.Finance.GeneralLedger.Account;
-using System.Utilities;
 using System.Text;
 
 codeunit 11700 "Acc. Schedule Management CZL"
@@ -163,20 +162,6 @@ codeunit 11700 "Acc. Schedule Management CZL"
         IsHandled := true;
     end;
 
-    [EventSubscriber(ObjectType::Table, Database::"Acc. Schedule Name", 'OnBeforeDeleteEvent', '', false, false)]
-    local procedure ResultHeaderOnBeforeDeleteEvent(var Rec: Record "Acc. Schedule Name")
-    var
-        AccScheduleResultHeader: Record "Acc. Schedule Result Hdr. CZL";
-        ConfirmManagement: Codeunit "Confirm Management";
-        DeleteQst: Label '%1 has results. Do you want to delete it anyway?', Comment = '%1 = Description';
-    begin
-        if Rec.IsResultsExistCZL(Rec.Name) then
-            if ConfirmManagement.GetResponseOrDefault(StrSubStNo(DeleteQst, Rec.GetRecordDescriptionCZL(Rec.Name)), true) then begin
-                AccScheduleResultHeader.SetRange("Acc. Schedule Name", Rec.Name);
-                AccScheduleResultHeader.DeleteAll(true);
-            end;
-    end;
-
     [EventSubscriber(ObjectType::Table, Database::"Acc. Schedule Line", 'OnBeforeValidateEvent', 'Totaling Type', false, false)]
     local procedure TotalingTypeOnBeforeValidateEvent(var Rec: Record "Acc. Schedule Line"; var xRec: Record "Acc. Schedule Line")
     begin
@@ -188,6 +173,7 @@ codeunit 11700 "Acc. Schedule Management CZL"
     local procedure TotalingOnAfterValidateEvent(var Rec: Record "Acc. Schedule Line"; var xRec: Record "Acc. Schedule Line")
     var
         Value: Decimal;
+        IsHandled: Boolean;
         EvaluateErr: Label 'It''s not possible assign value:%1 of field: %2 to data type decimal!', Comment = '%1 = Totaling, %2 = FieldCaption';
     begin
         case Rec."Totaling Type" of
@@ -197,8 +183,11 @@ codeunit 11700 "Acc. Schedule Management CZL"
                         Error(EvaluateErr, Rec.Totaling, Rec.FieldCaption(Totaling));
         end;
 
-        if Rec."Totaling Type" <> Rec."Totaling Type"::"Custom CZL" then
-            AccSchedExtensionMgtCZL.ValidateFormula(Rec);
+        IsHandled := false;
+        OnTotalingOnAfterValidateEventOnBeforeValidateFormula(Rec, AccSchedExtensionMgtCZL, IsHandled);
+        if not IsHandled then
+            if Rec."Totaling Type" <> Rec."Totaling Type"::"Custom CZL" then
+                AccSchedExtensionMgtCZL.ValidateFormula(Rec);
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Categ. Generate Acc. Schedules", 'OnCreateIncomeStatementOnAfterCreateCOGSGroup', '', false, false)]
@@ -354,6 +343,11 @@ codeunit 11700 "Acc. Schedule Management CZL"
 
     [IntegrationEvent(false, false)]
     local procedure OnBeforeAccScheduleOverviewOnBeforePrint(var AccScheduleLine: Record "Acc. Schedule Line"; ColumnLayoutName: Code[10]; var IsHandled: Boolean)
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnTotalingOnAfterValidateEventOnBeforeValidateFormula(var AccScheduleLine: Record "Acc. Schedule Line"; var AccSchedExtensionMgtCZL: Codeunit "Acc. Sched. Extension Mgt. CZL"; var IsHandled: Boolean)
     begin
     end;
 }

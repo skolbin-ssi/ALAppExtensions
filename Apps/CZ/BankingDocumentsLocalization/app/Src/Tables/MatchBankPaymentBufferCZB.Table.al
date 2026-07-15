@@ -8,6 +8,8 @@ using Microsoft.Bank.Setup;
 using Microsoft.Finance.GeneralLedger.Journal;
 using Microsoft.HumanResources.Payables;
 using Microsoft.Purchases.Payables;
+using Microsoft.Purchases.Vendor;
+using Microsoft.Sales.Customer;
 using Microsoft.Sales.Receivables;
 
 table 31260 "Match Bank Payment Buffer CZB"
@@ -55,11 +57,13 @@ table 31260 "Match Bank Payment Buffer CZB"
         }
         field(20; "Remaining Amount"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Remaining Amount';
             DataClassification = SystemMetadata;
         }
         field(21; "Remaining Amt. Incl. Discount"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Remaining Amt. Incl. Discount';
             DataClassification = SystemMetadata;
         }
@@ -92,15 +96,6 @@ table 31260 "Match Bank Payment Buffer CZB"
             Caption = 'Dimension Set ID';
             DataClassification = SystemMetadata;
         }
-#if not CLEANSCHEMA22
-        field(45; "Letter No."; Code[20])
-        {
-            Caption = 'Letter No.';
-            ObsoleteState = Removed;
-            ObsoleteReason = 'Remove after new Advance Payment Localization for Czech will be implemented.';
-            ObsoleteTag = '22.0';
-        }
-#endif
     }
 
     keys
@@ -137,20 +132,10 @@ table 31260 "Match Bank Payment Buffer CZB"
         "Specific Symbol" := CustLedgerEntry."Specific Symbol CZL";
         "Variable Symbol" := CustLedgerEntry."Variable Symbol CZL";
         "Constant Symbol" := CustLedgerEntry."Constant Symbol CZL";
-        if UseLCYAmounts then
-            "Remaining Amount" := CustLedgerEntry."Remaining Amt. (LCY)"
-        else
-            "Remaining Amount" := CustLedgerEntry."Remaining Amount";
-        "Pmt. Discount Due Date" := GetCustomerLedgerEntryDiscountDueDate(CustLedgerEntry);
-        "Remaining Amt. Incl. Discount" := "Remaining Amount";
-        if "Pmt. Discount Due Date" > 0D then begin
-            if UseLCYAmounts then
-                "Remaining Amt. Incl. Discount" -=
-                  Round(CustLedgerEntry."Remaining Pmt. Disc. Possible" / CustLedgerEntry."Adjusted Currency Factor")
-            else
-                "Remaining Amt. Incl. Discount" -= CustLedgerEntry."Remaining Pmt. Disc. Possible";
-            UsePaymentDiscounts := true;
-        end;
+        "Remaining Amount" := CustLedgerEntry.GetRemainingAmount(UseLCYAmounts);
+        "Pmt. Discount Due Date" := CustLedgerEntry.GetPmtDiscountDate();
+        "Remaining Amt. Incl. Discount" := CustLedgerEntry.GetRemainingAmountInclPmtDiscToDate(0D, UseLCYAmounts);
+        UsePaymentDiscounts := "Remaining Amount" <> "Remaining Amt. Incl. Discount";
         "Dimension Set ID" := CustLedgerEntry."Dimension Set ID";
         OnBeforeInsertFromCustomerLedgerEntry(Rec, CustLedgerEntry);
         Insert(true);
@@ -168,20 +153,10 @@ table 31260 "Match Bank Payment Buffer CZB"
         "Specific Symbol" := VendorLedgerEntry."Specific Symbol CZL";
         "Variable Symbol" := VendorLedgerEntry."Variable Symbol CZL";
         "Constant Symbol" := VendorLedgerEntry."Constant Symbol CZL";
-        if UseLCYAmounts then
-            "Remaining Amount" := VendorLedgerEntry."Remaining Amt. (LCY)"
-        else
-            "Remaining Amount" := VendorLedgerEntry."Remaining Amount";
-        "Pmt. Discount Due Date" := GetVendorLedgerEntryDiscountDueDate(VendorLedgerEntry);
-        "Remaining Amt. Incl. Discount" := "Remaining Amount";
-        if "Pmt. Discount Due Date" > 0D then begin
-            if UseLCYAmounts then
-                "Remaining Amt. Incl. Discount" -=
-                  Round(VendorLedgerEntry."Remaining Pmt. Disc. Possible" / VendorLedgerEntry."Adjusted Currency Factor")
-            else
-                "Remaining Amt. Incl. Discount" -= VendorLedgerEntry."Remaining Pmt. Disc. Possible";
-            UsePaymentDiscounts := true;
-        end;
+        "Remaining Amount" := VendorLedgerEntry.GetRemainingAmount(UseLCYAmounts);
+        "Pmt. Discount Due Date" := VendorLedgerEntry.GetPmtDiscountDate();
+        "Remaining Amt. Incl. Discount" := VendorLedgerEntry.GetRemainingAmountInclPmtDiscToDate(0D, UseLCYAmounts);
+        UsePaymentDiscounts := "Remaining Amount" <> "Remaining Amt. Incl. Discount";
         "Dimension Set ID" := VendorLedgerEntry."Dimension Set ID";
         OnBeforeInsertFromVendorLedgerEntry(Rec, VendorLedgerEntry);
         Insert(true);
@@ -202,22 +177,22 @@ table 31260 "Match Bank Payment Buffer CZB"
         Insert(true);
     end;
 
-    local procedure GetCustomerLedgerEntryDiscountDueDate(CustLedgerEntry: Record "Cust. Ledger Entry"): Date
+    procedure InsertFromCustomerBankAccount(CustomerBankAccount: Record "Customer Bank Account")
     begin
-        if CustLedgerEntry."Remaining Pmt. Disc. Possible" = 0 then
-            exit(0D);
-        if CustLedgerEntry."Pmt. Disc. Tolerance Date" >= CustLedgerEntry."Pmt. Discount Date" then
-            exit(CustLedgerEntry."Pmt. Disc. Tolerance Date");
-        exit(CustLedgerEntry."Pmt. Discount Date");
+        Clear(Rec);
+        "Account Type" := "Account Type"::Customer;
+        "Account No." := CustomerBankAccount."Customer No.";
+        OnBeforeInsertFromCustomerBankAccount(Rec, CustomerBankAccount);
+        Insert(true);
     end;
 
-    local procedure GetVendorLedgerEntryDiscountDueDate(VendorLedgerEntry: Record "Vendor Ledger Entry"): Date
+    procedure InsertFromVendorBankAccount(VendorBankAccount: Record "Vendor Bank Account")
     begin
-        if VendorLedgerEntry."Remaining Pmt. Disc. Possible" = 0 then
-            exit(0D);
-        if VendorLedgerEntry."Pmt. Disc. Tolerance Date" >= VendorLedgerEntry."Pmt. Discount Date" then
-            exit(VendorLedgerEntry."Pmt. Disc. Tolerance Date");
-        exit(VendorLedgerEntry."Pmt. Discount Date");
+        Clear(Rec);
+        "Account Type" := "Account Type"::Vendor;
+        "Account No." := VendorBankAccount."Vendor No.";
+        OnBeforeInsertFromVendorBankAccount(Rec, VendorBankAccount);
+        Insert(true);
     end;
 
     [IntegrationEvent(false, false)]
@@ -232,6 +207,16 @@ table 31260 "Match Bank Payment Buffer CZB"
 
     [IntegrationEvent(false, false)]
     local procedure OnBeforeInsertFromEmployeeLedgerEntry(var MatchBankPaymentBufferCZB: Record "Match Bank Payment Buffer CZB"; EmployeeLedgerEntry: Record "Employee Ledger Entry")
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeInsertFromCustomerBankAccount(var MatchBankPaymentBufferCZB: Record "Match Bank Payment Buffer CZB"; CustomerBankAccount: Record "Customer Bank Account")
+    begin
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnBeforeInsertFromVendorBankAccount(var MatchBankPaymentBufferCZB: Record "Match Bank Payment Buffer CZB"; VendorBankAccount: Record "Vendor Bank Account")
     begin
     end;
 }

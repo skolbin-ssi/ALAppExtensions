@@ -150,6 +150,7 @@ table 40105 "GP Company Additional Settings"
                     Rec.Validate("Migrate Vendor Classes", false);
                     Rec.Validate("Migrate Only Payables Master", false);
                     Rec.Validate("Migrate Hist. AP Trx.", false);
+                    Rec.Validate("Recurring Purchasing Lines", false);
                 end;
             end;
         }
@@ -165,6 +166,7 @@ table 40105 "GP Company Additional Settings"
                     Rec.Validate("Migrate Customer Classes", false);
                     Rec.Validate("Migrate Only Rec. Master", false);
                     Rec.Validate("Migrate Hist. AR Trx.", false);
+                    Rec.Validate("Recurring Sales Lines", false);
                 end;
             end;
         }
@@ -418,6 +420,7 @@ table 40105 "GP Company Additional Settings"
                     Rec.Validate("Migrate Item Classes", false);
                     Rec.Validate("Migrate Vendor Classes", false);
                     Rec.Validate("Migrate Only GL Master", false);
+                    Rec.Validate("Migrate Inactive Alloc. Accts.", false);
 
                     if Rec."Migrate Bank Module" then
                         Rec.Validate("Migrate Only Bank Master", true);
@@ -464,6 +467,39 @@ table 40105 "GP Company Additional Settings"
                 if Rec."Migrate Kit Items" then
                     Rec.Validate("Migrate Inventory Module", true);
             end;
+        }
+        field(45; "Recurring Purchasing Lines"; Boolean)
+        {
+            DataClassification = SystemMetadata;
+
+            trigger OnValidate()
+            begin
+                if Rec."Recurring Purchasing Lines" then
+                    Rec.Validate("Migrate Payables Module", true);
+            end;
+        }
+        field(46; "Recurring Sales Lines"; Boolean)
+        {
+            DataClassification = SystemMetadata;
+
+            trigger OnValidate()
+            begin
+                if Rec."Recurring Sales Lines" then
+                    Rec.Validate("Migrate Receivables Module", true);
+            end;
+        }
+        field(47; "Item Desc. 2 Source"; enum "GP Item Desc. 2 Source")
+        {
+            DataClassification = SystemMetadata;
+        }
+        field(48; "Migrate Inactive Alloc. Accts."; Boolean)
+        {
+            DataClassification = SystemMetadata;
+        }
+        field(49; "Migrate Hist. Payroll Detail"; Boolean)
+        {
+            DataClassification = SystemMetadata;
+            InitValue = true;
         }
     }
 
@@ -566,6 +602,12 @@ table 40105 "GP Company Additional Settings"
         exit(Rec."Migrate Kit Items");
     end;
 
+    procedure GetMigrateInactiveAllocationAccounts(): Boolean
+    begin
+        GetSingleInstance();
+        exit(Rec."Migrate Inactive Alloc. Accts.");
+    end;
+
     // Classes
     procedure GetMigrateVendorClasses(): Boolean
     begin
@@ -614,6 +656,19 @@ table 40105 "GP Company Additional Settings"
     begin
         GetSingleInstance();
         exit(Rec."Migrate Only Inventory Master");
+    end;
+
+    // Recurring lines
+    procedure GetRecurringPurchasingLinesEnabled(): Boolean
+    begin
+        GetSingleInstance();
+        exit(Rec."Recurring Purchasing Lines");
+    end;
+
+    procedure GetRecurringSalesLinesEnabled(): Boolean
+    begin
+        GetSingleInstance();
+        exit(Rec."Recurring Sales Lines");
     end;
 
     // Posting
@@ -670,6 +725,12 @@ table 40105 "GP Company Additional Settings"
         exit(Rec."Oldest GL Year to Migrate");
     end;
 
+    procedure GetItemDesc2Source(): enum "GP Item Desc. 2 Source"
+    begin
+        GetSingleInstance();
+        exit(Rec."Item Desc. 2 Source");
+    end;
+
     // Historical Transactions
     procedure GetHistInitialYear(): Integer
     begin
@@ -705,6 +766,12 @@ table 40105 "GP Company Additional Settings"
     begin
         GetSingleInstance();
         exit(Rec."Migrate Hist. Purch. Trx.");
+    end;
+
+    procedure GetMigrateHistPayrollDetail(): Boolean
+    begin
+        GetSingleInstance();
+        exit(Rec."Migrate Hist. Payroll Detail");
     end;
 
     procedure GetMigrateHistory(): Boolean

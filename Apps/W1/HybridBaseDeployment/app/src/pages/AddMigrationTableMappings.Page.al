@@ -1,12 +1,13 @@
-namespace Microsoft.DataMigration;
-
-using System.Reflection;
-using System.Apps;
-
 // ------------------------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved. 
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
+
+namespace Microsoft.DataMigration;
+
+using System.Apps;
+using System.Reflection;
+
 page 40010 "Add Migration Table Mappings"
 {
     ApplicationArea = All;
@@ -192,20 +193,12 @@ page 40010 "Add Migration Table Mappings"
     end;
 
     local procedure UpdateObjectsFilter(var PublishedApplication: Record "Published Application")
+    var
+        MigrationTableMapping: Record "Migration Table Mapping";
     begin
-        PublishedApplication.SetRange(Installed, true);
-        if not PublishedApplication.FindSet() then begin
+        MigrationTableMapping.UpdateObjectsFilter(PublishedApplication, AppFilter, ExtensionsFilter);
+        if (AppFilter = '') and (ExtensionsFilter = '') then
             ClearExtensionsFilter();
-            exit;
-        end;
-
-        repeat
-            AppFilter += '|' + Format(PublishedApplication."Package ID");
-            ExtensionsFilter += ', ' + PublishedApplication.Name;
-        until PublishedApplication.Next() = 0;
-
-        AppFilter := AppFilter.TrimStart('|');
-        ExtensionsFilter := ExtensionsFilter.TrimStart(', ');
     end;
 
     local procedure SaveNewTableMappings(): Boolean

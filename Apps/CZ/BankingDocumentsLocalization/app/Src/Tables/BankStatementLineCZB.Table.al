@@ -227,6 +227,7 @@ table 31253 "Bank Statement Line CZB"
         field(12; "Amount (LCY)"; Decimal)
         {
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Amount (LCY)';
             DataClassification = CustomerContent;
 
@@ -322,6 +323,7 @@ table 31253 "Bank Statement Line CZB"
         }
         field(27; "Bank Statement Currency Factor"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Bank Statement Currency Factor';
             DecimalPlaces = 0 : 15;
             Editable = false;
@@ -408,5 +410,11 @@ table 31253 "Bank Statement Line CZB"
         Validate(Amount, BankAccReconciliationLine."Statement Amount");
         Description := BankAccReconciliationLine.Description;
         "Account No." := CopyStr(BankAccReconciliationLine."Related-Party Bank Acc. No.", 1, MaxStrLen("Account No."));
+        OnAfterCopyFromBankAccReconLine(Rec, BankAccReconciliationLine);
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnAfterCopyFromBankAccReconLine(var BankStatementLineCZB: Record "Bank Statement Line CZB"; BankAccReconciliationLine: Record "Bank Acc. Reconciliation Line")
+    begin
     end;
 }

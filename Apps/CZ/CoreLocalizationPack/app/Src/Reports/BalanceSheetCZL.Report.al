@@ -437,10 +437,10 @@ report 11794 "Balance Sheet CZL"
                         field(AccSchedNameCZL; AccSchedName)
                         {
                             ApplicationArea = Basic, Suite;
-                            Caption = 'Acc. Schedule Name';
+                            Caption = 'Row Definition';
                             Lookup = true;
                             TableRelation = "Acc. Schedule Name";
-                            ToolTip = 'Specifies the name of the account schedule to be shown in the report.';
+                            ToolTip = 'Specifies the name of the financial report to be shown in the report.';
 
                             trigger OnLookup(var Text: Text): Boolean
                             var
@@ -459,7 +459,7 @@ report 11794 "Balance Sheet CZL"
                         field(ColumnLayoutNameCZL; ColumnLayoutName)
                         {
                             ApplicationArea = Basic, Suite;
-                            Caption = 'Column Layout Name';
+                            Caption = 'Column Definition';
                             Lookup = true;
                             TableRelation = "Column Layout Name".Name;
                             ToolTip = 'Specifies the name of the column layout that you want to use in the window.';
@@ -471,6 +471,7 @@ report 11794 "Balance Sheet CZL"
                                 EntrdColumnName := CopyStr(Text, 1, 10);
                                 if AccSchedManagement.LookupColumnName(ColumnLayoutName, EntrdColumnName) then
                                     ColumnLayoutName := EntrdColumnName;
+                                ColumnLayoutNameHidden := '';
                             end;
 
                             trigger OnValidate()
@@ -478,6 +479,7 @@ report 11794 "Balance Sheet CZL"
                                 if ColumnLayoutName = '' then
                                     Error(ColumnLayoutNameErr);
                                 AccSchedManagement.CheckColumnName(ColumnLayoutName);
+                                ColumnLayoutNameHidden := '';
                             end;
                         }
                     }
@@ -655,9 +657,9 @@ report 11794 "Balance Sheet CZL"
                         field(ShowAccSchedSetupCZL; ShowAccSchedSetup)
                         {
                             ApplicationArea = Basic, Suite;
-                            Caption = 'Show Account Schedule Setup';
+                            Caption = 'Show Financial Report Setup';
                             MultiLine = true;
-                            ToolTip = 'Specifies when the account schedule setup is to be show';
+                            ToolTip = 'Specifies when the financial report setup is to be show';
                         }
                         field(SkipEmptyLinesCZL; SkipEmptyLines)
                         {
@@ -684,8 +686,6 @@ report 11794 "Balance Sheet CZL"
         begin
             FinancialReportMgt.Initialize();
             GeneralLedgerSetup.Get();
-            AccSchedName := '';
-            ColumnLayoutName := '';
             TransferValues();
             if AccSchedName <> '' then
                 if ColumnLayoutName = '' then
@@ -695,7 +695,7 @@ report 11794 "Balance Sheet CZL"
     labels
     {
         ReportCaptionLbl = 'Balance Sheet';
-        AccScheduleName_Name_CaptionLbl = 'Account Schedule';
+        AccScheduleName_Name_CaptionLbl = 'Financial Report';
         ColumnLayoutNameCaptionLbl = 'Column Layout';
         FiscalStartDateCaptionLbl = 'Fiscal Start Date';
         PeriodTextCaptionLbl = 'Period';

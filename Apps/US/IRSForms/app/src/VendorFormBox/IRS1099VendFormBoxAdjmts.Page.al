@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -9,7 +9,7 @@ page 10054 "IRS 1099 Vend. Form Box Adjmts"
     Caption = 'IRS 1099 Vendor Form Box Adjustments';
     PageType = List;
     SourceTable = "IRS 1099 Vendor Form Box Adj.";
-    ApplicationArea = BasicUS;
+    ApplicationArea = BasicCA, BasicUS;
     UsageCategory = Administration;
     DelayedInsert = true;
 
@@ -56,14 +56,8 @@ page 10054 "IRS 1099 Vend. Form Box Adjmts"
 
     trigger OnOpenPage()
     var
-#if not CLEAN25
-        IRSFormsFeature: Codeunit "IRS Forms Feature";
-#endif
     begin
         PeriodIsVisible := Rec.GetFilter("Period No.") = '';
         VendorIsVisible := Rec.GetFilter("Vendor No.") = '';
-#if not CLEAN25
-        CurrPage.Editable := IRSFormsFeature.FeatureCanBeUsed();
-#endif
     end;
 }

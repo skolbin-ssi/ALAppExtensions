@@ -4,6 +4,9 @@
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.Finance.VAT.Reporting;
 
+using Microsoft.Finance.Currency;
+using Microsoft.Finance.GeneralLedger.Setup;
+
 table 11718 "VAT Stmt. Report Line Data CZL"
 {
     Caption = 'VAT Statement Report Line Data CZL';
@@ -69,7 +72,17 @@ table 11718 "VAT Stmt. Report Line Data CZL"
         }
         field(20; "Amount"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Amount';
+            Editable = false;
+        }
+        field(30; "Additional-Currency Amount"; Decimal)
+        {
+            AccessByPermission = TableData Currency = R;
+            AutoFormatExpression = GetAdditionalCurrencyCode();
+            AutoFormatType = 1;
+            Caption = 'Additional-Currency Amount';
             Editable = false;
         }
     }
@@ -81,6 +94,9 @@ table 11718 "VAT Stmt. Report Line Data CZL"
             Clustered = true;
         }
     }
+
+    var
+        VATReportHeader: Record "VAT Report Header";
 
     procedure SetFilterTo(VATStatementReportLine: Record "VAT Statement Report Line")
     begin
@@ -115,5 +131,39 @@ table 11718 "VAT Stmt. Report Line Data CZL"
     begin
         "XML Code" := VATAttributeCodeCZL."XML Code";
         "VAT Report Amount Type" := VATAttributeCodeCZL."VAT Report Amount Type";
+    end;
+
+    local procedure GetAdditionalCurrencyCode(): Code[10]
+    var
+        GeneralLedgerSetup: Record "General Ledger Setup";
+    begin
+        GeneralLedgerSetup.GetRecordOnce();
+        exit(GeneralLedgerSetup."Additional Reporting Currency");
+    end;
+
+    internal procedure GetVATStatementLine(): Record "VAT Statement Line"
+    var
+        VATStatementLine: Record "VAT Statement Line";
+    begin
+        VATStatementLine.Get("Statement Template Name", "Statement Name", "Statement Line No.");
+        exit(VATStatementLine);
+    end;
+
+
+    internal procedure DrillDown()
+    var
+        VATStatementLine: Record "VAT Statement Line";
+    begin
+        VATStatementLine.Get("Statement Template Name", "Statement Name", "Statement Line No.");
+        VATStatementLine.DrillDown(GetVATReportHeader().GetVATStmtCalcParameters());
+    end;
+
+    local procedure GetVATReportHeader(): Record "VAT Report Header"
+    begin
+        if (VATReportHeader."VAT Report Config. Code" <> "VAT Report Config. Code") or
+           (VATReportHeader."No." <> "VAT Report No.")
+        then
+            VATReportHeader.Get("VAT Report Config. Code", "VAT Report No.");
+        exit(VATReportHeader);
     end;
 }

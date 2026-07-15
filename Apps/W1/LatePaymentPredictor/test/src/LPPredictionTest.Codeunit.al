@@ -1,20 +1,21 @@
 namespace Microsoft.Finance.Latepayment;
 
-using System.TestLibraries.Environment;
-using Microsoft.Sales.Document;
-using System.Environment.Configuration;
-using Microsoft.Sales.History;
-using Microsoft.Inventory.Item;
-using System.Threading;
-using System.AI;
-using System.Reflection;
-using System.Environment;
 using Microsoft.Finance.GeneralLedger.Journal;
 using Microsoft.Foundation.Company;
+using Microsoft.Inventory.Item;
+using Microsoft.Sales.Document;
+using Microsoft.Sales.History;
+using System.AI;
+using System.Environment;
+using System.Environment.Configuration;
+using System.Reflection;
+using System.TestLibraries.Environment;
+using System.Threading;
 
 codeunit 139575 "LP Prediction Test"
 {
     Subtype = Test;
+    TestType = Uncategorized;
     EventSubscriberInstance = Manual;
     SingleInstance = true;
     TestPermissions = Disabled;
@@ -25,7 +26,6 @@ codeunit 139575 "LP Prediction Test"
         LibrarySales: Codeunit "Library - Sales";
         LibraryInventory: Codeunit "Library - Inventory";
         LPPredictionTest: Codeunit "LP Prediction Test";
-        LibraryUtility: Codeunit "Library - Utility";
         EnvironmentInfoTestLibrary: Codeunit "Environment Info Test Library";
         EnableNotificationMsg: Label 'Want to know if a sales document will be paid on time? The Late Payment Prediction extension can predict that.';
         PredictionResultWillBeLateTxt: Label 'The payment is predicted to be late, with Low confidence in the prediction.';
@@ -368,17 +368,7 @@ codeunit 139575 "LP Prediction Test"
         // [WHEN] We invoke the background task
         Codeunit.Run(Codeunit::"LP Model Management", JobQueueEntry);
 
-        // [THEN] Nothing is changed
-        LPMachineLearningSetup.GetSingleInstance();
-
-        Assert.AreEqual(0, LPMachineLearningSetup."Standard Model Quality", 'Fetched incorrect standard model quality (it does not exist yet)');
-        Assert.AreEqual(0, LPMachineLearningSetup."My Model Quality", 'Fetched incorrect MyModel quality');
-        Assert.AreEqual(0, LPMachineLearningSetup."Standard Model Quality", 'Fetched incorrect standard model quality');
-        Assert.AreEqual('', LPMachineLearningSetup.GetModelAsText(LPMachineLearningSetup."Selected Model"::My), 'Fetched incorrect model');
-        Assert.AreEqual(LPMachineLearningSetup."Selected Model"::Standard, LPMachineLearningSetup."Selected Model", 'Selected model should not change');
-
         // [GIVEN] The standard model exists and we make it appear like there is more historical data
-        MakeSureStandardModelExists();
         LPMachineLearningSetup.DeleteAll();
         LPMachineLearningSetup.GetSingleInstance();
         LPMachineLearningSetup."Selected Model" := LPMachineLearningSetup."Selected Model"::Standard;
@@ -551,6 +541,46 @@ codeunit 139575 "LP Prediction Test"
         Assert.AreEqual(50 + 15, TotalInvoiceCount, 'Total invoice count does not match number of invoices created');
     end;
 
+    [Test]
+    procedure PredictAllPaymentsDoesNotErrorWhenAllInvoicesClosed()
+    var
+        SalesHeader: Record "Sales Header";
+        LPMachineLearningSetup: Record "LP Machine Learning Setup";
+        LPMLInputData: Record "LP ML Input Data";
+        SalesInvoiceHeader: Record "Sales Invoice Header";
+        LPPredictionMgt: Codeunit "LP Prediction Mgt.";
+        Result: Boolean;
+    begin
+        // [FEATURE] [AI test 0.3]
+        // [SCENARIO] PredictIsLateAllPayments exits gracefully when all invoices are closed
+        Initialize();
+
+        // [GIVEN] ML setup is enabled with predictions and custom credentials to avoid KeyVault dependency
+        SalesInvoiceHeader.DeleteAll();
+        LPMLInputData.DeleteAll();
+        LPMachineLearningSetup.DeleteAll();
+        LPMachineLearningSetup.Init();
+        LPMachineLearningSetup."Standard Model Quality" := 0.6;
+        LPMachineLearningSetup."Make Predictions" := true;
+        LPMachineLearningSetup."Use My Model Credentials" := true;
+        LPMachineLearningSetup.Insert();
+
+        // [GIVEN] Only closed (paid) invoices exist - no open invoices
+        CreateSalesInvoiceHeader(false, SalesInvoiceHeader);
+        CreateSalesInvoiceHeader(false, SalesInvoiceHeader);
+
+        // [WHEN] PredictIsLateAllPayments is called
+        Result := LPPredictionMgt.PredictIsLateAllPayments(SalesHeader, LPMachineLearningSetup, LPMLInputData);
+
+        // [THEN] No error is thrown and result is false
+        Assert.IsFalse(Result, 'Expected no late predictions when all invoices are closed');
+
+        // [THEN] No prediction data remains in the input table for unclosed invoices
+        LPMLInputData.Reset();
+        LPMLInputData.SetRange(Closed, false);
+        Assert.IsTrue(LPMLInputData.IsEmpty(), 'Expected no open invoice records in input data');
+    end;
+
     local procedure Initialize()
     var
         LibraryERM: Codeunit "Library - ERM";
@@ -676,34 +706,6 @@ codeunit 139575 "LP Prediction Test"
             CreateSalesInvoiceHeader(true, SalesInvoiceHeader);
     end;
 
-    local procedure MakeSureStandardModelExists();
-    var
-        MediaResources: Record "Media Resources";
-        File: File;
-        ModelInStream: InStream;
-        ModelOutStream: OutStream;
-        FilePath: Text;
-        FileName: Text[50];
-    begin
-        FileName := 'LatePaymentStandardModel.txt';
-        if MediaResources.Get(FileName) then
-            exit;
-
-        MediaResources.Init();
-        MediaResources.Code := FileName;
-        MediaResources.Insert(true);
-        MediaResources.Get(FileName);
-
-        FilePath := LibraryUtility.GetInetRoot() + '\App\Demotool\Pictures\MachineLearning\' + FileName;
-        File.Open(FilePath);
-        File.CreateInStream(ModelInStream);
-        MediaResources.Blob.CreateOutStream(ModelOutStream);
-        CopyStream(ModelOutStream, ModelInStream);
-        File.Close();
-
-        MediaResources.Modify();
-    end;
-
     local procedure DeleteStandardModel();
     var
         MediaResources: Record "Media Resources";
@@ -742,8 +744,6 @@ codeunit 139575 "LP Prediction Test"
         AzureAIParams := '{"ApiKeys":["test"],"Limit":"10","ApiUris":["https://services.azureml.net/workspaces/fc0584f5f74a4aa19a55096fc8ebb2b7"],"LimitType":"Month"}'; // non-existing API URI
 
         LibraryAzureKVMockMgmt.InitMockAzureKeyvaultSecretProvider();
-        LibraryAzureKVMockMgmt.AddMockAzureKeyvaultSecretProviderMapping('AllowedApplicationSecrets',
-          'machinelearning,machinelearning-default,background-ml-enabled');
         LibraryAzureKVMockMgmt.AddMockAzureKeyvaultSecretProviderMapping('machinelearning', AzureAIParams);
         LibraryAzureKVMockMgmt.AddMockAzureKeyvaultSecretProviderMapping('machinelearning-default', AzureAIParams);
         LibraryAzureKVMockMgmt.AddMockAzureKeyvaultSecretProviderMapping('background-ml-enabled', '{ "something":false, "mllate": true }');

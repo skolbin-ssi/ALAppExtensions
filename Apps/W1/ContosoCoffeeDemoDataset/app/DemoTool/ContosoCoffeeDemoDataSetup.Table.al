@@ -1,3 +1,13 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
+namespace Microsoft.DemoTool;
+
+using Microsoft.Foundation.Address;
+using System.Globalization;
+
 table 4768 "Contoso Coffee Demo Data Setup"
 {
     Caption = 'Contoso Coffee Demo Data Setup';
@@ -27,14 +37,17 @@ table 4768 "Contoso Coffee Demo Data Setup"
         {
             TableRelation = "Country/Region";
             Caption = 'Country/Region Code';
+            InitValue = 'GB';
         }
         field(5; "Price Factor"; Decimal)
         {
+            AutoFormatType = 0;
             InitValue = 1;
             Caption = 'Price Factor';
         }
         field(6; "Rounding Precision"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Rounding Precision';
             InitValue = 0.01;
         }
@@ -44,6 +57,10 @@ table 4768 "Contoso Coffee Demo Data Setup"
             Editable = false;
             InitValue = 0;
             TableRelation = "Windows Language";
+        }
+        field(8; "Starting Date"; Date)
+        {
+            Caption = 'Starting Date';
         }
     }
 
@@ -63,6 +80,7 @@ table 4768 "Contoso Coffee Demo Data Setup"
 
         Rec.Init();
         Rec.Validate("Starting Year", Date2DMY(Today(), 3) - 1);
+        Rec.Validate("Starting Date", Today());
         Rec.Insert();
     end;
 }

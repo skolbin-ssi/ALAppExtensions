@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+// ------------------------------------------------------------------------------------------------
+
 namespace Microsoft.DataMigration;
 
 table 40027 "Hybrid Company Status"
@@ -44,6 +49,25 @@ table 40027 "Hybrid Company Status"
         field(6; "Last User Mapping DateTime"; DateTime)
         {
             Description = 'Last User Mapping DateTime';
+        }
+
+        field(7; "Record Link Move Completed"; Boolean)
+        {
+            Description = 'Record Link Migration Completed';
+        }
+
+        field(8; "Last Record Link Move DateTime"; DateTime)
+        {
+            Description = 'Last Record Link Migration DateTime';
+        }
+        field(9; "Tenant Media Count"; Integer)
+        {
+            Description = 'Tenant Media Count';
+            DataClassification = SystemMetadata;
+        }
+        field(10; Validated; Boolean)
+        {
+            Description = 'Indicates if the company has been validated.';
         }
     }
 

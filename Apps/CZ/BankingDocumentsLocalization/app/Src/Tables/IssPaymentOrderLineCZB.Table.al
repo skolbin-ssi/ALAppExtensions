@@ -94,6 +94,7 @@ table 31259 "Iss. Payment Order Line CZB"
         {
             Caption = 'Amount (LCY)';
             AutoFormatType = 1;
+            AutoFormatExpression = '';
             DataClassification = CustomerContent;
         }
         field(13; "Applies-to Doc. Type"; Enum "Gen. Journal Document Type")
@@ -157,6 +158,7 @@ table 31259 "Iss. Payment Order Line CZB"
         }
         field(27; "Payment Order Currency Factor"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Payment Order Currency Factor';
             DecimalPlaces = 0 : 15;
             Editable = false;
@@ -187,31 +189,6 @@ table 31259 "Iss. Payment Order Line CZB"
             Caption = 'Name';
             DataClassification = CustomerContent;
         }
-#if not CLEANSCHEMA22
-        field(150; "Letter Type"; Option)
-        {
-            Caption = 'Letter Type';
-            OptionCaption = ' ,,Purchase';
-            OptionMembers = " ",,Purchase;
-            ObsoleteState = Removed;
-            ObsoleteReason = 'Remove after new Advance Payment Localization for Czech will be implemented.';
-            ObsoleteTag = '22.0';
-        }
-        field(151; "Letter No."; Code[20])
-        {
-            Caption = 'Letter No.';
-            ObsoleteState = Removed;
-            ObsoleteReason = 'Remove after new Advance Payment Localization for Czech will be implemented.';
-            ObsoleteTag = '22.0';
-        }
-        field(152; "Letter Line No."; Integer)
-        {
-            Caption = 'Letter Line No.';
-            ObsoleteState = Removed;
-            ObsoleteReason = 'Remove after new Advance Payment Localization for Czech will be implemented.';
-            ObsoleteTag = '22.0';
-        }
-#endif
         field(190; "VAT Unreliable Payer"; Boolean)
         {
             Caption = 'VAT Unreliable Payer';
@@ -277,6 +254,8 @@ table 31259 "Iss. Payment Order Line CZB"
                 exit(GenJournalLine."Account Type"::Vendor.AsInteger());
             Type::"Bank Account":
                 exit(GenJournalLine."Account Type"::"Bank Account".AsInteger());
+            Type::Employee:
+                exit(GenJournalLine."Account Type"::Employee.AsInteger());
         end;
     end;
 
@@ -285,4 +264,3 @@ table 31259 "Iss. Payment Order Line CZB"
     begin
     end;
 }
-

@@ -4,15 +4,19 @@
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.Integration.DynamicsFieldService;
 
+using Microsoft.Integration.D365Sales;
 using Microsoft.Integration.Dataverse;
 using System.Environment;
 using System.Environment.Configuration;
+using System.Globalization;
 using System.Telemetry;
 using System.Utilities;
-using Microsoft.Integration.D365Sales;
-using System.Globalization;
 
+#pragma warning disable AS0130
+#pragma warning disable PTE0025
 page 6613 "FS Connection Setup Wizard"
+#pragma warning restore AS0130
+#pragma warning restore PTE0025
 {
     Caption = 'Dynamics 365 Field Service Integration Setup';
     PageType = NavigatePage;
@@ -134,12 +138,14 @@ page 6613 "FS Connection Setup Wizard"
                         ApplicationArea = Suite;
                         ShowMandatory = true;
                         ToolTip = 'Specifies the project journal template in which project journal lines will be created and coupled to work order products and work order services.';
+                        Editable = EditableProjectSettings;
                     }
                     field("Job Journal Batch"; Rec."Job Journal Batch")
                     {
                         ApplicationArea = Suite;
                         ShowMandatory = true;
                         ToolTip = 'Specifies the project journal batch in which project journal lines will be created and coupled to work order products and work order services.';
+                        Editable = EditableProjectSettings;
                     }
                     field("Hour Unit of Measure"; Rec."Hour Unit of Measure")
                     {
@@ -151,11 +157,23 @@ page 6613 "FS Connection Setup Wizard"
                     {
                         ApplicationArea = Suite;
                         ToolTip = 'Specifies when to synchronize work order products and work order services.';
+                        Editable = EditableProjectSettings;
                     }
                     field("Line Post Rule"; Rec."Line Post Rule")
                     {
                         ApplicationArea = Suite;
                         ToolTip = 'Specifies when to post project journal lines that are coupled to work order products and work order services.';
+                        Editable = EditableProjectSettings;
+                    }
+                    field("Integration Type"; Rec."Integration Type")
+                    {
+                        ApplicationArea = Service;
+                        ToolTip = 'Specifies the type of integration between Business Central and Dynamics 365 Field Service.';
+
+                        trigger OnValidate()
+                        begin
+                            UpdateIntegrationTypeEditable();
+                        end;
                     }
                 }
                 group("Advanced Settings")
@@ -215,6 +233,7 @@ page 6613 "FS Connection Setup Wizard"
                     {
                         ApplicationArea = Suite;
                         Enabled = VirtualTableAppInstalled;
+                        Visible = false;
                         ToolTip = 'Specifies if the Field Service users will be able to pull information about inventory availability by location from Business Central. This is available only if Virtual Table app is installed.';
                     }
 
@@ -360,6 +379,7 @@ page 6613 "FS Connection Setup Wizard"
                 var
                     FeatureTelemetry: Codeunit "Feature Telemetry";
                     GuidedExperience: Codeunit "Guided Experience";
+                    FSIntegrationMgt: Codeunit "FS Integration Mgt.";
                 begin
                     if Rec."Authentication Type" = Rec."Authentication Type"::Office365 then
                         if Rec."User Name" = '' then
@@ -370,7 +390,7 @@ page 6613 "FS Connection Setup Wizard"
                     Page.Run(Page::"FS Connection Setup");
                     GuidedExperience.CompleteAssistedSetup(ObjectType::Page, Page::"FS Connection Setup Wizard");
                     Commit();
-                    FeatureTelemetry.LogUptake('0000MBD', 'Dynamics 365 Field Service', Enum::"Feature Uptake Status"::"Set up");
+                    FeatureTelemetry.LogUptake('0000MBD', FSIntegrationMgt.ReturnIntegrationTypeLabel(Rec), Enum::"Feature Uptake Status"::"Set up");
                     CurrPage.Close();
                 end;
             }
@@ -388,18 +408,21 @@ page 6613 "FS Connection Setup Wizard"
         FSConnectionSetup: Record "FS Connection Setup";
         CRMConnectionSetup: Record "CRM Connection Setup";
         FeatureTelemetry: Codeunit "Feature Telemetry";
+        FSIntegrationMgt: Codeunit "FS Integration Mgt.";
+        CRMIntegrationManagement: Codeunit "CRM Integration Management";
     begin
         FSConnectionSetup.EnsureCDSConnectionIsEnabled();
         FSConnectionSetup.EnsureCRMConnectionIsEnabled();
         CRMConnectionSetup.Get();
         FSConnectionSetup.LoadConnectionStringElementsFromCDSConnectionSetup();
         FeatureTelemetry.LogUptake('0000MBE', 'Dataverse', Enum::"Feature Uptake Status"::Discovered);
-        FeatureTelemetry.LogUptake('0000MBF', 'Dynamics 365 Field Service', Enum::"Feature Uptake Status"::Discovered);
+        FeatureTelemetry.LogUptake('0000MBF', FSIntegrationMgt.ReturnIntegrationTypeLabel(Rec), Enum::"Feature Uptake Status"::Discovered);
 
         Rec.Init();
         if FSConnectionSetup.Get() then begin
             Rec."Proxy Version" := FSConnectionSetup."Proxy Version";
             Rec."Authentication Type" := FSConnectionSetup."Authentication Type";
+            CRMIntegrationManagement.CheckCRMConnectionURL(FSConnectionSetup."Server Address");
             Rec."Server Address" := FSConnectionSetup."Server Address";
             Rec."User Name" := FSConnectionSetup."User Name";
             Rec."User Password Key" := FSConnectionSetup."User Password Key";
@@ -460,6 +483,7 @@ page 6613 "FS Connection Setup Wizard"
         VirtualTableAppInstalled: Boolean;
         [NonDebuggable]
         Password: Text;
+        EditableProjectSettings: Boolean;
         ConnectionNotSetUpQst: Label 'The %1 connection has not been set up.\\Are you sure you want to exit?', Comment = '%1 = CRM product name';
         CRMURLShouldNotBeEmptyErr: Label 'You must specify the URL of your %1 solution.', Comment = '%1 = CRM product name';
         CRMSynchUserCredentialsNeededErr: Label 'You must specify the credentials for the user account for synchronization with %1.', Comment = '%1 = CRM product name';
@@ -555,18 +579,22 @@ page 6613 "FS Connection Setup Wizard"
 
         EnableFSConnectionEnabled := Rec."Server Address" <> '';
         Rec."Authentication Type" := Rec."Authentication Type"::Office365;
+
         if FSConnectionSetup.Get() then begin
             EnableFSConnection := true;
             EnableFSConnectionEnabled := not FSConnectionSetup."Is Enabled";
             ImportSolution := true;
             if FSConnectionSetup."Is FS Solution Installed" then
                 ImportFSSolutionEnabled := false;
+            Rec."Integration Type" := FSConnectionSetup."Integration Type";
         end else begin
             if ImportFSSolutionEnabled then
                 ImportSolution := true;
             if EnableFSConnectionEnabled then
                 EnableFSConnection := true;
         end;
+
+        UpdateIntegrationTypeEditable();
     end;
 
     local procedure ShowItemAvailabilityStep()
@@ -595,6 +623,7 @@ page 6613 "FS Connection Setup Wizard"
         FSConnectionSetup: Record "FS Connection Setup";
         FSIntegrationMgt: Codeunit "FS Integration Mgt.";
         CDSIntegrationImpl: Codeunit "CDS Integration Impl.";
+        CRMIntegrationManagement: Codeunit "CRM Integration Management";
         AdminEmail: Text;
         AdminPassword: SecretText;
         AccessToken: SecretText;
@@ -602,6 +631,7 @@ page 6613 "FS Connection Setup Wizard"
         ImportSolutionFailed: Boolean;
     begin
         if ImportSolution and ImportFSSolutionEnabled then begin
+            CRMIntegrationManagement.CheckCRMConnectionURL(Rec."Server Address");
             case Rec."Authentication Type" of
                 Rec."Authentication Type"::Office365:
                     CDSIntegrationImpl.GetAccessToken(Rec."Server Address", true, AccessToken);
@@ -643,18 +673,23 @@ page 6613 "FS Connection Setup Wizard"
 
     local procedure GetVirtualTablesAppSourceLink(): Text
     var
-        UserSettingsRecord: Record "User Settings";
+        TempUserSettingsRecord: Record "User Settings";
         Language: Codeunit Language;
         UserSettings: Codeunit "User Settings";
         LanguageID: Integer;
         CultureName: Text;
     begin
-        UserSettings.GetUserSettings(Database.UserSecurityId(), UserSettingsRecord);
-        LanguageID := UserSettingsRecord."Language ID";
+        UserSettings.GetUserSettings(Database.UserSecurityId(), TempUserSettingsRecord);
+        LanguageID := TempUserSettingsRecord."Language ID";
         if (LanguageID = 0) then
             LanguageID := 1033; // Default to EN-US
         CultureName := Language.GetCultureName(LanguageID).ToLower();
         exit(Text.StrSubstNo(VTAppSourceLinkTxt, CultureName));
+    end;
+
+    local procedure UpdateIntegrationTypeEditable()
+    begin
+        EditableProjectSettings := Rec."Integration Type" = Rec."Integration Type"::Projects;
     end;
 }
 

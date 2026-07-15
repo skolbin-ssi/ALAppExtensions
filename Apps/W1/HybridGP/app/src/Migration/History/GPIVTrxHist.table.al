@@ -40,6 +40,7 @@ table 4052 "GPIVTrxHist"
         }
         field(7; NOTEINDX; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Note Index';
             DataClassification = CustomerContent;
         }
@@ -73,6 +74,10 @@ table 4052 "GPIVTrxHist"
     keys
     {
         key(PK; TRXSORCE, IVDOCTYP, DOCNUMBR)
+        {
+            Clustered = false;
+        }
+        key(Key2; DEX_ROW_ID)
         {
             Clustered = false;
         }

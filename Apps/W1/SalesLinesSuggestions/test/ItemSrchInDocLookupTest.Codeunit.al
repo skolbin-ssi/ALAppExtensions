@@ -5,9 +5,10 @@ using Microsoft.Sales.Customer;
 using Microsoft.Sales.Document;
 using System.TestLibraries.Utilities;
 
-codeunit 139787 "Item Srch. In Doc. Lookup Test"
+codeunit 133511 "Item Srch. In Doc. Lookup Test"
 {
     Subtype = Test;
+    TestType = AITest;
     TestPermissions = Disabled;
     EventSubscriberInstance = Manual;
 

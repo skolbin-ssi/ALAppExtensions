@@ -4,16 +4,20 @@
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.Integration.DynamicsFieldService;
 
+using Microsoft.Integration.D365Sales;
 using Microsoft.Integration.Dataverse;
 using Microsoft.Integration.SyncEngine;
+using Microsoft.Projects.Project.Journal;
+using System.Environment;
 using System.Environment.Configuration;
 using System.Telemetry;
 using System.Threading;
-using Microsoft.Integration.D365Sales;
-using Microsoft.Projects.Project.Journal;
-using System.Environment;
 
+#pragma warning disable AS0130
+#pragma warning disable PTE0025
 page 6612 "FS Connection Setup"
+#pragma warning restore AS0130
+#pragma warning restore PTE0025
 {
     AccessByPermission = TableData "FS Connection Setup" = IM;
     ApplicationArea = Suite;
@@ -54,12 +58,15 @@ page 6612 "FS Connection Setup"
                     var
                         FeatureTelemetry: Codeunit "Feature Telemetry";
                         CDSIntegrationImpl: Codeunit "CDS Integration Impl.";
+                        FSIntegrationMgt: Codeunit "FS Integration Mgt.";
+                        CRMIntegrationManagement: Codeunit "CRM Integration Management";
                     begin
                         CurrPage.Update(true);
                         if Rec."Is Enabled" then begin
-                            FeatureTelemetry.LogUptake('0000MB9', 'Dynamics 365 Field Service', Enum::"Feature Uptake Status"::"Set up");
+                            FeatureTelemetry.LogUptake('0000MB9', FSIntegrationMgt.ReturnIntegrationTypeLabel(Rec), Enum::"Feature Uptake Status"::"Set up");
                             Session.LogMessage('0000MBC', CRMConnEnabledOnPageTxt, Verbosity::Normal, DataClassification::SystemMetadata, TelemetryScope::ExtensionPublisher, 'Category', CategoryTok);
 
+                            CRMIntegrationManagement.CheckCRMConnectionURL(Rec."Server Address");
                             if (Rec."Server Address" <> '') and (Rec."Server Address" <> TestServerAddressTok) then
                                 if CDSIntegrationImpl.MultipleCompaniesConnected() then
                                     CDSIntegrationImpl.SendMultipleCompaniesNotification();
@@ -115,12 +122,14 @@ page 6612 "FS Connection Setup"
                     ApplicationArea = Suite;
                     ShowMandatory = true;
                     ToolTip = 'Specifies the project journal template in which project journal lines will be created and coupled to work order products and work order services.';
+                    Editable = EditableProjectSettings;
                 }
                 field("Job Journal Batch"; Rec."Job Journal Batch")
                 {
                     ApplicationArea = Suite;
                     ShowMandatory = true;
                     ToolTip = 'Specifies the project journal batch in which project journal lines will be created and coupled to work order products and work order services.';
+                    Editable = EditableProjectSettings;
                 }
                 field("Hour Unit of Measure"; Rec."Hour Unit of Measure")
                 {
@@ -134,6 +143,22 @@ page 6612 "FS Connection Setup"
                     Enabled = VirtualTableAppInstalled;
                     ToolTip = 'Specifies if the Field Service users will be able to pull information about inventory availability by location from Business Central. This is available only if Virtual Table app is installed.';
                 }
+                group(IntegrationTypeService)
+                {
+                    ShowCaption = false;
+
+                    field("Integration Type"; Rec."Integration Type")
+                    {
+                        ApplicationArea = Service;
+                        Editable = not Rec."Is Enabled";
+                        ToolTip = 'Specifies the type of integration between Business Central and Dynamics 365 Field Service.';
+
+                        trigger OnValidate()
+                        begin
+                            UpdateIntegrationTypeEditable();
+                        end;
+                    }
+                }
             }
             group(SynchSettings)
             {
@@ -143,6 +168,7 @@ page 6612 "FS Connection Setup"
                 {
                     ApplicationArea = Suite;
                     ToolTip = 'Specifies when to synchronize work order products and work order services.';
+                    Editable = EditableProjectSettings;
 
                     trigger OnValidate()
                     var
@@ -173,6 +199,7 @@ page 6612 "FS Connection Setup"
                 {
                     ApplicationArea = Suite;
                     ToolTip = 'Specifies when to post project journal lines that are coupled to work order products and work order services.';
+                    Editable = EditableProjectSettings;
                 }
             }
         }
@@ -368,11 +395,12 @@ page 6612 "FS Connection Setup"
         CDSConnectionSetup: Record "CDS Connection Setup";
         CRMIntegrationManagement: Codeunit "CRM Integration Management";
         FeatureTelemetry: Codeunit "Feature Telemetry";
+        FSIntegrationMgt: Codeunit "FS Integration Mgt.";
         CDSIntegrationImpl: Codeunit "CDS Integration Impl.";
         MultipleCompaniesDetected: Boolean;
     begin
         FeatureTelemetry.LogUptake('0000MBA', 'Dataverse', Enum::"Feature Uptake Status"::Discovered);
-        FeatureTelemetry.LogUptake('0000MBB', 'Dynamics 365 Field Service', Enum::"Feature Uptake Status"::Discovered);
+        FeatureTelemetry.LogUptake('0000MBB', FSIntegrationMgt.ReturnIntegrationTypeLabel(Rec), Enum::"Feature Uptake Status"::Discovered);
         Rec.EnsureCDSConnectionIsEnabled();
         Rec.EnsureCRMConnectionIsEnabled();
 
@@ -419,8 +447,10 @@ page 6612 "FS Connection Setup"
     local procedure TryDetectMultipleCompanies(var MultipleCompaniesDetected: Boolean)
     var
         CDSIntegrationImpl: Codeunit "CDS Integration Impl.";
+        CRMIntegrationManagement: Codeunit "CRM Integration Management";
     begin
         Rec.RegisterConnection();
+        CRMIntegrationManagement.CheckCRMConnectionURL(Rec."Server Address");
         if (Rec."Server Address" <> '') and (Rec."Server Address" <> TestServerAddressTok) then
             MultipleCompaniesDetected := CDSIntegrationImpl.MultipleCompaniesConnected();
     end;
@@ -452,6 +482,7 @@ page 6612 "FS Connection Setup"
         IsCdsIntegrationEnabled: Boolean;
         CRMVersionStatus: Boolean;
         VirtualTableAppInstalled: Boolean;
+        EditableProjectSettings: Boolean;
 
     local procedure RefreshData()
     begin
@@ -459,6 +490,7 @@ page 6612 "FS Connection Setup"
         RefreshSynchJobsData();
         UpdateEnableFlags();
         SetStyleExpr();
+        UpdateIntegrationTypeEditable();
     end;
 
     local procedure RefreshSynchJobsData()
@@ -515,6 +547,11 @@ page 6612 "FS Connection Setup"
         CRMIntegrationManagement: Codeunit "CRM Integration Management";
     begin
         Rec.Validate("Proxy Version", CRMIntegrationManagement.GetLastProxyVersionItem());
+    end;
+
+    local procedure UpdateIntegrationTypeEditable()
+    begin
+        EditableProjectSettings := Rec."Integration Type" = Rec."Integration Type"::Projects;
     end;
 }
 

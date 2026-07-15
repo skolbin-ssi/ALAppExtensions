@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -10,6 +10,7 @@ using Microsoft.Finance.Dimension;
 using Microsoft.Foundation.Address;
 using Microsoft.Foundation.Attachment;
 using Microsoft.Inventory.Location;
+using Microsoft.Purchases.Setup;
 using Microsoft.Purchases.Vendor;
 using Microsoft.Utilities;
 using System.Automation;
@@ -63,6 +64,14 @@ page 31181 "Purch. Advance Letter CZZ"
                     ApplicationArea = Basic, Suite;
                     ShowMandatory = true;
                     ToolTip = 'Specifies the name of the vendor sending the invoice.';
+                }
+                field("Pay-to Name 2"; Rec."Pay-to Name 2")
+                {
+                    ApplicationArea = Basic, Suite;
+                    Importance = Additional;
+                    QuickEntry = false;
+                    Visible = false;
+                    ToolTip = 'Specifies the name 2 of the vendor sending the invoice.';
                 }
                 group("Pay-to")
                 {
@@ -214,19 +223,10 @@ page 31181 "Purch. Advance Letter CZZ"
                     ApplicationArea = Basic, Suite;
                     ToolTip = 'Specifies if post VAT usage automatically.';
                 }
-#if not CLEAN25
-                field("Amount on Iss. Payment Order"; "Amount on Iss. Payment Order")
-                {
-                    ApplicationArea = Basic, Suite;
-                    ToolTip = 'Specifies amount on issued payment order.';
-                    Visible = false;
-                    ObsoleteState = Pending;
-                    ObsoleteReason = 'This field is obsolete and will be removed in a future release. The CalcSuggestedAmountToApply function should be used instead.';
-                    ObsoleteTag = '25.0';
-                }
-#endif
                 field(SuggestedAmountToApplyCZL; Rec.CalcSuggestedAmountToApply())
                 {
+                    AutoFormatType = 1;
+                    AutoFormatExpression = '';
                     Caption = 'Suggested Amount to Apply (LCY)';
                     ApplicationArea = Basic, Suite;
                     Editable = false;
@@ -236,6 +236,22 @@ page 31181 "Purch. Advance Letter CZZ"
                     begin
                         Rec.DrillDownSuggestedAmountToApply();
                     end;
+                }
+                field("Doc. Amount Incl. VAT"; Rec."Doc. Amount Incl. VAT")
+                {
+                    ApplicationArea = Basic, Suite;
+                    BlankZero = true;
+                    Enabled = DocAmountsEnable;
+                    Visible = DocAmountsEnable;
+                    Editable = DocAmountsEditable;
+                    ShowMandatory = true;
+                }
+                field("Doc. Amount VAT"; Rec."Doc. Amount VAT")
+                {
+                    ApplicationArea = Basic, Suite;
+                    Enabled = DocAmountsEnable;
+                    Visible = DocAmountsEnable;
+                    Editable = DocAmountsEditable;
                 }
             }
             part(AdvLetterLines; "Purch. Advance Letter Line CZZ")
@@ -396,17 +412,6 @@ page 31181 "Purch. Advance Letter CZZ"
                 ApplicationArea = Basic, Suite;
                 SubPageLink = "No." = field("Pay-to Vendor No.");
             }
-#if not CLEAN25
-            part("Attached Documents"; "Document Attachment Factbox")
-            {
-                ObsoleteTag = '25.0';
-                ObsoleteState = Pending;
-                ObsoleteReason = 'The "Document Attachment FactBox" has been replaced by "Doc. Attachment List Factbox", which supports multiple files upload.';
-                ApplicationArea = Basic, Suite;
-                Caption = 'Attachments';
-                SubPageLink = "Table ID" = const(Database::"Purch. Adv. Letter Header CZZ"), "No." = field("No.");
-            }
-#endif
             part("Attached Documents List"; "Doc. Attachment List Factbox")
             {
                 ApplicationArea = Basic, Suite;
@@ -596,6 +601,7 @@ page 31181 "Purch. Advance Letter CZZ"
                         RelPurchAdvLetterDoc: Codeunit "Rel. Purch.Adv.Letter Doc. CZZ";
                     begin
                         RelPurchAdvLetterDoc.PerformManualRelease(Rec);
+                        ActivateFields();
                     end;
                 }
                 action(Reopen)
@@ -611,6 +617,7 @@ page 31181 "Purch. Advance Letter CZZ"
                         RelPurchAdvLetterDoc: Codeunit "Rel. Purch.Adv.Letter Doc. CZZ";
                     begin
                         RelPurchAdvLetterDoc.PerformManualReopen(Rec);
+                        ActivateFields();
                     end;
                 }
             }
@@ -633,6 +640,22 @@ page 31181 "Purch. Advance Letter CZZ"
                         PurchAdvLetterManagement: Codeunit "PurchAdvLetterManagement CZZ";
                     begin
                         PurchAdvLetterManagement.CloseAdvanceLetter(Rec);
+                    end;
+                }
+                action(CopyDocument)
+                {
+                    ApplicationArea = Suite;
+                    Caption = 'Copy Document';
+                    Ellipsis = true;
+                    Enabled = Rec."No." <> '';
+                    Image = CopyDocument;
+                    ToolTip = 'Copy document lines and header information from another purchase advance letter to this document. You can copy a purchase advance letter into a new purchase advance letter to quickly create a similar document.';
+
+                    trigger OnAction()
+                    begin
+                        Rec.CopyDocument();
+                        if Rec.Get(Rec."No.") then;
+                        CurrPage.Update();
                     end;
                 }
             }
@@ -885,6 +908,7 @@ page 31181 "Purch. Advance Letter CZZ"
     var
         FormatAddress: Codeunit "Format Address";
         DocNoVisible, IsBillToCountyVisible, DynamicEditable, OpenApprovalEntriesExistForCurrUser, OpenApprovalEntriesExist, HasIncomingDocument : Boolean;
+        DocAmountsEnable, DocAmountsEditable : Boolean;
 
     local procedure SetDocNoVisible()
     var
@@ -897,8 +921,13 @@ page 31181 "Purch. Advance Letter CZZ"
     end;
 
     local procedure ActivateFields()
+    var
+        PurchasesPayablesSetup: Record "Purchases & Payables Setup";
     begin
+        PurchasesPayablesSetup.Get();
         IsBillToCountyVisible := FormatAddress.UseCounty(Rec."Pay-to Country/Region Code");
+        DocAmountsEnable := PurchasesPayablesSetup.IsDocumentTotalAmountsAllowedCZZ(Rec);
+        DocAmountsEditable := PurchasesPayablesSetup.IsDocumentTotalAmountsEditableCZZ(Rec);
     end;
 
     local procedure SetControlVisibility()

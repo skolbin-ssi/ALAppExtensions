@@ -74,6 +74,7 @@ table 18208 "Posted GST Distribution Line"
         }
         field(24; "Distribution %"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Distribution %';
             DataClassification = CustomerContent;
         }
@@ -103,7 +104,20 @@ table 18208 "Posted GST Distribution Line"
         }
         field(27; "Distribution Amount"; Decimal)
         {
+            AutoFormatType = 1;
+            AutoFormatExpression = '';
             Caption = 'Distribution Amount';
+            DataClassification = CustomerContent;
+        }
+        field(28; "Location ISD Document No."; Code[20])
+        {
+            Caption = 'Location ISD Document No.';
+            DataClassification = CustomerContent;
+            Editable = false;
+        }
+        field(29; "Location Posting No. Series"; Code[20])
+        {
+            Caption = 'Location Posting No. Series';
             DataClassification = CustomerContent;
         }
         field(480; "Dimension Set ID"; Integer)

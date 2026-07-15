@@ -14,7 +14,7 @@ codeunit 139760 "SMTP Connector Test"
     [TransactionModel(TransactionModel::AutoRollback)]
     procedure TestMultipleAccountsCanBeRegistered()
     var
-        EmailAccount: Record "Email Account";
+        TempEmailAccount: Record "Email Account";
         SMTPConnector: Codeunit "SMTP Connector Impl.";
         EmailAccounts: TestPage "Email Accounts";
         AccountIds: array[3] of Guid;
@@ -29,15 +29,15 @@ codeunit 139760 "SMTP Connector Test"
         for Index := 1 to 3 do begin
             SetBasicAccount(Index);
 
-            Assert.IsTrue(SMTPConnector.RegisterAccount(EmailAccount), 'Failed to register account.');
-            AccountIds[Index] := EmailAccount."Account Id";
+            Assert.IsTrue(SMTPConnector.RegisterAccount(TempEmailAccount), 'Failed to register account.');
+            AccountIds[Index] := TempEmailAccount."Account Id";
             AccountName[Index] := SMTPAccountMock.Name();
             AccountUserId[Index] := SMTPAccountMock.UserID();
 
             // [Then] Accounts are retrieved from the GetAccounts method
-            EmailAccount.DeleteAll();
-            SMTPConnector.GetAccounts(EmailAccount);
-            Assert.RecordCount(EmailAccount, Index);
+            TempEmailAccount.DeleteAll();
+            SMTPConnector.GetAccounts(TempEmailAccount);
+            Assert.RecordCount(TempEmailAccount, Index);
         end;
 
         EmailAccounts.OpenView();
@@ -54,7 +54,7 @@ codeunit 139760 "SMTP Connector Test"
     [TransactionModel(TransactionModel::AutoRollback)]
     procedure TestCurrentUserAccountsCanBeRegistered()
     var
-        EmailAccount: Record "Email Account";
+        TempEmailAccount: Record "Email Account";
         SMTPConnector: Codeunit "SMTP Connector Impl.";
         AccountIds: array[3] of Guid;
         AccountName: array[3] of Text[250];
@@ -72,16 +72,16 @@ codeunit 139760 "SMTP Connector Test"
         for Index := 1 to 3 do begin
             SetCurrentUserAccount(Index);
 
-            Assert.IsTrue(SMTPConnector.RegisterAccount(EmailAccount), 'Failed to register account.');
-            AccountIds[Index] := EmailAccount."Account Id";
+            Assert.IsTrue(SMTPConnector.RegisterAccount(TempEmailAccount), 'Failed to register account.');
+            AccountIds[Index] := TempEmailAccount."Account Id";
             AccountName[Index] := SMTPAccountMock.Name();
 
             // [Then] Accounts are retrieved from the GetAccounts method
-            EmailAccount.DeleteAll();
-            SMTPConnector.GetAccounts(EmailAccount);
-            Assert.IsTrue(EmailAccount.Get(AccountIds[Index], Enum::"Email Connector"::SMTP), 'Email account does not exist.');
-            Assert.AreEqual(AccountName[Index], EmailAccount.Name, 'A different name was expected.');
-            Assert.AreEqual(GivenEmail, EmailAccount."Email Address", 'A different email address was expected.');
+            TempEmailAccount.DeleteAll();
+            SMTPConnector.GetAccounts(TempEmailAccount);
+            Assert.IsTrue(TempEmailAccount.Get(AccountIds[Index], Enum::"Email Connector"::SMTP), 'Email account does not exist.');
+            Assert.AreEqual(AccountName[Index], TempEmailAccount.Name, 'A different name was expected.');
+            Assert.AreEqual(GivenEmail, TempEmailAccount."Email Address", 'A different email address was expected.');
         end;
     end;
 
@@ -91,7 +91,7 @@ codeunit 139760 "SMTP Connector Test"
     [TransactionModel(TransactionModel::AutoRollback)]
     procedure TestCurrentUserAccountWithBlankContactEmail()
     var
-        EmailAccount: Record "Email Account";
+        TempEmailAccount: Record "Email Account";
         EmailMessage: Codeunit "Email Message";
         SMTPConnector: Codeunit "SMTP Connector Impl.";
         AccountId: Guid;
@@ -107,8 +107,8 @@ codeunit 139760 "SMTP Connector Test"
         // [When] Account is registered with blank email
         SetCurrentUserAccount(0, Enum::"SMTP Authentication Types"::Anonymous);
 
-        Assert.IsTrue(SMTPConnector.RegisterAccount(EmailAccount), 'Failed to register account.');
-        AccountId := EmailAccount."Account Id";
+        Assert.IsTrue(SMTPConnector.RegisterAccount(TempEmailAccount), 'Failed to register account.');
+        AccountId := TempEmailAccount."Account Id";
         AccountName := SMTPAccountMock.Name();
 
         // [When] Email Message created and sent
@@ -124,7 +124,7 @@ codeunit 139760 "SMTP Connector Test"
     [TransactionModel(TransactionModel::AutoRollback)]
     procedure TestShowAccountInformation()
     var
-        EmailAccount: Record "Email Account";
+        TempEmailAccount: Record "Email Account";
         SMTPConnector: Codeunit "SMTP Connector Impl.";
     begin
         // [Scenario] Account Information is displayed in the "SMTP Account" page.
@@ -132,10 +132,10 @@ codeunit 139760 "SMTP Connector Test"
         // [Given] An SMTP account
         Initialize();
         SetBasicAccount(1);
-        SMTPConnector.RegisterAccount(EmailAccount);
+        SMTPConnector.RegisterAccount(TempEmailAccount);
 
         // [When] The ShowAccountInformation method is invoked
-        SMTPConnector.ShowAccountInformation(EmailAccount."Account Id");
+        SMTPConnector.ShowAccountInformation(TempEmailAccount."Account Id");
 
         // [Then] The account page opens and displays the information
         // Verify in SMTPAccountModalPageHandler
@@ -206,6 +206,8 @@ codeunit 139760 "SMTP Connector Test"
         SMTPAccountWizard.Password.SetValue(SMTPAccountMock.Password());
         SMTPAccountWizard.SecureConnection.SetValue(SMTPAccountMock.SecureConnection());
 
+        // Need to clike two Next to complete the wizard
+        SMTPAccountWizard.Next.Invoke();
         SMTPAccountWizard.Next.Invoke();
     end;
 
@@ -220,6 +222,134 @@ codeunit 139760 "SMTP Connector Test"
         Assert.AreEqual(Format(SMTPAccountMock.Authentication()), SMTPAccount.Authentication.Value(), 'A different authentication was expected.');
         Assert.AreEqual(SMTPAccountMock.SecureConnection(), SMTPAccount.SecureConnection.AsBoolean(), 'A different secure connection was expected.');
         Assert.AreEqual(Format(SMTPAccountMock.SenderType()), SMTPAccount.SenderTypeField.Value(), 'A different sender type was expected.');
+    end;
+
+    [Test]
+    [Scope('OnPrem')]
+    procedure AddSingleAttachmentSucceeds()
+    var
+        SMTPMessage: Codeunit "SMTP Message";
+        TempBlob: Codeunit "Temp Blob";
+        OutStr: OutStream;
+        InStr: InStream;
+    begin
+        // [Scenario] Adding a single attachment to an SMTP message should succeed
+        // [Given] A valid InStream with content
+        TempBlob.CreateOutStream(OutStr);
+        OutStr.WriteText('Test attachment content');
+        TempBlob.CreateInStream(InStr);
+
+        // [When] AddAttachment is called
+        // [Then] It returns true
+        Assert.IsTrue(SMTPMessage.AddAttachment(InStr, 'test.pdf'), 'AddAttachment should succeed for a valid InStream.');
+    end;
+
+    [Test]
+    [Scope('OnPrem')]
+    procedure AddMultipleAttachmentsSucceeds()
+    var
+        SMTPMessage: Codeunit "SMTP Message";
+        TempBlob: Codeunit "Temp Blob";
+        OutStr: OutStream;
+        InStr: InStream;
+        i: Integer;
+    begin
+        // [Scenario] Adding multiple attachments should all succeed
+        for i := 1 to 3 do begin
+            Clear(TempBlob);
+            TempBlob.CreateOutStream(OutStr);
+            OutStr.WriteText('Attachment content #' + Format(i));
+            TempBlob.CreateInStream(InStr);
+
+            Assert.IsTrue(
+                SMTPMessage.AddAttachment(InStr, 'file' + Format(i) + '.txt'),
+                StrSubstNo('AddAttachment should succeed for attachment %1.', i));
+        end;
+    end;
+
+    [Test]
+    [Scope('OnPrem')]
+    procedure AddAttachmentWithMinimalContent()
+    var
+        SMTPMessage: Codeunit "SMTP Message";
+        TempBlob: Codeunit "Temp Blob";
+        OutStr: OutStream;
+        InStr: InStream;
+    begin
+        // [Scenario] Adding an attachment with minimal (1 byte) content should succeed
+        TempBlob.CreateOutStream(OutStr);
+        OutStr.WriteText('x');
+        TempBlob.CreateInStream(InStr);
+
+        Assert.IsTrue(SMTPMessage.AddAttachment(InStr, 'minimal.txt'), 'AddAttachment should succeed for minimal content.');
+    end;
+
+    [Test]
+    [Scope('OnPrem')]
+    procedure AddAttachmentWithLargeContent()
+    var
+        SMTPMessage: Codeunit "SMTP Message";
+        TempBlob: Codeunit "Temp Blob";
+        OutStr: OutStream;
+        InStr: InStream;
+        i: Integer;
+    begin
+        // [Scenario] Adding a large attachment should succeed
+        TempBlob.CreateOutStream(OutStr);
+        for i := 1 to 1024 do
+            OutStr.WriteText('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/abcdefghijklmnopqrstuv');
+        TempBlob.CreateInStream(InStr);
+
+        Assert.IsTrue(SMTPMessage.AddAttachment(InStr, 'large-file.bin'), 'AddAttachment should succeed for large content.');
+    end;
+
+    [Test]
+    [Scope('OnPrem')]
+    procedure AddAttachmentAfterSettingBody()
+    var
+        SMTPMessage: Codeunit "SMTP Message";
+        TempBlob: Codeunit "Temp Blob";
+        OutStr: OutStream;
+        InStr: InStream;
+    begin
+        // [Scenario] Adding attachment after setting email body should succeed
+        SMTPMessage.SetBody('<html><body><p>Hello</p></body></html>', true);
+
+        TempBlob.CreateOutStream(OutStr);
+        OutStr.WriteText('Attachment after body');
+        TempBlob.CreateInStream(InStr);
+
+        Assert.IsTrue(SMTPMessage.AddAttachment(InStr, 'after-body.pdf'), 'AddAttachment should succeed after setting body.');
+    end;
+
+    [Test]
+    [Scope('OnPrem')]
+    procedure AddAttachmentVariousFileTypes()
+    var
+        SMTPMessage: Codeunit "SMTP Message";
+        TempBlob: Codeunit "Temp Blob";
+        OutStr: OutStream;
+        InStr: InStream;
+        FileNames: List of [Text];
+        FileName: Text;
+    begin
+        // [Scenario] Adding attachments with various file extensions should succeed
+        FileNames.Add('document.pdf');
+        FileNames.Add('spreadsheet.xlsx');
+        FileNames.Add('image.png');
+        FileNames.Add('archive.zip');
+        FileNames.Add('textfile.txt');
+
+        foreach FileName in FileNames do begin
+            Clear(TempBlob);
+            TempBlob.CreateOutStream(OutStr);
+            OutStr.WriteText('Content for ' + FileName);
+            TempBlob.CreateInStream(InStr);
+
+            Assert.IsTrue(
+                SMTPMessage.AddAttachment(InStr, FileName),
+                StrSubstNo('AddAttachment should succeed for file type %1.', FileName));
+        end;
     end;
 
     var

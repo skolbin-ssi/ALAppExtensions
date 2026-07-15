@@ -28,10 +28,6 @@ enum 11725 "User Setup Line Type CZL"
     {
         Caption = 'Item Journal';
     }
-    value(5; "BOM Journal")
-    {
-        Caption = 'BOM Journal';
-    }
     value(6; "Resource Journal")
     {
         Caption = 'Resource Journal';
@@ -39,10 +35,6 @@ enum 11725 "User Setup Line Type CZL"
     value(7; "Job Journal")
     {
         Caption = 'Job Journal';
-    }
-    value(8; "Intrastat Journal")
-    {
-        Caption = 'Intrastat Journal';
     }
     value(9; "FA Journal")
     {

@@ -1,5 +1,6 @@
 namespace Microsoft.Intercompany.CrossEnvironment;
 
+using Microsoft.Intercompany;
 using Microsoft.Intercompany.DataExchange;
 
 page 30423 "API Buf IC Inbox Transaction"
@@ -42,9 +43,14 @@ page 30423 "API Buf IC Inbox Transaction"
                     Caption = 'Intercompany Partner Code';
                     Editable = true;
                 }
-                field(sourceType; Rec."Source Type")
+                field(sourceType; LocalSourceType)
                 {
                     Caption = 'Source Type';
+                    Editable = true;
+                }
+                field(icSourceType; Rec."IC Source Type")
+                {
+                    Caption = 'IC Source Type';
                     Editable = true;
                 }
                 field(sourceTypeIndex; SourceTypeIndex)
@@ -131,7 +137,15 @@ page 30423 "API Buf IC Inbox Transaction"
 
     trigger OnAfterGetRecord()
     begin
-        SourceTypeIndex := Rec."Source Type";
+        case Rec."IC Source Type" of
+            Enum::"IC Transaction Source Type"::Journal:
+                LocalSourceType := LocalSourceType::Journal;
+            Enum::"IC Transaction Source Type"::"Sales Document":
+                LocalSourceType := LocalSourceType::"Sales Document";
+            Enum::"IC Transaction Source Type"::"Purchase Document":
+                LocalSourceType := LocalSourceType::"Purchase Document";
+        end;
+        SourceTypeIndex := Rec."IC Source Type".AsInteger();
         DocumentTypeOrdinal := Rec."Document Type".AsInteger();
         TransactionSourceIndex := Rec."Transaction Source";
         LineActionIndex := Rec."Line Action";
@@ -139,6 +153,7 @@ page 30423 "API Buf IC Inbox Transaction"
     end;
 
     var
+        LocalSourceType: Option Journal,"Sales Document","Purchase Document";
         IDShouldBeSpecifiedErr: Label 'Operation ID should be specified';
         ThereAreNoNotificationsForSpecifiedIDErr: Label 'There are no notifications for specified ID';
         SourceTypeIndex, DocumentTypeOrdinal, TransactionSourceIndex, LineActionIndex, IcAccountTypeOrdinal : Integer;

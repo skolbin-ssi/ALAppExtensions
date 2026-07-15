@@ -29,6 +29,8 @@ table 6226 "Emission Fee"
         }
         field(3; "Carbon Fee"; Decimal)
         {
+            AutoFormatType = 2;
+            AutoFormatExpression = '';
             DataClassification = CustomerContent;
             Caption = 'Carbon Fee';
             DecimalPlaces = 2 : 5;
@@ -42,6 +44,7 @@ table 6226 "Emission Fee"
         }
         field(4; "Carbon Equivalent Factor"; Decimal)
         {
+            AutoFormatType = 0;
             DataClassification = CustomerContent;
             Caption = 'Carbon Equivalent Factor';
             DecimalPlaces = 2 : 5;
@@ -74,6 +77,12 @@ table 6226 "Emission Fee"
         {
             DataClassification = CustomerContent;
             Caption = 'Scope Type';
+
+            trigger OnValidate()
+            begin
+                if Rec."Scope Type" = Rec."Scope Type"::"Water/Waste" then
+                    Error(ScopeTypeIsNotSupportedErr, Rec."Scope Type", Rec.TableCaption());
+            end;
         }
         field(8; "Responsibility Center"; Code[10])
         {
@@ -98,4 +107,5 @@ table 6226 "Emission Fee"
 
     var
         InvalidStartDateErr: Label '%1 cannot be after %2', Comment = '%1 - Starting Date,%2 - Ending Date';
+        ScopeTypeIsNotSupportedErr: Label 'Scope Type %1 is not supported in %2.', Comment = '%1 = Scope Type , %2 = Table Caption';
 }

@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 // ------------------------------------------------------------------------------------------------
@@ -6,8 +6,12 @@ namespace Microsoft.Purchases.History;
 
 using Microsoft.Bank.Setup;
 using Microsoft.Finance.Currency;
+using Microsoft.Finance.GeneralLedger.Journal;
 using Microsoft.Finance.VAT.Calculation;
+using Microsoft.Purchases.Payables;
+using Microsoft.Purchases.Setup;
 using Microsoft.Purchases.Vendor;
+using System.Utilities;
 
 tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
 {
@@ -16,6 +20,7 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
         field(11717; "Specific Symbol CZL"; Code[10])
         {
             Caption = 'Specific Symbol';
+            OptimizeForTextSearch = true;
             CharAllowed = '09';
             Editable = false;
             DataClassification = CustomerContent;
@@ -23,6 +28,7 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
         field(11718; "Variable Symbol CZL"; Code[10])
         {
             Caption = 'Variable Symbol';
+            OptimizeForTextSearch = true;
             CharAllowed = '09';
             Editable = false;
             DataClassification = CustomerContent;
@@ -30,6 +36,7 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
         field(11719; "Constant Symbol CZL"; Code[10])
         {
             Caption = 'Constant Symbol';
+            OptimizeForTextSearch = true;
             CharAllowed = '09';
             TableRelation = "Constant Symbol CZL";
             Editable = false;
@@ -41,6 +48,26 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
             TableRelation = "Vendor Bank Account".Code where("Vendor No." = field("Pay-to Vendor No."));
             Editable = false;
             DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            var
+                VendorBankAccount: Record "Vendor Bank Account";
+            begin
+                if "Bank Account Code CZL" = '' then begin
+                    UpdateBankInfoCZL('', '', '', '', '', '', '');
+                    exit;
+                end;
+                TestField("Pay-to Vendor No.");
+                VendorBankAccount.Get("Pay-to Vendor No.", "Bank Account Code CZL");
+                UpdateBankInfoCZL(
+                  VendorBankAccount.Code,
+                  VendorBankAccount."Bank Account No.",
+                  VendorBankAccount."Bank Branch No.",
+                  VendorBankAccount.Name,
+                  VendorBankAccount."Transit No.",
+                  VendorBankAccount.IBAN,
+                  VendorBankAccount."SWIFT Code");
+            end;
         }
         field(11721; "Bank Account No. CZL"; Text[30])
         {
@@ -80,6 +107,7 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
         }
         field(11750; "Additional Currency Factor CZL"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'Additional Currency Factor';
             DecimalPlaces = 0 : 15;
             MinValue = 0;
@@ -87,6 +115,7 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
         }
         field(11774; "VAT Currency Factor CZL"; Decimal)
         {
+            AutoFormatType = 0;
             Caption = 'VAT Currency Factor';
             DataClassification = CustomerContent;
             DecimalPlaces = 0 : 15;
@@ -100,6 +129,7 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
             TableRelation = Currency;
             Editable = false;
         }
+#if not CLEANSCHEMA25
         field(11780; "VAT Date CZL"; Date)
         {
             Caption = 'VAT Date';
@@ -108,6 +138,7 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
             ObsoleteTag = '25.0';
             ObsoleteReason = 'Replaced by VAT Reporting Date.';
         }
+#endif
         field(11781; "Registration No. CZL"; Text[20])
         {
             Caption = 'Registration No.';
@@ -118,6 +149,7 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
             Caption = 'Tax Registration No.';
             DataClassification = CustomerContent;
         }
+#if not CLEANSCHEMA25
         field(31068; "Physical Transfer CZL"; Boolean)
         {
             Caption = 'Physical Transfer';
@@ -134,24 +166,22 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
             ObsoleteTag = '25.0';
             ObsoleteReason = 'Intrastat related functionalities are moved to Intrastat extensions. This field is not used any more.';
         }
+#endif
         field(31072; "EU 3-Party Intermed. Role CZL"; Boolean)
         {
             Caption = 'EU 3-Party Intermediate Role';
             DataClassification = CustomerContent;
         }
+#if not CLEANSCHEMA27
         field(31073; "EU 3-Party Trade CZL"; Boolean)
         {
             Caption = 'EU 3-Party Trade';
             DataClassification = CustomerContent;
-#if not CLEAN24
-            ObsoleteState = Pending;
-            ObsoleteTag = '24.0';
-#else
             ObsoleteState = Removed;
             ObsoleteTag = '27.0';
-#endif
             ObsoleteReason = 'Replaced by "EU 3 Party Trade" field in "EU 3-Party Trade Purchase" app.';
         }
+#endif
         field(31112; "Original Doc. VAT Date CZL"; Date)
         {
             Caption = 'Original Document VAT Date';
@@ -162,6 +192,7 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
 
     var
         PopUpVATLCYCorrection: Boolean;
+        PurchaseInvoiceAlreadyExistsQst: Label 'Purchase invoice %1 already exists for this vendor.\Do you want to continue?', Comment = '%1 = External Document No.; e.g. Purchase Invoice 123 already exists...';
 
     procedure SetPopUpVATLCYCorrectionCZL(NewPopUpVATLCYCorrection: Boolean)
     begin
@@ -185,5 +216,51 @@ tableextension 11730 "Purch. Inv. Header CZL" extends "Purch. Inv. Header"
     begin
         Rec.CalcFields("Amount Including VAT", "Amount");
         exit((Rec."Currency Code" <> '') and ((Rec."Amount Including VAT" - Rec."Amount") <> 0));
+    end;
+
+    procedure UpdateBankInfoCZL(BankAccountCode: Code[20]; BankAccountNo: Text[30]; BankBranchNo: Text[20]; BankName: Text[100]; TransitNo: Text[20]; IBANCode: Code[50]; SWIFTCode: Code[20])
+    begin
+        "Bank Account Code CZL" := BankAccountCode;
+        "Bank Account No. CZL" := BankAccountNo;
+        "Bank Branch No. CZL" := BankBranchNo;
+        "Bank Name CZL" := BankName;
+        "Transit No. CZL" := TransitNo;
+        "IBAN CZL" := IBANCode;
+        "SWIFT Code CZL" := SWIFTCode;
+        OnAfterUpdateBankInfoCZL(Rec);
+    end;
+
+    internal procedure CheckAndConfirmExternalDocumentNumber()
+    var
+        PurchasesPayablesSetup: Record "Purchases & Payables Setup";
+        ConfirmManagement: Codeunit "Confirm Management";
+    begin
+        if not GuiAllowed() then
+            exit;
+
+        PurchasesPayablesSetup.Get();
+        if not PurchasesPayablesSetup."Ext. Doc. No. Mandatory" and ("Vendor Invoice No." = '') then
+            exit;
+
+        if not ExistEntriesWithSameExternalDocNo("Vendor Invoice No.") then
+            exit;
+
+        if not ConfirmManagement.GetResponse(StrSubstNo(PurchaseInvoiceAlreadyExistsQst, "Vendor Invoice No."), false) then
+            Error('');
+    end;
+
+    local procedure ExistEntriesWithSameExternalDocNo(ExternalDocumentNo: Code[35]): Boolean
+    var
+        VendorLedgerEntry: Record "Vendor Ledger Entry";
+        VendorMgt: Codeunit "Vendor Mgt.";
+    begin
+        VendorMgt.SetFilterForExternalDocNo(
+          VendorLedgerEntry, Enum::"Gen. Journal Document Type"::Invoice, ExternalDocumentNo, "Pay-to Vendor No.", "Document Date");
+        exit(not VendorLedgerEntry.IsEmpty());
+    end;
+
+    [IntegrationEvent(false, false)]
+    local procedure OnAfterUpdateBankInfoCZL(var PurchInvHeader: Record "Purch. Inv. Header")
+    begin
     end;
 }

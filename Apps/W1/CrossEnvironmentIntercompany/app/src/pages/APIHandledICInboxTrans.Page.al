@@ -1,5 +1,6 @@
 namespace Microsoft.Intercompany.CrossEnvironment;
 
+using Microsoft.Intercompany;
 using Microsoft.Intercompany.Inbox;
 
 page 30400 "API - Handled IC Inbox Trans."
@@ -40,9 +41,15 @@ page 30400 "API - Handled IC Inbox Trans."
                 {
                     Caption = 'Intercompany Partner Code';
                 }
-                field(sourceType; Rec."Source Type")
+                field(sourceType; LocalSourceType)
                 {
                     Caption = 'Source Type';
+                    Editable = true;
+                }
+                field(icSourceType; Rec."IC Source Type")
+                {
+                    Caption = 'IC Source Type';
+                    Editable = true;
                 }
                 field(sourceTypeIndex; SourceTypeIndex)
                 {
@@ -106,12 +113,21 @@ page 30400 "API - Handled IC Inbox Trans."
 
     trigger OnAfterGetRecord()
     begin
-        SourceTypeIndex := Rec."Source Type";
+        case Rec."IC Source Type" of
+            Enum::"IC Transaction Source Type"::Journal:
+                LocalSourceType := LocalSourceType::Journal;
+            Enum::"IC Transaction Source Type"::"Sales Document":
+                LocalSourceType := LocalSourceType::"Sales Document";
+            Enum::"IC Transaction Source Type"::"Purchase Document":
+                LocalSourceType := LocalSourceType::"Purchase Document";
+        end;
+        SourceTypeIndex := Rec."IC Source Type".AsInteger();
         DocumentTypeOrdinal := Rec."Document Type".AsInteger();
         TransactionSourceIndex := Rec."Transaction Source";
         StatusIndex := Rec."Status";
     end;
 
     var
+        LocalSourceType: Option Journal,"Sales Document","Purchase Document";
         SourceTypeIndex, DocumentTypeOrdinal, TransactionSourceIndex, StatusIndex, IcAccountTypeOrdinal : Integer;
 }

@@ -8,7 +8,7 @@ using System.Text;
 
 page 31202 "Save Acc. Schedule Result CZL"
 {
-    Caption = 'Save Acc. Schedule Result';
+    Caption = 'Save Fin. Report Result';
     PageType = Card;
 
     layout
@@ -21,10 +21,10 @@ page 31202 "Save Acc. Schedule Result CZL"
                 field(AccSchedName; AccSchedName)
                 {
                     ApplicationArea = Basic, Suite;
-                    Caption = 'Acc. Schedule Name';
+                    Caption = 'Fin. Report Name';
                     Lookup = true;
                     TableRelation = "Acc. Schedule Name";
-                    ToolTip = 'Specifies the name of account schedule.';
+                    ToolTip = 'Specifies the name of financial report.';
                     Editable = false;
                 }
                 field(ColumnLayoutName; ColumnLayoutName)
@@ -35,22 +35,6 @@ page 31202 "Save Acc. Schedule Result CZL"
                     TableRelation = "Column Layout Name".Name;
                     ToolTip = 'Specifies the name of the column layout that you want to use in the window.';
                     Editable = false;
-
-                    trigger OnLookup(var Text: Text): Boolean
-                    var
-                        EnteredColumnName: Text[10];
-                        LookupColumnName: Boolean;
-                    begin
-                        EnteredColumnName := CopyStr(Text, 1, MaxStrLen(EnteredColumnName));
-                        LookupColumnName := AccSchedManagement.LookupColumnName(ColumnLayoutName, EnteredColumnName);
-                        Text := EnteredColumnName;
-                        exit(LookupColumnName);
-                    end;
-
-                    trigger OnValidate()
-                    begin
-                        AccSchedManagement.CheckColumnName(ColumnLayoutName);
-                    end;
                 }
                 field(DateFilter; DateFilter)
                 {
@@ -71,7 +55,7 @@ page 31202 "Save Acc. Schedule Result CZL"
                 {
                     ApplicationArea = Basic, Suite;
                     Caption = 'Description';
-                    ToolTip = 'Specifies the description of account schedule result.';
+                    ToolTip = 'Specifies the description of financial report result.';
                 }
                 field(UseAmtsInAddCurr; UseAmtsInAddCurr)
                 {
@@ -86,7 +70,6 @@ page 31202 "Save Acc. Schedule Result CZL"
 
     var
         AccScheduleLine: Record "Acc. Schedule Line";
-        AccSchedManagement: Codeunit AccSchedManagement;
         AccSchedName: Code[10];
         ColumnLayoutName: Code[10];
         DateFilter: Text;

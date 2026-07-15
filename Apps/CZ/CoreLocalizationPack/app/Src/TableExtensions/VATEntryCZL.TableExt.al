@@ -4,12 +4,16 @@
 // ------------------------------------------------------------------------------------------------
 namespace Microsoft.Finance.VAT.Ledger;
 
+using Microsoft.Finance.GeneralLedger.Setup;
+using Microsoft.Finance.VAT;
+using Microsoft.Finance.VAT.Calculation;
 using Microsoft.Finance.VAT.Reporting;
 
 tableextension 11737 "VAT Entry CZL" extends "VAT Entry"
 {
     fields
     {
+#if not CLEANSCHEMA25
         field(11710; "VAT Date CZL"; Date)
         {
             Caption = 'VAT Date';
@@ -19,6 +23,7 @@ tableextension 11737 "VAT Entry CZL" extends "VAT Entry"
             ObsoleteTag = '25.0';
             ObsoleteReason = 'Replaced by VAT Reporting Date.';
         }
+#endif
         field(11711; "VAT Settlement No. CZL"; Code[20])
         {
             Caption = 'VAT Settlement No.';
@@ -39,12 +44,16 @@ tableextension 11737 "VAT Entry CZL" extends "VAT Entry"
         }
         field(11730; "Original VAT Base CZL"; Decimal)
         {
+            AutoFormatExpression = '';
+            AutoFormatType = 1;
             Caption = 'Original VAT Base';
             Editable = false;
             DataClassification = CustomerContent;
         }
         field(11731; "Original VAT Amount CZL"; Decimal)
         {
+            AutoFormatExpression = '';
+            AutoFormatType = 1;
             Caption = 'Original VAT Amount';
             Editable = false;
             DataClassification = CustomerContent;
@@ -52,6 +61,22 @@ tableextension 11737 "VAT Entry CZL" extends "VAT Entry"
         field(11732; "Original VAT Entry No. CZL"; Integer)
         {
             Caption = 'Original VAT Entry No.';
+            Editable = false;
+            DataClassification = CustomerContent;
+        }
+        field(11735; "Original VAT Base ACY CZL"; Decimal)
+        {
+            AutoFormatExpression = GetAdditionalReportingCurrency();
+            AutoFormatType = 1;
+            Caption = 'Original VAT Base ACY';
+            Editable = false;
+            DataClassification = CustomerContent;
+        }
+        field(11736; "Original VAT Amount ACY CZL"; Decimal)
+        {
+            AutoFormatExpression = GetAdditionalReportingCurrency();
+            AutoFormatType = 1;
+            Caption = 'Original VAT Amount ACY';
             Editable = false;
             DataClassification = CustomerContent;
         }
@@ -95,6 +120,24 @@ tableextension 11737 "VAT Entry CZL" extends "VAT Entry"
             Caption = 'Original Document VAT Date';
             Editable = false;
             DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            var
+                VATReportingDateMgt: Codeunit "VAT Reporting Date Mgt";
+                VATOrigDocVATDateMgtCZL: Codeunit "VAT Orig.Doc.VAT Date Mgt. CZL";
+            begin
+                if (Rec."Original Doc. VAT Date CZL" = xRec."Original Doc. VAT Date CZL") and (CurrFieldNo <> 0) then
+                    exit;
+                // if type settlement then we error
+                Validate(Type);
+                if not VATReportingDateMgt.IsVATDateModifiable() then
+                    Error(VATDateNotModifiableErr);
+
+                if Closed then
+                    Error(VATDateModifiableClosedErr);
+
+                VATOrigDocVATDateMgtCZL.UpdateOrigDocVATDate(Rec);
+            end;
         }
     }
 
@@ -106,8 +149,22 @@ tableextension 11737 "VAT Entry CZL" extends "VAT Entry"
     }
 
     var
+        GeneralLedgerSetup: Record "General Ledger Setup";
         VATStmtPeriodSelectionNotSupportedErr: Label 'VAT statement report period selection %1 is not supported.', Comment = '%1 = VAT Statement Report Period Selection';
         VATStmtReportSelectionNotSupportedErr: Label 'VAT statement report selection %1 is not supported.', Comment = '%1 = VAT Statement Report Selection';
+        VATDateNotModifiableErr: Label 'Modification of the VAT Date on the VAT Entry is restricted by the current setting for VAT Reporting Date Usage in the General Ledger Setup.';
+        VATDateModifiableClosedErr: Label 'The VAT Entry is marked as closed, modification of the VAT Date is therefore not allowed.';
+
+    internal procedure SetVATStmtCalcFilters(VATStatementLine: Record "VAT Statement Line"; VATStmtCalcParametersCZL: Record "VAT Stmt. Calc. Parameters CZL")
+    var
+        VATReportingDateMgt: Codeunit "VAT Reporting Date Mgt";
+    begin
+        SetVATStatementLineFiltersCZL(VATStatementLine);
+        SetPeriodFilterCZL(VATStmtCalcParametersCZL."Period Selection", VATStmtCalcParametersCZL."Start Date", VATStmtCalcParametersCZL."End Date", VATReportingDateMgt.IsVATDateEnabled());
+        SetClosedFilterCZL(VATStmtCalcParametersCZL.Selection);
+        if VATStmtCalcParametersCZL."VAT Settlement No. Filter" <> '' then
+            SetFilter("VAT Settlement No. CZL", VATStmtCalcParametersCZL."VAT Settlement No. Filter");
+    end;
 
     procedure SetVATStatementLineFiltersCZL(VATStatementLine: Record "VAT Statement Line")
     begin
@@ -120,14 +177,14 @@ tableextension 11737 "VAT Entry CZL" extends "VAT Entry"
             SetRange("Gen. Bus. Posting Group", VATStatementLine."Gen. Bus. Posting Group CZL");
         if VATStatementLine."Gen. Prod. Posting Group CZL" <> '' then
             SetRange("Gen. Prod. Posting Group", VATStatementLine."Gen. Prod. Posting Group CZL");
-            case VATStatementLine."EU 3 Party Trade" of
-                VATStatementLine."EU 3 Party Trade"::EU3:
-                    SetRange("EU 3-Party Trade", true);
-                VATStatementLine."EU 3 Party Trade"::"non-EU3":
-                    SetRange("EU 3-Party Trade", false);
-                VATStatementLine."EU 3 Party Trade"::All:
-                    SetRange("EU 3-Party Trade");
-            end;
+        case VATStatementLine."EU 3 Party Trade" of
+            VATStatementLine."EU 3 Party Trade"::EU3:
+                SetRange("EU 3-Party Trade", true);
+            VATStatementLine."EU 3 Party Trade"::"non-EU3":
+                SetRange("EU 3-Party Trade", false);
+            VATStatementLine."EU 3 Party Trade"::All:
+                SetRange("EU 3-Party Trade");
+        end;
         SetRange("EU 3-Party Intermed. Role CZL");
         case VATStatementLine."EU 3-Party Intermed. Role CZL" of
             VATStatementLine."EU 3-Party Intermed. Role CZL"::Yes:
@@ -208,6 +265,9 @@ tableextension 11737 "VAT Entry CZL" extends "VAT Entry"
 
     procedure ToTemporaryCZL(var TempVATEntry: Record "VAT Entry" temporary)
     begin
+        if not TempVATEntry.IsTemporary() then
+            exit;
+
         if FindSet() then
             repeat
                 TempVATEntry := Rec;
@@ -235,6 +295,22 @@ tableextension 11737 "VAT Entry CZL" extends "VAT Entry"
     internal procedure CalcOriginalVATAmountCZL(): Decimal
     begin
         exit(Amount + "Non-Deductible VAT Amount");
+    end;
+
+    internal procedure CalcOriginalVATBaseACYCZL(): Decimal
+    begin
+        exit("Additional-Currency Base" + "Non-Deductible VAT Base ACY");
+    end;
+
+    internal procedure CalcOriginalVATAmountACYCZL(): Decimal
+    begin
+        exit("Additional-Currency Amount" + "Non-Deductible VAT Amount ACY");
+    end;
+
+    internal procedure GetAdditionalReportingCurrency(): Code[10]
+    begin
+        GeneralLedgerSetup.GetRecordOnce();
+        exit(GeneralLedgerSetup."Additional Reporting Currency");
     end;
 
     [IntegrationEvent(false, false)]
